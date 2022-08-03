@@ -1,0 +1,7 @@
+#Other Files
+*.DS_Store
+
+# Folders
+src/data/RTS-GMLC-master
+src/data/Generated-Outage-Profile-JSON
+
