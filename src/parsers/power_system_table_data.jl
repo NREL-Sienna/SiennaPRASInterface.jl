@@ -262,7 +262,7 @@ function PSY.make_generator(data::PSY.PowerSystemTableData, gen, cost_colnames, 
     elseif gen_type == PSY.ThermalMultiStart
         generator = PSY.make_thermal_generator_multistart(data, gen, cost_colnames, bus)
     elseif gen_type <: PSY.HydroGen
-        generator = PSY.make_hydro_generator(gen_type, data, gen, cost_colnames, bus)
+        generator = PSY.make_hydro_generator(gen_type, data, gen, cost_colnames, bus, gen_storage)
     elseif gen_type <: PSY.RenewableGen
         generator = PSY.make_renewable_generator(gen_type, data, gen, cost_colnames, bus)
     elseif gen_type == PSY.GenericBattery

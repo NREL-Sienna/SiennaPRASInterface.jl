@@ -1022,7 +1022,8 @@
     "bus": [
         {
             "name": "bus_id",
-            "description": "Numeric Bus ID"
+            "description": "Numeric Bus ID",
+            "default_value": null
         },
         {
             "name": "name",
@@ -1118,6 +1119,20 @@
             "description": "base power for demand",
             "unit_system": "natural_units",
             "default_value": "system_base_power"
+        },
+        {
+            "name": "shunt_g",
+            "description": "shunt conductance",
+            "unit_system": "device_base",
+            "base_reference": "base_power",
+            "default_value": 0
+        },
+        {
+            "name": "shunt_b",
+            "description": "shunt reactance",
+            "unit_system": "device_base",
+            "base_reference": "base_power",
+            "default_value": 0
         }
     ],
     "load": [

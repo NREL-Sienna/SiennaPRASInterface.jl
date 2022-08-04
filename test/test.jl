@@ -20,7 +20,7 @@ import Dates
 rts_dir = "/Users/sdhulipa/Desktop/Misc./temp/RTS-GMLC"
 rts_src_dir = joinpath(rts_dir, "RTS_Data", "SourceData");
 rts_siip_dir = joinpath(rts_dir, "RTS_Data", "FormattedData", "SIIP");
-user_descriptrs_yaml_location = joinpath(dirname(pwd()),"test","descriptors","user_descriptors.yaml") # you have to use this yaml if you want to parse FOr and MTTR
+user_descriptrs_yaml_location = joinpath(dirname(pwd()),"test","descriptors","user_descriptors.yaml") # you have to use this yaml if you want to parse FOR and MTTR
 
 rawsys = PSY.PowerSystemTableData(
     rts_src_dir,
@@ -30,17 +30,12 @@ rawsys = PSY.PowerSystemTableData(
     generator_mapping_file = joinpath(rts_siip_dir, "generator_mapping.yaml"),
 );
 
-sys = PSY.System(rawsys; time_series_resolution = Dates.Hour(1));
-#######################################################
-# PrOS Stuff
-#######################################################
-sys_day_ahead = PSY.System(rawsys; time_series_resolution = Dates.Hour(1));
-sys_real_time = PSY.System(rawsys; time_series_resolution = Dates.Minute(5));
+sys = PSY.System(rawsys; time_series_resolution = Dates.Hour(1)); # This system should have "outage_probability" and "recovery_probability" in ext of components with outage data.
 #######################################################
 # Testing the module
 # You have to load the module before
 #######################################################
-system_period_of_interest = range(1,length = 8782);
+system_period_of_interest = range(1,length = 300);
 pras_system_1 = SIIP2PRAS.make_pras_system(sys,system_model="Single-Node",aggregation="Area",period_of_interest=system_period_of_interest,outage_flag=false);
 pras_system_2 =  SIIP2PRAS.make_pras_system(sys,system_model="Zonal",aggregation="Area",period_of_interest=system_period_of_interest,outage_flag=true);
 
