@@ -17,14 +17,15 @@ import Dates
 # ### The tabular data format relies on a folder containing `*.csv` files and a `user_descriptors.yaml` file
 # First, we'll read the tabular data
 #######################################################
-rts_dir = download("https://github.com/scdhulipala/RTS-GMLC", "master", joinpath(pwd(),"data"))
+rts_dir = "/Users/sdhulipa/Desktop/Misc./temp/RTS-GMLC"
 rts_src_dir = joinpath(rts_dir, "RTS_Data", "SourceData");
 rts_siip_dir = joinpath(rts_dir, "RTS_Data", "FormattedData", "SIIP");
+user_descriptrs_yaml_location = joinpath(dirname(pwd()),"test","descriptors","user_descriptors.yaml") # you have to use this yaml if you want to parse FOr and MTTR
 
 rawsys = PSY.PowerSystemTableData(
     rts_src_dir,
     100.0,
-    joinpath(rts_siip_dir, "user_descriptors.yaml"),
+    user_descriptrs_yaml_location,
     timeseries_metadata_file = joinpath(rts_siip_dir, "timeseries_pointers.json"),
     generator_mapping_file = joinpath(rts_siip_dir, "generator_mapping.yaml"),
 );
