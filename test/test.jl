@@ -39,13 +39,10 @@ system_period_of_interest = range(1,length = 300);
 pras_system_1 = SIIP2PRAS.make_pras_system(sys,system_model="Single-Node",aggregation="Area",period_of_interest=system_period_of_interest,outage_flag=false);
 pras_system_2 =  SIIP2PRAS.make_pras_system(sys,system_model="Zonal",aggregation="Area",period_of_interest=system_period_of_interest,outage_flag=true);
 
-pras_system_3 = SIIP2PRAS.make_pras_system(sys,system_model="Single-Node",aggregation="LoadZone",period_of_interest=system_period_of_interest,outage_flag=true);
-pras_system_4 = SIIP2PRAS.make_pras_system(sys,system_model="Zonal",aggregation="LoadZone",period_of_interest=system_period_of_interest,outage_flag=true);
 
-
-location = "/Users/sdhulipa/Desktop/OneDrive - NREL/Julia/PowerSystems2PRAS.jl";
-SIIP2PRAS.generate_outage_profile(pras_system_1,sys, num_runs = 1000,num_scenarios=2,location = location)
-SIIP2PRAS.generate_csv_outage_profile(pras_system_1, num_runs = 100,num_scenarios=2)
+location = dirname(pwd());
+SIIP2PRAS.generate_outage_profile(pras_system_1,sys, num_runs = 100,num_scenarios=2,location = location)
+SIIP2PRAS.generate_csv_outage_profile(pras_system_2, num_runs = 100,num_scenarios=1)
 
 #######################################################
 # Testing the module
