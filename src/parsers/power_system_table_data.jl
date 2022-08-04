@@ -243,14 +243,14 @@ function PSY.System(
         PSY.add_time_series!(sys, timeseries_metadata_file; resolution = time_series_resolution)
     end
 
-    PSY.check!(sys)
+    PSY.check(sys)
     return sys
 end
 ##############################################
 # PowerSystems2PRAS definition of make_generator()
 ##############################################
 """Creates a generator of any type."""
-function PSY.make_generator(data::PSY.PowerSystemTableData, gen, cost_colnames, bus)
+function PSY.make_generator(data::PSY.PowerSystemTableData, gen, cost_colnames, bus, gen_storage)
     generator = nothing
     gen_type =
         PSY.get_generator_type(gen.fuel, get(gen, :unit_type, nothing), data.generator_mapping)
@@ -266,8 +266,12 @@ function PSY.make_generator(data::PSY.PowerSystemTableData, gen, cost_colnames, 
     elseif gen_type <: PSY.RenewableGen
         generator = PSY.make_renewable_generator(gen_type, data, gen, cost_colnames, bus)
     elseif gen_type == PSY.GenericBattery
-        storage = PSY.get_storage_by_generator(data, gen.name).head
-        generator = PSY.make_storage(data, gen, storage, bus)
+        head_dict, _ = gen_storage
+        if !haskey(head_dict, gen.name)
+            throw(PSY.DataFormatError("Cannot find storage for $(gen.name) in storage.csv"))
+        end
+        storage = head_dict[gen.name]
+        generator = PSY.make_storage(data, gen, bus, storage)
     else
         @error "Skipping unsupported generator" gen.name gen_type
     end
@@ -291,7 +295,7 @@ end
 # PowerSystems2PRAS definition of make_thermal_generator()
 ##############################################
 function PSY.make_thermal_generator(data::PSY.PowerSystemTableData, gen, cost_colnames, bus)
-    @debug "Making ThermaStandard" gen.name
+    @debug "Making ThermaStandard" _group = PSY.IS.LOG_GROUP_PARSING gen.name
     active_power_limits =
         (min = gen.active_power_limits_min, max = gen.active_power_limits_max)
     (reactive_power, reactive_power_limits) = PSY.make_reactive_params(gen)
@@ -342,7 +346,7 @@ function PSY.make_thermal_generator_multistart(
 )
     thermal_gen = PSY.make_thermal_generator(data, gen, cost_colnames, bus)
 
-    @debug "Making ThermalMultiStart" gen.name
+    @debug "Making ThermalMultiStart" _group = PSY.IS.LOG_GROUP_PARSING gen.name
     base_power = PSY.get_base_power(thermal_gen)
     var_cost, fixed, fuel_cost =
         PSY.calculate_variable_cost(data, gen, cost_colnames, base_power)
@@ -418,8 +422,8 @@ end
 ##############################################
 # PowerSystems2PRAS definition of make_hydro_generator()
 ##############################################
-function PSY.make_hydro_generator(gen_type, data::PSY.PowerSystemTableData, gen, cost_colnames, bus)
-    @debug "Making HydroGen" gen.name
+function PSY.make_hydro_generator(gen_type, data::PSY.PowerSystemTableData, gen, cost_colnames, bus, gen_storage,)
+    @debug "Making HydroGen" _group = PSY.IS.LOG_GROUP_PARSING gen.name
     active_power_limits =
         (min = gen.active_power_limits_min, max = gen.active_power_limits_max)
     (reactive_power, reactive_power_limits) = PSY.make_reactive_params(gen)
@@ -435,14 +439,19 @@ function PSY.make_hydro_generator(gen_type, data::PSY.PowerSystemTableData, gen,
             throw(PSY.DataFormatError("Storage information must defined in storage.csv"))
         end
 
-        storage = PSY.get_storage_by_generator(data, gen.name)
+        head_dict, tail_dict = gen_storage
+        if !haskey(head_dict, gen.name)
+            throw(DataFormatError("Cannot find head storage for $(gen.csv) in storage.csv"))
+        end
+        storage = (head = head_dict[gen.name], tail = get(tail_dict, gen.name, nothing))
 
         var_cost, fixed, fuel_cost =
             PSY.calculate_variable_cost(data, gen, cost_colnames, base_power)
         operation_cost = PSY.TwoPartCost(var_cost, fixed)
 
         if gen_type == PSY.HydroEnergyReservoir
-            @debug("Creating $(gen.name) as HydroEnergyReservoir")
+            @debug "Creating $(gen.name) as HydroEnergyReservoir" _group =
+                PSY.IS.LOG_GROUP_PARSING
 
             hydro_gen = PSY.HydroEnergyReservoir(
                 name = gen.name,
@@ -464,7 +473,8 @@ function PSY.make_hydro_generator(gen_type, data::PSY.PowerSystemTableData, gen,
             )
 
         elseif gen_type == PSY.HydroPumpedStorage
-            @debug("Creating $(gen.name) as HydroPumpedStorage")
+            @debug "Creating $(gen.name) as HydroPumpedStorage" _group =
+                PSY.IS.LOG_GROUP_PARSING
 
             pump_active_power_limits = (
                 min = gen.pump_active_power_limits_min,
@@ -522,7 +532,7 @@ function PSY.make_hydro_generator(gen_type, data::PSY.PowerSystemTableData, gen,
             )
         end
     elseif gen_type == PSY.HydroDispatch
-        @debug("Creating $(gen.name) as HydroDispatch")
+        @debug "Creating $(gen.name) as HydroDispatch" _group = PSY.IS.LOG_GROUP_PARSING
         hydro_gen = PSY.HydroDispatch(
             name = gen.name,
             available = gen.available,
@@ -557,7 +567,7 @@ function PSY.make_renewable_generator(
     cost_colnames,
     bus,
 )
-    @debug "Making RenewableGen" gen.name
+@debug "Making RenewableGen" _group = PSY.IS.LOG_GROUP_PARSING gen.name
     generator = nothing
     active_power_limits =
         (min = gen.active_power_limits_min, max = gen.active_power_limits_max)
@@ -569,7 +579,7 @@ function PSY.make_renewable_generator(
     operation_cost = PSY.TwoPartCost(var_cost, fixed)
 
     if gen_type == PSY.RenewableDispatch
-        @debug("Creating $(gen.name) as RenewableDispatch")
+        @debug "Creating $(gen.name) as RenewableDispatch" _group = PSY.IS.LOG_GROUP_PARSING
         generator = PSY.RenewableDispatch(
             name = gen.name,
             available = gen.available,
@@ -584,7 +594,7 @@ function PSY.make_renewable_generator(
             base_power = base_power,
         )
     elseif gen_type == PSY.RenewableFix
-        @debug("Creating $(gen.name) as RenewableFix")
+        @debug "Creating $(gen.name) as RenewableFix" _group = PSY.IS.LOG_GROUP_PARSING
         generator = PSY.RenewableFix(
             name = gen.name,
             available = gen.available,
@@ -609,8 +619,8 @@ end
 ##############################################
 # PowerSystems2PRAS definition of make_storage()
 ##############################################
-function PSY.make_storage(data::PSY.PowerSystemTableData, gen, storage, bus)
-    @debug "Making Storge" storage.name
+function PSY.make_storage(data::PSY.PowerSystemTableData, gen, bus, storage)
+    @debug "Making Storage" _group = PSY.IS.LOG_GROUP_PARSING storage.name
     state_of_charge_limits =
         (min = storage.min_storage_capacity, max = storage.storage_capacity)
     input_active_power_limits = (
