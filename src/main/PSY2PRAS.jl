@@ -251,6 +251,9 @@ function make_pras_system(sys::PSY.System;
                 p_m = string(PSY.get_prime_mover(g))
                 fl = string(PSY.get_fuel(g))
 
+                @show p_m
+                @show fl
+
                 p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
                 fl_idx =  findall(x -> x == fl, getfield.(outage_values[p_m_idx],:thermal_fuel))
                 

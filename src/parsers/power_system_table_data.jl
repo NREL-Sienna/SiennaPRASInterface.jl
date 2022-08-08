@@ -283,7 +283,7 @@ end
 # to Generator
 ##############################################
 function add_outage_info!(component::PSY.StaticInjection, gen)
-    outage_rates = outage_to_rate((gen.fotr, gen.mttr))
+    outage_rates = outage_to_rate((parse(Float64,gen.fotr),parse(Int64,gen.mttr)))
     outage_probability = outage_info(outage_rates.λ, outage_rates.μ)
 
     ext = PSY.get_ext(component)
