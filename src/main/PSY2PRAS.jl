@@ -247,6 +247,9 @@ function make_pras_system(sys::PSY.System;
     μ_gen = Matrix{Float64}(undef, n_gen, N);
 
     for (idx,g) in enumerate(gen)
+        # Nominal outage and recovery rate
+        (λ,μ) = (0.0,1.0)
+
         if (PSY.has_time_series(g) && ("max_active_power" in PSY.get_time_series_names(PSY.SingleTimeSeries,g)))
             gen_cap_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,g,"max_active_power",start_time = start_datetime,len=N));
         else
@@ -272,19 +275,20 @@ function make_pras_system(sys::PSY.System;
                 temp_cap = floor(Int,PSY.get_max_active_power(g))
 
                 if (length(temp_range)>1)
+                    gen_idx = temp_range[1]
                     for (x,y) in zip(temp_range,getfield.(outage_values[temp_range],:capacity))
                         temp=0
                         if (temp<temp_cap<y)
                             gen_idx = x
-                            f_or = getfield(outage_values[gen_idx],:FOR)
-                            mttr_hr = getfield(outage_values[gen_idx],:MTTR)
-
-                            (λ,μ) = outage_to_rate((f_or,mttr_hr))
                             break
                         else
                             temp = y
                         end
                     end
+                    f_or = getfield(outage_values[gen_idx],:FOR)
+                    mttr_hr = getfield(outage_values[gen_idx],:MTTR)
+
+                    (λ,μ) = outage_to_rate((f_or,mttr_hr))
 
                 elseif (length(temp_range)==1)
                     gen_idx = temp_range[1]
@@ -295,8 +299,8 @@ function make_pras_system(sys::PSY.System;
                     (λ,μ) = outage_to_rate((f_or,mttr_hr))
                 else
                     @warn "No outage information is available for $(PSY.get_name(g)) with a $(p_m) prime mover and $(fl) fuel type. Using nominal outage and recovery probabilities for this generator."
-                    λ = 0.0;
-                    μ = 1.0;
+                    #λ = 0.0;
+                    #μ = 1.0;
                 end
 
             elseif (gen_categories[idx] == "PowerSystems.HydroDispatch")
@@ -323,22 +327,23 @@ function make_pras_system(sys::PSY.System;
                 end
             else
                 @warn "No outage information is available for $(PSY.get_name(g)) of type $(gen_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-                λ = 0.0;
-                μ = 1.0;
+                #λ = 0.0;
+                #μ = 1.0;
 
             end
 
         else
             if (length(PSY.get_ext(g)) ==0)
                 @warn "No outage information is available in ext field of $(PSY.get_name(g)). Using nominal outage and recovery probabilities for this generator."
-                λ = 0.0;
-                μ = 1.0;
+                #λ = 0.0;
+                #μ = 1.0;
             else
                 λ = PSY.get_ext(g)["outage_probability"];
                 μ = PSY.get_ext(g)["recovery_probability"];
             end
         end
-        
+        @show λ
+        @show μ
         λ_gen[idx,:] = fill.(λ,1,N); 
         μ_gen[idx,:] = fill.(μ,1,N); 
     end
