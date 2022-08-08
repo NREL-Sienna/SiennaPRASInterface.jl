@@ -37,12 +37,18 @@ end
 function outage_to_rate(outage_data::Tuple{Float64, Int64})
     for_gen = outage_data[1]
     mttr = outage_data[2]
+
+    if (for_gen >1.0)
+        for_gen = for_gen/100
+    end
+
     if (mttr != 0)
         μ = 1 / mttr
     else
         μ = 0.0
     end
-    λ = (μ * for_gen) / (1 - for_gen)
+    #λ = (μ * for_gen) / (1 - for_gen)
+    λ = for_gen
 
     return (λ = λ, μ = μ)
 end
