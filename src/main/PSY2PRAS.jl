@@ -260,9 +260,6 @@ function make_pras_system(sys::PSY.System;
                 p_m = string(PSY.get_prime_mover(g))
                 fl = string(PSY.get_fuel(g))
 
-                @show p_m
-                @show fl
-
                 p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
                 fl_idx =  findall(x -> x == fl, getfield.(outage_values[p_m_idx],:thermal_fuel))
                 
@@ -342,8 +339,6 @@ function make_pras_system(sys::PSY.System;
                 μ = PSY.get_ext(g)["recovery_probability"];
             end
         end
-        @show λ
-        @show μ
         λ_gen[idx,:] = fill.(λ,1,N); 
         μ_gen[idx,:] = fill.(μ,1,N); 
     end
