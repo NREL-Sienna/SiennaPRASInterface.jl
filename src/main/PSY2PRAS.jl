@@ -47,8 +47,8 @@ function outage_to_rate(outage_data::Tuple{Float64, Int64})
     else
         μ = 0.0
     end
-    #λ = (μ * for_gen) / (1 - for_gen)
-    λ = for_gen
+    λ = (μ * for_gen) / (1 - for_gen)
+    #λ = for_gen
 
     return (λ = λ, μ = μ)
 end
