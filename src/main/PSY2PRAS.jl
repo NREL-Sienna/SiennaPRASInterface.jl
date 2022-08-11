@@ -549,7 +549,6 @@ function make_pras_system(sys::PSY.System;
     @info "Collecting all inter regional lines in PSY System..."
 
     # Dictionary with topology mapping
-        #line = collect(PSY.get_components(PSY.Branch, sys, x -> ~typeof(x) in [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer]));
         line = collect(PSY.get_components(PSY.Branch, sys, x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer])));
 
         mapping_dict = PSY.get_aggregation_topology_mapping(aggregation_topology,sys); # Dict with mapping from Areas to Bus_Names
