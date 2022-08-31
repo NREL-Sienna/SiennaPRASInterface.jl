@@ -181,7 +181,7 @@ function make_pras_system(sys::PSY.System;
     #######################################################
     # Generator Region Indices
     #######################################################
-    gens=[];
+    gens=Array{PSY.Generator}[];
     start_id = Array{Int64}(undef,num_regions); 
     region_gen_idxs = Array{UnitRange{Int64},1}(undef,num_regions); 
     reg_wind_gens_DA = []
@@ -191,7 +191,7 @@ function make_pras_system(sys::PSY.System;
         for (idx,region) in enumerate(regions)
             wind_gs_DA= [g for g in PSY.get_components_in_aggregation_topology(PSY.RenewableGen, sys, region) if (PSY.get_prime_mover(g) == PSY.PrimeMovers.WT)] 
             pv_gs_DA= [g for g in PSY.get_components_in_aggregation_topology(PSY.RenewableGen, sys, region) if (PSY.get_prime_mover(g) == PSY.PrimeMovers.PVe)] 
-            gs= [g for g in PSY.get_components_in_aggregation_topology(PSY.Generator, sys_DA, region) if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ union(dup_uuids,PSY.IS.get_uuid.(wind_gs_DA),PSY.IS.get_uuid.(pv_gs_DA)))] 
+            gs= [g for g in PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region) if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ union(dup_uuids,PSY.IS.get_uuid.(wind_gs_DA),PSY.IS.get_uuid.(pv_gs_DA)))] 
             push!(gens,gs)
             push!(reg_wind_gens_DA,wind_gs_DA)
             push!(reg_pv_gens_DA,pv_gs_DA)
@@ -199,18 +199,18 @@ function make_pras_system(sys::PSY.System;
             if (idx==1)
                 start_id[idx] = 1
             else 
-                if (length(reg_wind_gens_DA[idx-1]) > 1 && length(reg_pv_gens_DA[idx-1]) > 1)
+                if (length(reg_wind_gens_DA[idx-1]) > 0 && length(reg_pv_gens_DA[idx-1]) > 0)
                     start_id[idx] =start_id[idx-1]+length(gens[idx-1])+2
-                elseif (length(reg_wind_gens_DA[idx-1]) > 1 || length(reg_pv_gens_DA[idx-1]) > 1)
+                elseif (length(reg_wind_gens_DA[idx-1]) > 0 || length(reg_pv_gens_DA[idx-1]) > 0)
                     start_id[idx] =start_id[idx-1]+length(gens[idx-1])+1
                 else
                     start_id[idx] =start_id[idx-1]+length(gens[idx-1])
                 end
             end
 
-            if (length(reg_wind_gens_DA[idx]) > 1 && length(reg_pv_gens_DA[idx]) > 1)
+            if (length(reg_wind_gens_DA[idx]) > 0 && length(reg_pv_gens_DA[idx]) > 0)
                 region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx])+2)
-            elseif (length(reg_wind_gens_DA[idx]) > 1 || length(reg_pv_gens_DA[idx]) > 1)
+            elseif (length(reg_wind_gens_DA[idx]) > 0 || length(reg_pv_gens_DA[idx]) > 0)
                 region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx])+1)
             else
                 region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
@@ -218,10 +218,11 @@ function make_pras_system(sys::PSY.System;
         end
     else
         for (idx,region) in enumerate(regions)
-        gs= [g for g in PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region) if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ dup_uuids)]
-        push!(gens,gs)
-        idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(gens[idx-1])
-        region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
+            gs= [g for g in PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region) if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ dup_uuids)]
+            push!(gens,gs)
+            idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(gens[idx-1])
+            region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
+        end
     end
     #######################################################
     # Storages Region Indices
@@ -257,17 +258,19 @@ function make_pras_system(sys::PSY.System;
     # Lumping Wind and PV Generators per Region
     if (lump_pv_wind_gens)
         for i in 1: num_regions
-            if (length(reg_wind_gens_DA[i])>1)
+            if (length(reg_wind_gens_DA[i])>0)
                 # Wind
                 temp_lumped_wind_gen = PSY.RenewableDispatch(nothing)
-                PSY.set_name!(temp_lumped_wind_gen,region_names[i]*"_Wind")
+                PSY.set_name!(temp_lumped_wind_gen,"Lumped_Wind_"*region_names[i])
                 PSY.set_prime_mover!(temp_lumped_wind_gen,PSY.PrimeMovers.WT)
                 ext = PSY.get_ext(temp_lumped_wind_gen)
                 ext["region_gens"] = reg_wind_gens_DA[i]
                 push!(gens[i],temp_lumped_wind_gen)
+            end
+            if (length(reg_pv_gens_DA[i])>0)
                 # PV
                 temp_lumped_pv_gen = PSY.RenewableDispatch(nothing)
-                PSY.set_name!(temp_lumped_pv_gen,region_names[i]*"_PV")
+                PSY.set_name!(temp_lumped_pv_gen,"Lumped_PV_"*region_names[i])
                 PSY.set_prime_mover!(temp_lumped_pv_gen,PSY.PrimeMovers.PVe)
                 ext = PSY.get_ext(temp_lumped_pv_gen)
                 ext["region_gens"] = reg_pv_gens_DA[i]
@@ -302,7 +305,7 @@ function make_pras_system(sys::PSY.System;
         
         if (lump_pv_wind_gens && (PSY.get_prime_mover(g) == PSY.PrimeMovers.WT || PSY.get_prime_mover(g) == PSY.PrimeMovers.PVe))
             reg_gens_DA = PSY.get_ext(g)["region_gens"];
-            gen_cap_array[idx,:] = sum(floor.(Int,PSY.get_time_series_values.(PSY.SingleTimeSeries,reg_gens_DA,"max_active_power",start_time = start_datetime,len=N)));
+            gen_cap_array[idx,:] = round.(Int,sum(PSY.get_time_series_values.(PSY.SingleTimeSeries,reg_gens_DA,"max_active_power",start_time = start_datetime,len=N)));
         else
             if (PSY.has_time_series(g) && ("max_active_power" in PSY.get_time_series_names(PSY.SingleTimeSeries,g)))
                 gen_cap_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,g,"max_active_power",start_time = start_datetime,len=N));
