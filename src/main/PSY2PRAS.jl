@@ -265,6 +265,8 @@ function make_pras_system(sys::PSY.System;
                 PSY.set_prime_mover!(temp_lumped_wind_gen,PSY.PrimeMovers.WT)
                 ext = PSY.get_ext(temp_lumped_wind_gen)
                 ext["region_gens"] = reg_wind_gens_DA[i]
+                ext["outage_probability"] = 0.0
+                ext["recovery_probability"] = 1.0
                 push!(gens[i],temp_lumped_wind_gen)
             end
             if (length(reg_pv_gens_DA[i])>0)
@@ -274,6 +276,8 @@ function make_pras_system(sys::PSY.System;
                 PSY.set_prime_mover!(temp_lumped_pv_gen,PSY.PrimeMovers.PVe)
                 ext = PSY.get_ext(temp_lumped_pv_gen)
                 ext["region_gens"] = reg_pv_gens_DA[i]
+                ext["outage_probability"] = 0.0
+                ext["recovery_probability"] = 1.0
                 push!(gens[i],temp_lumped_pv_gen)
             end
         end
