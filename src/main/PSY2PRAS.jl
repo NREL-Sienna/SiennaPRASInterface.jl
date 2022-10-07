@@ -31,6 +31,28 @@ outage_values =[]
 for row in eachrow(df_outage)
     push!(outage_values, outage_data(row.PrimeMovers,row.ThermalFuels,row.NameplateLimit_MW,(row.FOR/100),row.MTTR))
 end
+#######################################################
+# Aux Functions
+# Function to get Line Rating
+#######################################################
+function line_rating(line::PSY.Line)
+    rate = PSY.get_rate(line);
+    return(forward_capacity = rate , backward_capacity = rate)
+end
+
+function line_rating(line::PSY.HVDCLine)
+    forward_capacity = getfield(PSY.get_active_power_limits_from(line), :max)
+    backward_capacity = getfield(PSY.get_active_power_limits_to(line), :max)
+    return(forward_capacity = forward_capacity, backward_capacity = backward_capacity)
+end
+#######################################################
+# Function to get available components in AggregationTopology
+#######################################################
+function get_available_components_in_aggregation_topology(type::Type{<:PowerSystems.StaticInjection}, sys::PSY.System, region::PSY.AggregationTopology)
+    avail_comps =  [comp for comp in PSY.get_components_in_aggregation_topology(type, sys, region) if (PSY.get_available(comp))]
+
+    return avail_comps
+end
 ##############################################
 # Converting FOR and MTTR to λ and μ
 ##############################################
@@ -57,7 +79,7 @@ end
 #######################################################
 function make_pras_system(sys::PSY.System;
                           system_model::Union{Nothing, String} = nothing,aggregation::Union{Nothing, String} = nothing,
-                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false) 
+                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false) 
     """
     make_pras_system(psy_sys,system_model)
 
@@ -83,7 +105,8 @@ function make_pras_system(sys::PSY.System;
     # Double counting of HybridSystem subcomponents
     #######################################################
     dup_uuids =[];
-    for h_s in PSY.get_components(PSY.HybridSystem, sys)
+    h_s_comps = availability_flag ? PSY.get_components(PSY.HybridSystem, sys, PSY.get_available) : PSY.get_components(PSY.HybridSystem, sys)
+    for h_s in h_s_comps
         h_s_subcomps = PSY._get_components(h_s)
         for subcomp in h_s_subcomps
             push!(dup_uuids,PSY.IS.get_uuid(subcomp))
@@ -120,21 +143,6 @@ function make_pras_system(sys::PSY.System;
         error("Please check the system period of interest selected")
     end
     #######################################################
-    # Aux Functions
-    # Function to get Line Rating
-    #######################################################
-    function line_rating(line::PSY.Line)
-        rate = PSY.get_rate(line);
-        return(forward_capacity = rate , backward_capacity = rate)
-    end
-   
-    function line_rating(line::PSY.HVDCLine)
-        forward_capacity = getfield(PSY.get_active_power_limits_from(line), :max)
-        backward_capacity = getfield(PSY.get_active_power_limits_to(line), :max)
-        return(forward_capacity = forward_capacity, backward_capacity = backward_capacity)
-    end
-
-    #######################################################
     # PRAS timestamps
     # Need this to select timeseries values of interest
     #######################################################
@@ -162,8 +170,10 @@ function make_pras_system(sys::PSY.System;
     region_load = Array{Int64,2}(undef,num_regions,N);
    
     for (idx,region) in enumerate(regions)
-        region_load[idx,:]=floor.(Int,sum(PSY.get_time_series_values.(PSY.SingleTimeSeries,PSY.get_components_in_aggregation_topology(PSY.PowerLoad, sys, region),
-                            "max_active_power",start_time = start_datetime,len=N)));
+        reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.PowerLoad, sys, region) :
+                                             PSY.get_components_in_aggregation_topology(PSY.PowerLoad, sys, region)
+
+        region_load[idx,:]=floor.(Int,sum(PSY.get_time_series_values.(PSY.SingleTimeSeries,reg_load_comps,"max_active_power",start_time = start_datetime,len=N)));
     end
 
     new_regions = PRAS.Regions{N,PRAS.MW}(region_names, region_load);
@@ -189,9 +199,14 @@ function make_pras_system(sys::PSY.System;
 
     if (lump_pv_wind_gens)
         for (idx,region) in enumerate(regions)
-            wind_gs_DA= [g for g in PSY.get_components_in_aggregation_topology(PSY.RenewableGen, sys, region) if (PSY.get_prime_mover(g) == PSY.PrimeMovers.WT)] 
-            pv_gs_DA= [g for g in PSY.get_components_in_aggregation_topology(PSY.RenewableGen, sys, region) if (PSY.get_prime_mover(g) == PSY.PrimeMovers.PVe)] 
-            gs= [g for g in PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region) if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ union(dup_uuids,PSY.IS.get_uuid.(wind_gs_DA),PSY.IS.get_uuid.(pv_gs_DA)))] 
+            reg_ren_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.RenewableGen, sys, region) :
+                                                 PSY.get_components_in_aggregation_topology(PSY.RenewableGen, sys, region)
+            wind_gs_DA= [g for g in reg_ren_comps if (PSY.get_prime_mover(g) == PSY.PrimeMovers.WT)] 
+            pv_gs_DA= [g for g in reg_ren_comps if (PSY.get_prime_mover(g) == PSY.PrimeMovers.PVe)] 
+            reg_gen_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
+                                                PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
+            gs= [g for g in reg_gen_comps if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && 
+                                              PSY.IS.get_uuid(g) ∉ union(dup_uuids,PSY.IS.get_uuid.(wind_gs_DA),PSY.IS.get_uuid.(pv_gs_DA)))] 
             push!(gens,gs)
             push!(reg_wind_gens_DA,wind_gs_DA)
             push!(reg_pv_gens_DA,pv_gs_DA)
@@ -218,7 +233,9 @@ function make_pras_system(sys::PSY.System;
         end
     else
         for (idx,region) in enumerate(regions)
-            gs= [g for g in PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region) if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ dup_uuids)]
+            reg_gen_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
+                                                PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
+            gs= [g for g in reg_gen_comps if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ dup_uuids)]
             push!(gens,gs)
             idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(gens[idx-1])
             region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
@@ -233,7 +250,9 @@ function make_pras_system(sys::PSY.System;
 
     for (idx,region) in enumerate(regions)
         #push!(stors,[s for s in PSY.get_components_in_aggregation_topology(PSY.Storage, sys, region)])
-        push!(stors,[s for s in PSY.get_components_in_aggregation_topology(PSY.Storage, sys, region) if (PSY.IS.get_uuid(s) ∉ dup_uuids)])
+        reg_stor_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.Storage, sys, region) :
+                                             PSY.get_components_in_aggregation_topology(PSY.Storage, sys, region)
+        push!(stors,[s for s in reg_stor_comps if (PSY.IS.get_uuid(s) ∉ dup_uuids)])
         idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(stors[idx-1])
         region_stor_idxs[idx] = range(start_id[idx], length=length(stors[idx]))
     end
@@ -245,7 +264,9 @@ function make_pras_system(sys::PSY.System;
     region_genstor_idxs = Array{UnitRange{Int64},1}(undef,num_regions);
 
     for (idx,region) in enumerate(regions)
-        gs= [g for g in PSY.get_components_in_aggregation_topology(PSY.StaticInjection, sys, region) if (typeof(g) == PSY.HydroEnergyReservoir || typeof(g)==PSY.HybridSystem)]
+        reg_gen_stor_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.StaticInjection, sys, region) :
+                                                 PSY.get_components_in_aggregation_topology(PSY.StaticInjection, sys, region)
+        gs= [g for g in reg_gen_stor_comps if (typeof(g) == PSY.HydroEnergyReservoir || typeof(g)==PSY.HybridSystem)]
         push!(gen_stors,gs)
         idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(gen_stors[idx-1])
         region_genstor_idxs[idx] = range(start_id[idx], length=length(gen_stors[idx]))
@@ -612,7 +633,9 @@ function make_pras_system(sys::PSY.System;
     @info "Collecting all inter regional lines in PSY System..."
 
     # Dictionary with topology mapping
-        line = collect(PSY.get_components(PSY.Branch, sys, x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer])));
+        line = availability_flag ? 
+        collect(PSY.get_components(PSY.Branch, sys, (x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer]) && PSY.get_available(x)))) :
+        collect(PSY.get_components(PSY.Branch, sys, x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer])));
 
         mapping_dict = PSY.get_aggregation_topology_mapping(aggregation_topology,sys); # Dict with mapping from Areas to Bus_Names
         new_mapping_dict=Dict{String,Array{Int64,1}}(); 
