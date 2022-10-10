@@ -414,13 +414,14 @@ function make_pras_system(sys::PSY.System;
             end
 
         else
-            if (length(PSY.get_ext(g)) ==0)
+            ext = PSY.get_ext(g)
+            if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
                 @warn "No outage information is available in ext field of $(PSY.get_name(g)). Using nominal outage and recovery probabilities for this generator."
                 #λ = 0.0;
                 #μ = 1.0;
             else
-                λ = PSY.get_ext(g)["outage_probability"];
-                μ = PSY.get_ext(g)["recovery_probability"];
+                λ = ext["outage_probability"];
+                μ = ext["recovery_probability"];
             end
         end
         λ_gen[idx,:] = fill.(λ,1,N); 
@@ -472,13 +473,14 @@ function make_pras_system(sys::PSY.System;
             λ = 0.0;
             μ = 1.0;
         else
-            if (length(PSY.get_ext(s)) ==0)
+            ext = PSY.get_ext(s)
+            if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
                 @warn "No outage information is available in ext field of $(PSY.get_name(s)). Using nominal outage and recovery probabilities for this generator."
                 λ = 0.0;
                 μ = 1.0;
             else
-                λ = PSY.get_ext(s)["outage_probability"];
-                μ = PSY.get_ext(s)["recovery_probability"];
+                λ = ext["outage_probability"];
+                μ = ext["recovery_probability"];
             end
         end
         
@@ -597,13 +599,14 @@ function make_pras_system(sys::PSY.System;
             end
 
         else
-            if (length(PSY.get_ext(g_s)) ==0)
+            ext = PSY.get_ext(g_s)
+            if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
                 @warn "No outage information is available in ext field of $(PSY.get_name(g_s)). Using nominal outage and recovery probabilities for this generator."
                 λ = 0.0;
                 μ = 1.0;
             else
-                λ = PSY.get_ext(g_s)["outage_probability"];
-                μ = PSY.get_ext(g_s)["recovery_probability"];
+                λ = ext["outage_probability"];
+                μ = ext["recovery_probability"];
             end
         end
         
