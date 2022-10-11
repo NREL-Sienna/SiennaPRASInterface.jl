@@ -416,7 +416,7 @@ function make_pras_system(sys::PSY.System;
         else
             ext = PSY.get_ext(g)
             if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
-                @warn "No outage information is available in ext field of $(PSY.get_name(g)). Using nominal outage and recovery probabilities for this generator."
+                @warn "No outage information is available in ext field of $(PSY.get_name(g)) of type $(gen_categories[idx]). Using nominal outage and recovery probabilities for this generator."
                 #λ = 0.0;
                 #μ = 1.0;
             else
@@ -475,7 +475,7 @@ function make_pras_system(sys::PSY.System;
         else
             ext = PSY.get_ext(s)
             if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
-                @warn "No outage information is available in ext field of $(PSY.get_name(s)). Using nominal outage and recovery probabilities for this generator."
+                @warn "No outage information is available in ext field of $(PSY.get_name(s)) of type $(stor_categories[idx]). Using nominal outage and recovery probabilities for this generator."
                 λ = 0.0;
                 μ = 1.0;
             else
@@ -601,7 +601,7 @@ function make_pras_system(sys::PSY.System;
         else
             ext = PSY.get_ext(g_s)
             if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
-                @warn "No outage information is available in ext field of $(PSY.get_name(g_s)). Using nominal outage and recovery probabilities for this generator."
+                @warn "No outage information is available in ext field of $(PSY.get_name(g_s)) of type $(gen_stor_categories[idx]). Using nominal outage and recovery probabilities for this generator."
                 λ = 0.0;
                 μ = 1.0;
             else
