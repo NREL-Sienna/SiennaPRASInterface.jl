@@ -129,17 +129,48 @@ function make_pras_system(sys::PSY.System;
     end
 
     first_ts_temp = first(PSY.get_time_series_multiple(sys));
+    sys_ts_types = unique(typeof.(PSY.get_time_series_multiple(sys)));
+    # Time series information
+    sys_for_int_in_hour = round(Dates.Millisecond(PSY.get_forecast_interval(sys)), Dates.Hour)
+    sys_res_in_hour = round(Dates.Millisecond(PSY.get_time_series_resolution(sys)), Dates.Hour)
+    interval_len = Int(sys_for_int_in_hour.value/sys_res_in_hour.value)
+    sys_horizon =  PSY.get_forecast_horizon(sys)
+    #######################################################
+    # Function to handle PSY timestamps
+    #######################################################
+    function get_period_of_interest(ts::TS) where {TS <: PSY.StaticTimeSeries}
+        return range(1,length = length(ts.data))
+    end
+
+    function get_period_of_interest(ts::TS) where {TS <: PSY.Deterministic}
+        return range(1,length = length(ts.data)*interval_len)
+    end
+
+    function get_len_ts_data(ts::TS) where {TS <: PSY.StaticTimeSeries}
+        return length(ts.data)
+    end
+
+    function get_len_ts_data(ts::TS) where {TS <: PSY.Deterministic}
+        return length(ts.data)*interval_len
+    end
     
     if (period_of_interest === nothing)
-        period_of_interest = range(1,length = length(first_ts_temp.data))
+        period_of_interest = get_period_of_interest(first_ts_temp)
+    else
+        if (PSY.Deterministic in sys_ts_types)
+            if !(period_of_interest.start %  interval_len ==1 && period_of_interest.stop %  interval_len == 0)
+                error("This PSY System has Determinstic time series data with interval length of $(interval_len). The period of interest should therefore be multiples of $(interval_len) to account for forecast windows.")
+            end
+        end
     end
 
     N = length(period_of_interest);
-   
-    if ((N+(period_of_interest.start-1))>length(first_ts_temp.data))
+    len_ts_data = get_len_ts_data(first_ts_temp)
+
+    if ((N+(period_of_interest.start-1))> len_ts_data)
         error("Cannot make a PRAS System with $(N) timesteps with a PSY System with only $(length(first_ts_temp.data) - (period_of_interest.start-1)) timesteps of time series data")
     end
-    if (period_of_interest.start > length(first_ts_temp.data) || period_of_interest.stop > length(first_ts_temp.data))
+    if (period_of_interest.start >  len_ts_data || period_of_interest.stop >  len_ts_data)
         error("Please check the system period of interest selected")
     end
     #######################################################
@@ -147,14 +178,41 @@ function make_pras_system(sys::PSY.System;
     # Need this to select timeseries values of interest
     #######################################################
     start_datetime = PSY.IS.get_initial_timestamp(first_ts_temp);
-    sys_res_in_hour = round(Dates.Millisecond(PSY.get_time_series_resolution(sys)), Dates.Hour);
     start_datetime = start_datetime + Dates.Hour((period_of_interest.start-1)*sys_res_in_hour);
     start_datetime_tz = TimeZones.ZonedDateTime(start_datetime,TimeZones.tz"UTC");
     finish_datetime_tz = start_datetime_tz +  Dates.Hour((N-1)*sys_res_in_hour);
     my_timestamps = StepRange(start_datetime_tz, Dates.Hour(sys_res_in_hour), finish_datetime_tz);
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
+    det_ts_period_of_interest = 
+    if (PSY.Deterministic in sys_ts_types)
+        strt = 
+        if (round(Int,period_of_interest.start/interval_len) ==0)
+            1
+        else
+            round(Int,period_of_interest.start/interval_len)
+        end
+        stp = round(Int,period_of_interest.stop/interval_len)
+
+        range(strt,length = (stp-strt)+1)
+        
+    end
     #######################################################
-    # PRAS Regions - Areas in SIIP
+    # Common function to handle getting time series values
+    #######################################################
+    function get_forecast_values(ts::TS) where {TS <: PSY.Deterministic}
+        forecast_vals = []
+        for it in collect(keys(PSY.get_data(ts)))[det_ts_period_of_interest]
+            append!(forecast_vals,collect(values(PSY.get_window(ts, it; len=interval_len))))
+        end
+        return forecast_vals
+    end
+   
+    function get_forecast_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
+        forecast_vals = values(PSY.get_data(ts))[period_of_interest]
+        return forecast_vals
+    end
+    #######################################################
+     # PRAS Regions - Areas in SIIP
     #######################################################
     @info "Processing Regions in PSY System... "
     regions = collect(PSY.get_components(aggregation_topology, sys));
@@ -172,8 +230,8 @@ function make_pras_system(sys::PSY.System;
     for (idx,region) in enumerate(regions)
         reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.PowerLoad, sys, region) :
                                              PSY.get_components_in_aggregation_topology(PSY.PowerLoad, sys, region)
-
-        region_load[idx,:]=floor.(Int,sum(PSY.get_time_series_values.(PSY.SingleTimeSeries,reg_load_comps,"max_active_power",start_time = start_datetime,len=N)));
+      
+        region_load[idx,:]=floor.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_load_comps, name = "max_active_power"))))); # Any issues with using the first of time_series_multiple?
     end
 
     new_regions = PRAS.Regions{N,PRAS.MW}(region_names, region_load);
@@ -330,10 +388,10 @@ function make_pras_system(sys::PSY.System;
         
         if (lump_pv_wind_gens && (PSY.get_prime_mover(g) == PSY.PrimeMovers.WT || PSY.get_prime_mover(g) == PSY.PrimeMovers.PVe))
             reg_gens_DA = PSY.get_ext(g)["region_gens"];
-            gen_cap_array[idx,:] = round.(Int,sum(PSY.get_time_series_values.(PSY.SingleTimeSeries,reg_gens_DA,"max_active_power",start_time = start_datetime,len=N)));
+            gen_cap_array[idx,:] = round.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_gens_DA, name = "max_active_power")))));
         else
-            if (PSY.has_time_series(g) && ("max_active_power" in PSY.get_time_series_names(PSY.SingleTimeSeries,g)))
-                gen_cap_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,g,"max_active_power",start_time = start_datetime,len=N));
+            if (PSY.has_time_series(g) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g))))
+                gen_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g, name = "max_active_power"))));
             else
                 gen_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g)),1,N);
             end
@@ -530,22 +588,22 @@ function make_pras_system(sys::PSY.System;
     for (idx,g_s) in enumerate(gen_stor)
         if(typeof(g_s) ==PSY.HydroEnergyReservoir)
             if (PSY.has_time_series(g_s))
-                if ("inflow" in PSY.get_time_series_names(PSY.SingleTimeSeries,g_s))
-                    gen_stor_charge_cap_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,g_s,"inflow",start_time = start_datetime,len=N));
-                    gen_stor_discharge_cap_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,g_s,"inflow",start_time = start_datetime,len=N));
-                    gen_stor_inflow_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,g_s,"inflow",start_time = start_datetime,len=N));
+                if ("inflow" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
+                    gen_stor_charge_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow"))));
+                    gen_stor_discharge_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow"))));
+                    gen_stor_inflow_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow"))));
                 else
                     gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
                     gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
                     gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
                 end
-                if ("storage_capacity" in PSY.get_time_series_names(PSY.SingleTimeSeries,g_s))
-                    gen_stor_enrgy_cap_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,g_s,"storage_capacity",start_time = start_datetime,len=N));
+                if ("storage_capacity" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
+                    gen_stor_enrgy_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "storage_capacity"))));
                 else
                     gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,PSY.get_storage_capacity(g_s)),1,N);
                 end
-                if ("max_active_power" in PSY.get_time_series_names(PSY.SingleTimeSeries,g_s))
-                    gen_stor_gridinj_cap_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,g_s,"max_active_power",start_time = start_datetime,len=N));
+                if ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
+                    gen_stor_gridinj_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "max_active_power"))));
                 else
                     gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g_s)),1,N);
                 end
@@ -557,13 +615,13 @@ function make_pras_system(sys::PSY.System;
                 gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g_s)),1,N);
             end  
         else
-                gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_input_active_power_limits(PSY.get_storage(g_s)), :max)),1,N);
-                gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_output_active_power_limits(PSY.get_storage(g_s)), :max)),1,N);
-                gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_state_of_charge_limits(PSY.get_storage(g_s)), :max)),1,N); 
-                gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.getfield(PSY.get_output_active_power_limits(g_s), :max)),1,N);
+            gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_input_active_power_limits(PSY.get_storage(g_s)), :max)),1,N);
+            gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_output_active_power_limits(PSY.get_storage(g_s)), :max)),1,N);
+            gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_state_of_charge_limits(PSY.get_storage(g_s)), :max)),1,N); 
+            gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.getfield(PSY.get_output_active_power_limits(g_s), :max)),1,N);
             
-                if (PSY.has_time_series(PSY.get_renewable_unit(g_s)) && ("max_active_power" in PSY.get_time_series_names(PSY.SingleTimeSeries,PSY.get_renewable_unit(g_s))))
-                gen_stor_inflow_array[idx,:] = floor.(Int,PSY.get_time_series_values(PSY.SingleTimeSeries,PSY.get_renewable_unit(g_s),"max_active_power",start_time = start_datetime,len=N)); 
+            if (PSY.has_time_series(PSY.get_renewable_unit(g_s)) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s)))))
+                gen_stor_inflow_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s), name = "max_active_power")))); 
             else
                 gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(PSY.get_renewable_unit(g_s))),1,N); 
             end
