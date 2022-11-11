@@ -35,7 +35,7 @@ end
 # Aux Functions
 # Function to get Line Rating
 #######################################################
-function line_rating(line::Union{PSY.Line,PSY.MonitoredLine})
+function line_rating(line::Union{PSY.Line,MonitoredLine})
     rate = PSY.get_rate(line);
     return(forward_capacity = rate , backward_capacity = rate)
 end
@@ -128,7 +128,8 @@ function make_pras_system(sys::PSY.System;
         error("Unrecognized PSY AggregationTopology")
     end
 
-    first_ts_temp = first(PSY.get_time_series_multiple(sys));
+    all_ts = PSY.get_time_series_multiple(sys)
+    first_ts_temp = first(all_ts);
     sys_ts_types = unique(typeof.(PSY.get_time_series_multiple(sys)));
     # Time series information
     sys_for_int_in_hour = round(Dates.Millisecond(PSY.get_forecast_interval(sys)), Dates.Hour)
@@ -172,6 +173,11 @@ function make_pras_system(sys::PSY.System;
     end
     if (period_of_interest.start >  len_ts_data || period_of_interest.stop >  len_ts_data)
         error("Please check the system period of interest selected")
+    end
+
+    # Check if all time series data has a scaling_factor_multiplier
+    if(!all(.!isnothing.(getfield.(all_ts,:scaling_factor_multiplier))))
+        error("Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System.")
     end
     #######################################################
     # PRAS timestamps
@@ -231,7 +237,8 @@ function make_pras_system(sys::PSY.System;
         reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.PowerLoad, sys, region) :
                                              PSY.get_components_in_aggregation_topology(PSY.PowerLoad, sys, region)
       
-        region_load[idx,:]=floor.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_load_comps, name = "max_active_power"))))); # Any issues with using the first of time_series_multiple?
+        region_load[idx,:]=floor.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_load_comps, name = "max_active_power")))
+                        .*PSY.get_max_active_power.(reg_load_comps))); # Any issues with using the first of time_series_multiple?
     end
 
     new_regions = PRAS.Regions{N,PRAS.MW}(region_names, region_load);
@@ -388,10 +395,12 @@ function make_pras_system(sys::PSY.System;
         
         if (lump_pv_wind_gens && (PSY.get_prime_mover(g) == PSY.PrimeMovers.WT || PSY.get_prime_mover(g) == PSY.PrimeMovers.PVe))
             reg_gens_DA = PSY.get_ext(g)["region_gens"];
-            gen_cap_array[idx,:] = round.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_gens_DA, name = "max_active_power")))));
+            gen_cap_array[idx,:] = round.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_gens_DA, name = "max_active_power")))
+                                   .*PSY.get_max_active_power.(reg_gens_DA)));
         else
             if (PSY.has_time_series(g) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g))))
-                gen_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g, name = "max_active_power"))));
+                gen_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g, name = "max_active_power")))
+                                       *PSY.get_max_active_power(g));
             else
                 gen_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g)),1,N);
             end
@@ -589,21 +598,26 @@ function make_pras_system(sys::PSY.System;
         if(typeof(g_s) ==PSY.HydroEnergyReservoir)
             if (PSY.has_time_series(g_s))
                 if ("inflow" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
-                    gen_stor_charge_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow"))));
-                    gen_stor_discharge_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow"))));
-                    gen_stor_inflow_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow"))));
+                    gen_stor_charge_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow")))
+                                                       *PSY.get_inflow(g_s));
+                    gen_stor_discharge_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow")))
+                                                          *PSY.get_inflow(g_s));
+                    gen_stor_inflow_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "inflow")))
+                                                   *PSY.get_inflow(g_s));
                 else
                     gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
                     gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
                     gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
                 end
                 if ("storage_capacity" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
-                    gen_stor_enrgy_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "storage_capacity"))));
+                    gen_stor_enrgy_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "storage_capacity")))
+                                                      *PSY.get_storage_capacity(g_s));
                 else
                     gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,PSY.get_storage_capacity(g_s)),1,N);
                 end
                 if ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
-                    gen_stor_gridinj_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "max_active_power"))));
+                    gen_stor_gridinj_cap_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(g_s, name = "max_active_power")))
+                                                        *PSY.get_max_active_power(g_s));
                 else
                     gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g_s)),1,N);
                 end
@@ -621,7 +635,8 @@ function make_pras_system(sys::PSY.System;
             gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.getfield(PSY.get_output_active_power_limits(g_s), :max)),1,N);
             
             if (PSY.has_time_series(PSY.get_renewable_unit(g_s)) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s)))))
-                gen_stor_inflow_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s), name = "max_active_power")))); 
+                gen_stor_inflow_array[idx,:] = floor.(Int,get_forecast_values(first(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s), name = "max_active_power")))
+                                               *PSY.get_max_active_power(PSY.get_renewable_unit(g_s))); 
             else
                 gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(PSY.get_renewable_unit(g_s))),1,N); 
             end
