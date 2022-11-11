@@ -35,7 +35,7 @@ end
 # Aux Functions
 # Function to get Line Rating
 #######################################################
-function line_rating(line::PSY.Line)
+function line_rating(line::Union{PSY.Line,PSY.MonitoredLine})
     rate = PSY.get_rate(line);
     return(forward_capacity = rate , backward_capacity = rate)
 end
