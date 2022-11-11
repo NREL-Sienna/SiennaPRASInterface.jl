@@ -715,7 +715,7 @@ function make_pras_system(sys::PSY.System;
     gen_stor_cryovr_eff = ones(n_genstors,N);                # Not currently available/ defined in PowerSystems
 
     
-    new_gen_stors = PRAS.GeneratorStorages{N,1,PRAS.Hour,PRAS.MW,PRAS.MWh}(gen_stor_names,gen_stor_categories,
+    new_gen_stors = PRAS.GeneratorStorages{N,1,PRAS.Hour,PRAS.MW,PRAS.MWh}(gen_stor_names,get_generator_category.(gen_stor),
                                                     gen_stor_charge_cap_array, gen_stor_discharge_cap_array, gen_stor_enrgy_cap_array,
                                                     gen_stor_charge_eff, gen_stor_discharge_eff, gen_stor_cryovr_eff,
                                                     gen_stor_inflow_array, gen_stor_gridwdr_cap_array, gen_stor_gridinj_cap_array,
