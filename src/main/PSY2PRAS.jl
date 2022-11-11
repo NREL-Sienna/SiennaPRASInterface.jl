@@ -53,6 +53,28 @@ function get_available_components_in_aggregation_topology(type::Type{<:PowerSyst
 
     return avail_comps
 end
+#######################################################
+# Functions to get generator category
+#######################################################
+function get_generator_category(gen::GEN) where {GEN <: PSY.RenewableGen}
+    return string(PSY.get_prime_mover(gen))
+end
+
+function get_generator_category(gen::GEN) where {GEN <: PSY.ThermalGen}
+    return string(PSY.get_fuel(gen))
+end
+
+function get_generator_category(gen::GEN) where {GEN <: PSY.HydroGen}
+    return "Hydro"
+end
+
+function get_generator_category(stor::GEN) where {GEN <: PSY.Storage}
+    return "Battery"
+end
+
+function get_generator_category(stor::GEN) where {GEN <: PSY.HybridSystem}
+    return "Hybrid-System"
+end
 ##############################################
 # Converting FOR and MTTR to λ and μ
 ##############################################
@@ -495,7 +517,7 @@ function make_pras_system(sys::PSY.System;
         μ_gen[idx,:] = fill.(μ,1,N); 
     end
 
-    new_generators = PRAS.Generators{N,1,PRAS.Hour,PRAS.MW}(gen_names, gen_categories, gen_cap_array , λ_gen ,μ_gen);
+    new_generators = PRAS.Generators{N,1,PRAS.Hour,PRAS.MW}(gen_names, get_generator_category.(gen), gen_cap_array , λ_gen ,μ_gen);
         
     #######################################################
     # PRAS Storages
@@ -557,7 +579,7 @@ function make_pras_system(sys::PSY.System;
     
     stor_cryovr_eff = ones(n_stor,N);   # Not currently available/ defined in PowerSystems
     
-    new_storage = PRAS.Storages{N,1,PRAS.Hour,PRAS.MW,PRAS.MWh}(stor_names,stor_categories,
+    new_storage = PRAS.Storages{N,1,PRAS.Hour,PRAS.MW,PRAS.MWh}(stor_names,get_generator_category.(stor),
                                             stor_charge_cap_array,stor_discharge_cap_array,stor_energy_cap_array,
                                             stor_chrg_eff_array,stor_dischrg_eff_array, stor_cryovr_eff,
                                             λ_stor,μ_stor);
