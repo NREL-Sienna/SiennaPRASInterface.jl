@@ -20,7 +20,7 @@ import Dates
 rts_dir = "/Users/sdhulipa/Desktop/Misc./temp/RTS-GMLC"
 rts_src_dir = joinpath(rts_dir, "RTS_Data", "SourceData");
 rts_siip_dir = joinpath(rts_dir, "RTS_Data", "FormattedData", "SIIP");
-user_descriptrs_yaml_location = joinpath(dirname(pwd()),"test","descriptors","user_descriptors.yaml") # you have to use this yaml if you want to parse FOR and MTTR
+user_descriptrs_yaml_location = joinpath("/Users/sdhulipa/Desktop/OneDrive - NREL/NREL-Github/SIIP2PRAS/test/descriptors/user_descriptors.yaml") # you have to use this yaml if you want to parse FOR and MTTR
 
 rawsys = PSY.PowerSystemTableData(
     rts_src_dir,

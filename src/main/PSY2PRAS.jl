@@ -462,11 +462,11 @@ function make_pras_system(sys::PSY.System;
     μ_stor = Matrix{Float64}(undef, n_stor, N);
 
     for (idx,s) in enumerate(stor)
-        stor_charge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_input_active_power_limits(s), :max)),1,N);
-        stor_discharge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_output_active_power_limits(s), :max)),1,N);
-        stor_energy_cap_array[idx,:] = fill.(floor.(Int,PSY.get_rating(s)),1,N);
-        stor_chrg_eff_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_efficiency(s), :in)),1,N);
-        stor_dischrg_eff_array[idx,:]  = fill.(floor.(Int,getfield(PSY.get_efficiency(s), :out)),1,N);
+        stor_charge_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_input_active_power_limits(s), :max)),1,N);
+        stor_discharge_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_output_active_power_limits(s), :max)),1,N);
+        stor_energy_cap_array[idx,:] = fill(floor(Int,PSY.get_rating(s)),1,N);
+        stor_chrg_eff_array[idx,:] = fill(getfield(PSY.get_efficiency(s), :in),1,N);
+        stor_dischrg_eff_array[idx,:]  = fill.(getfield(PSY.get_efficiency(s), :out),1,N);
 
         if (~outage_flag)
             @warn "No outage information is available for $(PSY.get_name(s)) of type $(stor_categories[idx]). Using nominal outage and recovery probabilities for this generator."
