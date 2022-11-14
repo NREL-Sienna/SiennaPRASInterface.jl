@@ -69,7 +69,13 @@ function get_generator_category(gen::GEN) where {GEN <: PSY.HydroGen}
 end
 
 function get_generator_category(stor::GEN) where {GEN <: PSY.Storage}
-    return "Battery"
+    if (occursin("Distributed",PSY.get_name(stor)))
+        return "Distributed_Storage"
+    elseif (occursin("Battery",PSY.get_name(stor)))
+        return "Battery_Storage"
+    else
+        return "Battery"
+    end
 end
 
 function get_generator_category(stor::GEN) where {GEN <: PSY.HybridSystem}
