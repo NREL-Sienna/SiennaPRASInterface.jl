@@ -559,7 +559,7 @@ function make_pras_system(sys::PSY.System;
     for (idx,s) in enumerate(stor)
         stor_charge_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_input_active_power_limits(s), :max)),1,N);
         stor_discharge_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_output_active_power_limits(s), :max)),1,N);
-        stor_energy_cap_array[idx,:] = fill(floor(Int,PSY.get_rating(s)),1,N);
+        stor_energy_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_state_of_charge_limits(s),:max)),1,N);
         stor_chrg_eff_array[idx,:] = fill(getfield(PSY.get_efficiency(s), :in),1,N);
         stor_dischrg_eff_array[idx,:]  = fill.(getfield(PSY.get_efficiency(s), :out),1,N);
 
