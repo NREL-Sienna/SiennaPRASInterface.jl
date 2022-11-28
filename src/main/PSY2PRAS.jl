@@ -219,8 +219,10 @@ function make_pras_system(sys::PSY.System;
             throw(ex)
         end
     end
-    if (N>DataFrames.nrow(outage_ts_data))
-        @warn "Outage time series data is not available for all System timestamps in the CSV."
+    if (outage_ts_flag)
+        if (N>DataFrames.nrow(outage_ts_data))
+            @warn "Outage time series data is not available for all System timestamps in the CSV."
+        end
     end
     #######################################################
     # PRAS timestamps

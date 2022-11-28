@@ -71,3 +71,8 @@ sys_DA = PSY.System(DA_location);
 
 outage_csv_location = "/Users/sdhulipa/Desktop/OneDrive - NREL/NREL-Github/SIIP2PRAS/data/Test_Data/ThermalFOR_2012.csv"
 
+pras_system = SIIP2PRAS.make_pras_system(sys_DA,system_model="Single-Node",aggregation="Area",outage_flag=false,lump_pv_wind_gens=false,availability_flag=true,outage_csv_location = outage_csv_location);
+
+pras_system = SIIP2PRAS.make_pras_system(sys_DA,system_model="Single-Node",aggregation="Area",outage_flag=false,lump_pv_wind_gens=false,availability_flag=true);
+
+pras_system = SIIP2PRAS.make_pras_system(sys_DA,system_model="Single-Node",aggregation="Area",outage_flag=true,lump_pv_wind_gens=false,availability_flag=true);
