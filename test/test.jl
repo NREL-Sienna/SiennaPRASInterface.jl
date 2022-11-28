@@ -66,24 +66,8 @@ pras_system_5 = SIIP2PRAS.make_pras_system(sys,"Zonal","Area",100);
 SIIP2PRAS.generate_outage_profile(pras_system_5,sys, num_runs = 1000,num_scenarios=2,location = location)
 
 # Yinong Test System
-DA_location = "/home/ysun/SampleData_ThermalFOR/DA_sys_EMIS_v0811.json" 
-RT_location = "/home/ysun/SampleData_ThermalFOR/RT_sys_EMIS_v0811.json"
+DA_location = "/Users/sdhulipa/Desktop/OneDrive - NREL/NREL-Github/SIIP2PRAS/data/Test_Data/DA_sys_EMIS_v0811.json" 
+sys_DA = PSY.System(DA_location);
 
-sys_DA = PSY.System(DA_location;time_series_directory = "/tmp/scratch");
-sys_RT = PSY.System(RT_location;time_series_directory = "/tmp/scratch");
-
-function get_forecast_values(ts::TS) where {TS <: PSY.Deterministic}
-    interval = 24
-    forecast_vals = []
-    for it in keys(PSY.get_data(forecast))
-        append!(forecast_vals,collect(values(PSY.get_window(forecast, it; len=interval))))
-    end
-    return forecast_vals
-end
-
-sys_for_int_in_hour = round(Dates.Millisecond(PSY.get_forecast_interval(sys)), Dates.Hour);
-sys_res_in_hour = round(Dates.Millisecond(PSY.get_time_series_resolution(sys)), Dates.Hour);
-interval_len = Int(sys_for_int_in_hour.value/sys_res_in_hour.value)
-
-sys_horizon =  PSY.get_forecast_horizon(sys)
+outage_csv_location = "/Users/sdhulipa/Desktop/OneDrive - NREL/NREL-Github/SIIP2PRAS/data/Test_Data/ThermalFOR_2012.csv"
 

@@ -211,10 +211,9 @@ function make_pras_system(sys::PSY.System;
     # if outage_csv_location is passed, perform some data checks
     outage_ts_flag = false
     if (outage_csv_location !== nothing)
-        outage_ts_data = try
+        outage_ts_data,outage_ts_flag = try
             @info "Parsing the CSV with outage time series data ..."
-            DataFrames.DataFrame(CSV.File(outage_csv_location));
-            outage_ts_flag = true
+            DataFrames.DataFrame(CSV.File(outage_csv_location)), true
         catch ex
             error("Couldn't parse the CSV with outage data at $(outage_csv_location).") 
             throw(ex)
@@ -450,93 +449,105 @@ function make_pras_system(sys::PSY.System;
             end
         end
 
-        if (~outage_flag)
-            if (gen_categories[idx] == "PowerSystems.ThermalStandard")
-                p_m = string(PSY.get_prime_mover(g))
-                fl = string(PSY.get_fuel(g))
+        if (outage_ts_flag)
+            try
+                λ_gen[idx,:] = outage_ts_data[!,PSY.get_name(g)] 
+                @info "Using λ time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]). Assuming the mean time to recover (MTTR) is 24 hours) ..."
+                μ_gen[idx,:] = fill.((1/24),1,N); # This assumes a mean time to recover of 24 hours.
+            catch ex
+                @warn "λ time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is not available in the CSV. Using nominal outage and recovery probabilities for this generator." 
+                λ_gen[idx,:] = fill.(λ,1,N); 
+                μ_gen[idx,:] = fill.(μ,1,N);
+            end
+        else
+            if (~outage_flag)
+                if (gen_categories[idx] == "PowerSystems.ThermalStandard")
+                    p_m = string(PSY.get_prime_mover(g))
+                    fl = string(PSY.get_fuel(g))
 
-                p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
-                fl_idx =  findall(x -> x == fl, getfield.(outage_values[p_m_idx],:thermal_fuel))
-                
-                if (length(fl_idx) ==0)
-                    fl_idx =  findall(x -> x == "NA", getfield.(outage_values[p_m_idx],:thermal_fuel))
-                end
+                    p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
+                    fl_idx =  findall(x -> x == fl, getfield.(outage_values[p_m_idx],:thermal_fuel))
+                    
+                    if (length(fl_idx) ==0)
+                        fl_idx =  findall(x -> x == "NA", getfield.(outage_values[p_m_idx],:thermal_fuel))
+                    end
 
-                temp_range = p_m_idx[fl_idx]
+                    temp_range = p_m_idx[fl_idx]
 
-                temp_cap = floor(Int,PSY.get_max_active_power(g))
+                    temp_cap = floor(Int,PSY.get_max_active_power(g))
 
-                if (length(temp_range)>1)
-                    gen_idx = temp_range[1]
-                    for (x,y) in zip(temp_range,getfield.(outage_values[temp_range],:capacity))
-                        temp=0
-                        if (temp<temp_cap<y)
-                            gen_idx = x
-                            break
-                        else
-                            temp = y
+                    if (length(temp_range)>1)
+                        gen_idx = temp_range[1]
+                        for (x,y) in zip(temp_range,getfield.(outage_values[temp_range],:capacity))
+                            temp=0
+                            if (temp<temp_cap<y)
+                                gen_idx = x
+                                break
+                            else
+                                temp = y
+                            end
+                        end
+                        f_or = getfield(outage_values[gen_idx],:FOR)
+                        mttr_hr = getfield(outage_values[gen_idx],:MTTR)
+
+                        (λ,μ) = outage_to_rate((f_or,mttr_hr))
+
+                    elseif (length(temp_range)==1)
+                        gen_idx = temp_range[1]
+                        
+                        f_or = getfield(outage_values[gen_idx],:FOR)
+                        mttr_hr = getfield(outage_values[gen_idx],:MTTR)
+
+                        (λ,μ) = outage_to_rate((f_or,mttr_hr))
+                    else
+                        @warn "No outage information is available for $(PSY.get_name(g)) with a $(p_m) prime mover and $(fl) fuel type. Using nominal outage and recovery probabilities for this generator."
+                        #λ = 0.0;
+                        #μ = 1.0;
+                    end
+
+                elseif (gen_categories[idx] == "PowerSystems.HydroDispatch")
+                    p_m = string(PSY.get_prime_mover(g))
+                    p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
+
+                    temp_cap = floor(Int,PSY.get_max_active_power(g))
+                    
+                    if (length(p_m_idx)>1)
+                        for (x,y) in zip(p_m_idx,getfield.(outage_values[p_m_idx],:capacity))
+                            temp=0
+                            if (temp<temp_cap<y)
+                                gen_idx = x
+
+                                f_or = getfield(outage_values[gen_idx],:FOR)
+                                mttr_hr = getfield(outage_values[gen_idx],:MTTR)
+
+                                (λ,μ) = outage_to_rate((f_or,mttr_hr))
+                                break
+                            else
+                                temp = y
+                            end
                         end
                     end
-                    f_or = getfield(outage_values[gen_idx],:FOR)
-                    mttr_hr = getfield(outage_values[gen_idx],:MTTR)
-
-                    (λ,μ) = outage_to_rate((f_or,mttr_hr))
-
-                elseif (length(temp_range)==1)
-                    gen_idx = temp_range[1]
-                    
-                    f_or = getfield(outage_values[gen_idx],:FOR)
-                    mttr_hr = getfield(outage_values[gen_idx],:MTTR)
-
-                    (λ,μ) = outage_to_rate((f_or,mttr_hr))
                 else
-                    @warn "No outage information is available for $(PSY.get_name(g)) with a $(p_m) prime mover and $(fl) fuel type. Using nominal outage and recovery probabilities for this generator."
+                    @warn "No outage information is available for $(PSY.get_name(g)) of type $(gen_categories[idx]). Using nominal outage and recovery probabilities for this generator."
                     #λ = 0.0;
                     #μ = 1.0;
+
                 end
 
-            elseif (gen_categories[idx] == "PowerSystems.HydroDispatch")
-                p_m = string(PSY.get_prime_mover(g))
-                p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
-
-                temp_cap = floor(Int,PSY.get_max_active_power(g))
-                
-                if (length(p_m_idx)>1)
-                    for (x,y) in zip(p_m_idx,getfield.(outage_values[p_m_idx],:capacity))
-                        temp=0
-                        if (temp<temp_cap<y)
-                            gen_idx = x
-
-                            f_or = getfield(outage_values[gen_idx],:FOR)
-                            mttr_hr = getfield(outage_values[gen_idx],:MTTR)
-
-                            (λ,μ) = outage_to_rate((f_or,mttr_hr))
-                            break
-                        else
-                            temp = y
-                        end
-                    end
+            else
+                ext = PSY.get_ext(g)
+                if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
+                    @warn "No outage information is available in ext field of $(PSY.get_name(g)) of type $(gen_categories[idx]). Using nominal outage and recovery probabilities for this generator."
+                    #λ = 0.0;
+                    #μ = 1.0;
+                else
+                    λ = ext["outage_probability"];
+                    μ = ext["recovery_probability"];
                 end
-            else
-                @warn "No outage information is available for $(PSY.get_name(g)) of type $(gen_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-                #λ = 0.0;
-                #μ = 1.0;
-
             end
-
-        else
-            ext = PSY.get_ext(g)
-            if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
-                @warn "No outage information is available in ext field of $(PSY.get_name(g)) of type $(gen_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-                #λ = 0.0;
-                #μ = 1.0;
-            else
-                λ = ext["outage_probability"];
-                μ = ext["recovery_probability"];
-            end
+            λ_gen[idx,:] = fill.(λ,1,N); 
+            μ_gen[idx,:] = fill.(μ,1,N); 
         end
-        λ_gen[idx,:] = fill.(λ,1,N); 
-        μ_gen[idx,:] = fill.(μ,1,N); 
     end
 
     new_generators = PRAS.Generators{N,1,PRAS.Hour,PRAS.MW}(gen_names, get_generator_category.(gen), gen_cap_array , λ_gen ,μ_gen);
@@ -883,11 +894,12 @@ for h_s in PSY.get_components(PSY.HybridSystem, sys)
         push!(dup_uuids,PSY.IS.get_uuid(subcomp))
     end
 end
-    get_components(ThermalGen, sys, x -> get_uuid(x) ∉ subcomponents)
+get_components(ThermalGen, sys, x -> get_uuid(x) ∉ subcomponents)
 
-    h_s = PSY.get_components(PSY.HybridSystem, sys)
-	subcomponents =Set(PSY.IS.get_uuid.(PSY._get_components.(h_s)))
-    get_components(ThermalGen, sys, x -> get_uuid(x) ∉ subcomponents)
-    
-    dup_uuids = PSY.IS.get_uuid.([component for component in PSY._get_components.(PSY.get_components(PSY.HybridSystem, sys))])
+h_s = PSY.get_components(PSY.HybridSystem, sys)
+subcomponents =Set(PSY.IS.get_uuid.(PSY._get_components.(h_s)))
+get_components(ThermalGen, sys, x -> get_uuid(x) ∉ subcomponents)
+
+dup_uuids = PSY.IS.get_uuid.([component for component in PSY._get_components.(PSY.get_components(PSY.HybridSystem, sys))])
+
 =#
