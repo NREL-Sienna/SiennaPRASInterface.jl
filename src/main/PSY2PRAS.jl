@@ -107,7 +107,8 @@ end
 #######################################################
 function make_pras_system(sys::PSY.System;
                           system_model::Union{Nothing, String} = nothing,aggregation::Union{Nothing, String} = nothing,
-                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false) 
+                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false, 
+                          outage_csv_location::Union{Nothing, String} = nothing) 
     """
     make_pras_system(psy_sys,system_model)
 
@@ -206,6 +207,21 @@ function make_pras_system(sys::PSY.System;
     # Check if all time series data has a scaling_factor_multiplier
     if(!all(.!isnothing.(getfield.(all_ts,:scaling_factor_multiplier))))
         error("Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System.")
+    end
+    # if outage_csv_location is passed, perform some data checks
+    outage_ts_flag = false
+    if (outage_csv_location !== nothing)
+        outage_ts_data = try
+            @info "Parsing the CSV with outage time series data ..."
+            DataFrames.DataFrame(CSV.File(outage_csv_location));
+            outage_ts_flag = true
+        catch ex
+            error("Couldn't parse the CSV with outage data at $(outage_csv_location).") 
+            throw(ex)
+        end
+    end
+    if (N>DataFrames.nrow(outage_ts_data))
+        @warn "Outage time series data is not available for all System timestamps in the CSV."
     end
     #######################################################
     # PRAS timestamps
