@@ -453,11 +453,12 @@ function make_pras_system(sys::PSY.System;
 
         if (outage_ts_flag)
             try
-                λ_gen[idx,:] = outage_ts_data[!,PSY.get_name(g)] 
-                @info "Using λ time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]). Assuming the mean time to recover (MTTR) is 24 hours) ..."
-                μ_gen[idx,:] = fill.((1/24),1,N); # This assumes a mean time to recover of 24 hours.
+                @info "Using FOR time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]). Assuming the mean time to recover (MTTR) is 24 hours to compute the λ and μ time series data ..."
+                g_λ_μ_ts_data = outage_to_rate.(zip(outage_ts_data[!,PSY.get_name(g)],fill(24,length(outage_ts_data[!,PSY.get_name(g)]))))
+                λ_gen[idx,:] = getfield.(g_λ_μ_ts_data,:λ)
+                μ_gen[idx,:] = getfield.(g_λ_μ_ts_data,:μ) # This assumes a mean time to recover of 24 hours.
             catch ex
-                @warn "λ time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is not available in the CSV. Using nominal outage and recovery probabilities for this generator." 
+                @warn "FOR time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is not available in the CSV. Using nominal outage and recovery probabilities for this generator." 
                 λ_gen[idx,:] = fill.(λ,1,N); 
                 μ_gen[idx,:] = fill.(μ,1,N);
             end
