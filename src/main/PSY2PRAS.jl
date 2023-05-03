@@ -310,7 +310,8 @@ function make_pras_system(sys::PSY.System;
 
     # Check if all time series data has a scaling_factor_multiplier
     if(!all(.!isnothing.(getfield.(all_ts,:scaling_factor_multiplier))))
-        error("Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System.")
+        #error("Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System.")
+        @warn "Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System."
     end
     # if outage_csv_location is passed, perform some data checks
     outage_ts_flag = false
