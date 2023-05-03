@@ -5,10 +5,6 @@
 # Generate PSY System from CSV Outage Profiles
 # TODO: Handle Lumped Wind Plants
 #######################################################
-# Loading the required packages
-#######################################################
-const PSY = PowerSystems
-#######################################################
 #  Handling CC units using cc_restrictions.json because 
 # PSY has multiple CC units PRAS doesn't
 #######################################################

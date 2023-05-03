@@ -12,3 +12,12 @@ PRAS = "05348d26-1c52-11e9-35e3-9d51842d34b9"
 PowerSystems = "bcd98974-b02a-5e2f-9ee0-a103f5c450dd"
 TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+
+[compat]
+CSV = "~0.10"
+DataFrames = "1"
+JSON = "~0.21"
+PRAS = "~0.6"
+PowerSystems = "~1.25"
+TimeZones = "~1.9"
+julia = "^1.6"
