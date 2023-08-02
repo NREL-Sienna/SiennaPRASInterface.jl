@@ -4,10 +4,6 @@
 # January 2021
 # SIIP --> PRAS Linkage Module
 #######################################################
-# Loading the required packages
-#######################################################
-const PSY = PowerSystems
-#######################################################
 # Generate Outage Profile
 #######################################################
 function generate_outage_profile(pras_system::PRAS.SystemModel,psy_sys::PSY.System;

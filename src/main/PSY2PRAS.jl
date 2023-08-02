@@ -4,10 +4,6 @@
 # January 2021
 # SIIP --> PRAS Linkage Module
 #######################################################
-# Loading the required packages
-#######################################################
-const PSY = PowerSystems
-#######################################################
 # Outage Information CSV
 #######################################################
 const OUTAGE_INFO_FILE =
@@ -31,20 +27,33 @@ outage_values =[]
 for row in eachrow(df_outage)
     push!(outage_values, outage_data(row.PrimeMovers,row.ThermalFuels,row.NameplateLimit_MW,(row.FOR/100),row.MTTR))
 end
-#######################################################
-# Aux Functions
-# Function to get Line Rating
-#######################################################
-function line_rating(line::Union{PSY.Line,PSY.MonitoredLine})
-    rate = PSY.get_rate(line);
-    return(forward_capacity = rate , backward_capacity = rate)
+
+##############################################
+# Converting FOR and MTTR to λ and μ
+##############################################
+function outage_to_rate(outage_data::Tuple{Float64, Int64})
+    for_gen = outage_data[1]
+    mttr = outage_data[2]
+
+    if (for_gen >1.0)
+        for_gen = for_gen/100
+    end
+
+    if (mttr != 0)
+        μ = 1 / mttr
+    else
+        μ = 0.0
+    end
+    λ = (μ * for_gen) / (1 - for_gen)
+    #λ = for_gen
+
+    return (λ = λ, μ = μ)
 end
 
-function line_rating(line::PSY.HVDCLine)
-    forward_capacity = getfield(PSY.get_active_power_limits_from(line), :max)
-    backward_capacity = getfield(PSY.get_active_power_limits_to(line), :max)
-    return(forward_capacity = forward_capacity, backward_capacity = backward_capacity)
-end
+#######################################################
+# Aux Functions
+# General
+#######################################################
 #######################################################
 # Function to get available components in AggregationTopology
 #######################################################
@@ -53,6 +62,11 @@ function get_available_components_in_aggregation_topology(type::Type{<:PowerSyst
 
     return avail_comps
 end
+
+#######################################################
+# Aux Functions
+# Generators
+#######################################################
 #######################################################
 # Functions to get generator category
 #######################################################
@@ -81,26 +95,116 @@ end
 function get_generator_category(stor::GEN) where {GEN <: PSY.HybridSystem}
     return "Hybrid-System"
 end
-##############################################
-# Converting FOR and MTTR to λ and μ
-##############################################
-function outage_to_rate(outage_data::Tuple{Float64, Int64})
-    for_gen = outage_data[1]
-    mttr = outage_data[2]
+#######################################################
+# Aux Functions
+# Lines
+#######################################################
+#######################################################
+# Line Rating
+#######################################################
+function line_rating(line::Union{PSY.Line,PSY.MonitoredLine})
+    rate = PSY.get_rate(line);
+    return(forward_capacity = abs(rate) , backward_capacity = abs(rate))
+end
 
-    if (for_gen >1.0)
-        for_gen = for_gen/100
+function line_rating(line::PSY.HVDCLine)
+    forward_capacity = getfield(PSY.get_active_power_limits_from(line), :max)
+    backward_capacity = getfield(PSY.get_active_power_limits_to(line), :max)
+    return(forward_capacity = abs(forward_capacity), backward_capacity = abs(backward_capacity))
+end
+
+#######################################################
+# Get sorted (reg_from,reg_to) of inter-regional lines
+#######################################################
+function get_sorted_region_tuples(lines::Vector{PSY.Branch}, region_names::Vector{String})
+    region_idxs = Dict(name => idx for (idx, name) in enumerate(region_names))
+
+    line_from_to_reg_idxs = similar(lines, Tuple{Int, Int})
+
+    for (l, line) in enumerate(lines)
+        from_name = PSY.get_name(PSY.get_area(PSY.get_from_bus(line)))
+        to_name = PSY.get_name(PSY.get_area(PSY.get_to_bus(line)))
+
+        from_idx = region_idxs[from_name]
+        to_idx = region_idxs[to_name]
+
+        line_from_to_reg_idxs[l] =
+            from_idx < to_idx ? (from_idx, to_idx) : (to_idx, from_idx)
     end
 
-    if (mttr != 0)
-        μ = 1 / mttr
-    else
-        μ = 0.0
-    end
-    λ = (μ * for_gen) / (1 - for_gen)
-    #λ = for_gen
+    return line_from_to_reg_idxs
+end
 
-    return (λ = λ, μ = μ)
+#######################################################
+# Get sorted lines and other indices necessary for PRAS
+#######################################################
+function get_sorted_lines(lines::Vector{PSY.Branch}, region_names::Vector{String})
+    line_from_to_reg_idxs = get_sorted_region_tuples(lines, region_names)
+    line_ordering = sortperm(line_from_to_reg_idxs)
+
+    sorted_lines = lines[line_ordering]
+    sorted_from_to_reg_idxs = line_from_to_reg_idxs[line_ordering]
+    interface_reg_idxs = unique(sorted_from_to_reg_idxs)
+
+    # Ref tells Julia to use interfaces as Vector, only broadcasting over
+    # lines_sorted
+    interface_line_idxs = searchsorted.(Ref(sorted_from_to_reg_idxs), interface_reg_idxs)
+
+    return sorted_lines, interface_reg_idxs, interface_line_idxs
+end
+
+#######################################################
+# Make PRAS Lines and Interfaces
+#######################################################
+function make_pras_interfaces(sorted_lines::Vector{PSY.Branch},interface_reg_idxs::Vector{Tuple{Int64, Int64}},
+                              interface_line_idxs::Vector{UnitRange{Int64}},N::Int64)
+    num_interfaces = length(interface_reg_idxs)
+    interface_regions_from = first.(interface_reg_idxs)
+    interface_regions_to = last.(interface_reg_idxs)
+    num_lines = length(sorted_lines)
+
+    # Lines
+    line_names = PSY.get_name.(sorted_lines)
+    line_cats = string.(typeof.(sorted_lines))
+
+    line_forward_cap = Matrix{Int64}(undef, num_lines, N);
+    line_backward_cap = Matrix{Int64}(undef, num_lines, N);
+    line_λ = Matrix{Float64}(undef, num_lines, N); # Not currently available/ defined in PowerSystems
+    line_μ = Matrix{Float64}(undef, num_lines, N); # Not currently available/ defined in PowerSystems
+
+    for i in 1:num_lines
+        line_forward_cap[i,:] = fill.(floor.(Int,getfield(line_rating(sorted_lines[i]),:forward_capacity)),1,N);
+        line_backward_cap[i,:] = fill.(floor.(Int,getfield(line_rating(sorted_lines[i]),:backward_capacity)),1,N);
+
+        line_λ[i,:] .= 0.0; # Not currently available/ defined in PowerSystems # should change when we have this
+        line_μ[i,:] .= 1.0; # Not currently available/ defined in PowerSystems
+    end
+
+    new_lines = PRAS.Lines{N, 1, PRAS.Hour, PRAS.MW}(
+        line_names,
+        line_cats,
+        line_forward_cap,
+        line_backward_cap,
+        line_λ,
+        line_μ,
+    )
+
+    interface_forward_capacity_array = Matrix{Int64}(undef, num_interfaces, N)
+    interface_backward_capacity_array = Matrix{Int64}(undef, num_interfaces, N)
+
+     for i in 1:num_interfaces
+        interface_forward_capacity_array[i,:] =  sum(line_forward_cap[interface_line_idxs[i],:],dims=1)
+        interface_backward_capacity_array[i,:] =  sum(line_backward_cap[interface_line_idxs[i],:],dims=1)
+    end
+
+    new_interfaces = PRAS.Interfaces{N, PRAS.MW}(
+        interface_regions_from,
+        interface_regions_to,
+        interface_forward_capacity_array,
+        interface_backward_capacity_array,
+    )
+
+    return new_lines, new_interfaces
 end
 #######################################################
 # Main Function to make the PRAS System
@@ -134,7 +238,7 @@ function make_pras_system(sys::PSY.System;
     # Double counting of HybridSystem subcomponents
     #######################################################
     dup_uuids =[];
-    h_s_comps = availability_flag ? PSY.get_components(PSY.HybridSystem, sys, PSY.get_available) : PSY.get_components(PSY.HybridSystem, sys)
+    h_s_comps = availability_flag ? PSY.get_components(PSY.get_available, PSY.HybridSystem, sys) : PSY.get_components(PSY.HybridSystem, sys)
     for h_s in h_s_comps
         h_s_subcomps = PSY._get_components(h_s)
         for subcomp in h_s_subcomps
@@ -157,14 +261,14 @@ function make_pras_system(sys::PSY.System;
         error("Unrecognized PSY AggregationTopology")
     end
 
-    all_ts = PSY.get_time_series_multiple(sys)
+    all_ts = PSY.get_time_series_multiple(sys);
     first_ts_temp = first(all_ts);
     sys_ts_types = unique(typeof.(PSY.get_time_series_multiple(sys)));
     # Time series information
-    sys_for_int_in_hour = round(Dates.Millisecond(PSY.get_forecast_interval(sys)), Dates.Hour)
-    sys_res_in_hour = round(Dates.Millisecond(PSY.get_time_series_resolution(sys)), Dates.Hour)
-    interval_len = Int(sys_for_int_in_hour.value/sys_res_in_hour.value)
-    sys_horizon =  PSY.get_forecast_horizon(sys)
+    sys_for_int_in_hour = round(Dates.Millisecond(PSY.get_forecast_interval(sys)), Dates.Hour);
+    sys_res_in_hour = round(Dates.Millisecond(PSY.get_time_series_resolution(sys)), Dates.Hour);
+    interval_len = Int(sys_for_int_in_hour.value/sys_res_in_hour.value);
+    sys_horizon =  PSY.get_forecast_horizon(sys);
     #######################################################
     # Function to handle PSY timestamps
     #######################################################
@@ -206,7 +310,8 @@ function make_pras_system(sys::PSY.System;
 
     # Check if all time series data has a scaling_factor_multiplier
     if(!all(.!isnothing.(getfield.(all_ts,:scaling_factor_multiplier))))
-        error("Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System.")
+        #error("Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System.")
+        @warn "Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System."
     end
     # if outage_csv_location is passed, perform some data checks
     outage_ts_flag = false
@@ -233,7 +338,9 @@ function make_pras_system(sys::PSY.System;
     start_datetime_tz = TimeZones.ZonedDateTime(start_datetime,TimeZones.tz"UTC");
     finish_datetime_tz = start_datetime_tz +  Dates.Hour((N-1)*sys_res_in_hour);
     my_timestamps = StepRange(start_datetime_tz, Dates.Hour(sys_res_in_hour), finish_datetime_tz);
+
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
+    
     det_ts_period_of_interest = 
     if (PSY.Deterministic in sys_ts_types)
         strt = 
@@ -281,9 +388,12 @@ function make_pras_system(sys::PSY.System;
     for (idx,region) in enumerate(regions)
         reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.PowerLoad, sys, region) :
                                              PSY.get_components_in_aggregation_topology(PSY.PowerLoad, sys, region)
-      
-        region_load[idx,:]=floor.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_load_comps, name = "max_active_power")))
-                        .*PSY.get_max_active_power.(reg_load_comps))); # Any issues with using the first of time_series_multiple?
+        if (length(reg_load_comps) > 0)
+            region_load[idx,:]=floor.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_load_comps, name = "max_active_power")))
+                            .*PSY.get_max_active_power.(reg_load_comps))); # Any issues with using the first of time_series_multiple?
+        else
+            region_load[idx,:] = zeros(Int64,N)
+        end
     end
 
     new_regions = PRAS.Regions{N,PRAS.MW}(region_names, region_load);
@@ -427,7 +537,7 @@ function make_pras_system(sys::PSY.System;
         gen_names = PSY.get_name.(gen);
     end
 
-    gen_categories = string.(typeof.(gen));
+    gen_categories = get_generator_category.(gen);
     n_gen = length(gen_names);
 
     gen_cap_array = Matrix{Int64}(undef, n_gen, N);
@@ -574,7 +684,7 @@ function make_pras_system(sys::PSY.System;
         stor_names = PSY.get_name.(stor);
     end
 
-    stor_categories = string.(typeof.(stor));
+    stor_categories = get_generator_category.(stor);
 
     n_stor = length(stor_names);
 
@@ -761,122 +871,22 @@ function make_pras_system(sys::PSY.System;
     # PRAS SystemModel
     #######################################################
     if (system_model=="Zonal")
-    #######################################################
-    # PRAS Lines 
-    #######################################################
-    @info "Collecting all inter regional lines in PSY System..."
-
-    # Dictionary with topology mapping
-        line = availability_flag ? 
-        collect(PSY.get_components(PSY.Branch, sys, (x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer]) && PSY.get_available(x)))) :
-        collect(PSY.get_components(PSY.Branch, sys, x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer])));
-
-        mapping_dict = PSY.get_aggregation_topology_mapping(aggregation_topology,sys); # Dict with mapping from Areas to Bus_Names
-        new_mapping_dict=Dict{String,Array{Int64,1}}(); 
-
-        for key in keys(mapping_dict)
-            push!(new_mapping_dict, key  => PSY.get_number.(mapping_dict[key]))
-        end
-        
         #######################################################
-        # Finding the inter-regional lines and regions_from
+        # PRAS Lines 
         #######################################################
-        regional_lines = []; 
-        regions_from = [];
-        for i in 1:length(line)
-            for key in keys(mapping_dict)
-                if(PSY.get_number(line[i].arc.from) in new_mapping_dict[key])
-                    if(~(PSY.get_number(line[i].arc.to) in new_mapping_dict[key]))
-                        push!(regional_lines,line[i])
-                        push!(regions_from,key)
-                    end
-                end
-            end
-        end
-        
+        @info "Collecting all inter regional lines in PSY System..."
+
+        lines = availability_flag ? 
+        collect(PSY.get_components((x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer]) && PSY.get_available(x)),PSY.Branch, sys)) :
+        collect(PSY.get_components(x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer]), PSY.Branch, sys));
+
         #######################################################
-        # Finding the regions_to
+        # Inter-Regional Line Processing
         #######################################################
-        n_lines = length(regional_lines);
-        regions_to = [];
-        for i in 1:n_lines
-            for key in keys(mapping_dict)
-                if(PSY.get_number(regional_lines[i].arc.to) in new_mapping_dict[key])
-                    push!(regions_to,key)
-                end
-            end
-        end
-        
-        #######################################################
-        # If there are lines from region1 --> region3 and 
-        # region3 --> region1; lines like these need to be grouped
-        # to make interface_line_idxs
-        #######################################################
-        regions_tuple = [];
-        for i in 1:length(regions_from)
-            region_from_idx = findfirst(x->x==regions_from[i],region_names)
-            region_to_idx = findfirst(x->x==regions_to[i],region_names)
-            if (region_from_idx < region_to_idx)
-                push!(regions_tuple,(regions_from[i],regions_to[i]))
-            else
-                push!(regions_tuple,(regions_to[i],regions_from[i]))
-            end
-        end
-
-        temp_regions_tuple = unique(regions_tuple);
-        interface_dict = Dict();
-
-        for i in 1: length(temp_regions_tuple)
-            temp = findall(x -> x == temp_regions_tuple[i], regions_tuple);
-            push!(interface_dict, temp_regions_tuple[i] => (temp,length(temp)))
-        end
-
-        num_interfaces = length(temp_regions_tuple);
-        sorted_regional_lines = [];
-        interface_line_idxs = Array{UnitRange{Int64},1}(undef,num_interfaces);
-        start_id = Array{Int64}(undef,num_interfaces); 
-        for i in 1: num_interfaces
-            for j in interface_dict[temp_regions_tuple[i]][1]
-                push!(sorted_regional_lines, regional_lines[j])
-            end
-            i==1 ? start_id[i] = 1 : start_id[i] =start_id[i-1]+interface_dict[temp_regions_tuple[i-1]][2]
-            interface_line_idxs[i] = range(start_id[i], length=interface_dict[temp_regions_tuple[i]][2])
-        end
-        
-        @info "Processing all inter regional lines in PSY System..."
-        line_names = PSY.get_name.(sorted_regional_lines);
-        line_categories = string.(typeof.(sorted_regional_lines));
-        
-        line_forward_capacity_array = Matrix{Int64}(undef, n_lines, N);
-        line_backward_capacity_array = Matrix{Int64}(undef, n_lines, N);
-
-        λ_lines = Matrix{Float64}(undef, n_lines, N); # Not currently available/ defined in PowerSystems
-        μ_lines = Matrix{Float64}(undef, n_lines, N); # Not currently available/ defined in PowerSystems
-        for i in 1:n_lines
-            line_forward_capacity_array[i,:] = fill.(floor.(Int,getfield(line_rating(sorted_regional_lines[i]),:forward_capacity)),1,N);
-            line_backward_capacity_array[i,:] = fill.(floor.(Int,getfield(line_rating(sorted_regional_lines[i]),:backward_capacity)),1,N);
-
-            λ_lines[i,:] .= 0.0; # Not currently available/ defined in PowerSystems # should change when we have this
-            μ_lines[i,:] .= 1.0; # Not currently available/ defined in PowerSystems
-        end
-        
-        new_lines = PRAS.Lines{N,1,PRAS.Hour,PRAS.MW}(line_names, line_categories, line_forward_capacity_array, line_backward_capacity_array, λ_lines ,μ_lines);
-        #######################################################
-        # PRAS Interfaces
-        #######################################################
-        interface_regions_from = [findfirst(x->x==temp_regions_tuple[i][1],region_names) for i in 1:num_interfaces];
-        interface_regions_to = [findfirst(x->x==temp_regions_tuple[i][2],region_names) for i in 1:num_interfaces];
-        
-        @info "Processing interfaces from inter regional lines in PSY System..."
-        interface_forward_capacity_array = Matrix{Int64}(undef, num_interfaces, N);
-        interface_backward_capacity_array = Matrix{Int64}(undef, num_interfaces, N);
-        for i in 1:num_interfaces
-            interface_forward_capacity_array[i,:] =  sum(line_forward_capacity_array[interface_line_idxs[i],:],dims=1)
-            interface_backward_capacity_array[i,:] =  sum(line_backward_capacity_array[interface_line_idxs[i],:],dims=1)
-        end
-
-        new_interfaces = PRAS.Interfaces{N,PRAS.MW}(interface_regions_from, interface_regions_to, interface_forward_capacity_array, interface_backward_capacity_array);
-
+        regional_lines = filter(x -> (PSY.get_name(PSY.get_area(PSY.get_from_bus(x))) != PSY.get_name(PSY.get_area(PSY.get_to_bus(x)))),lines);
+        sorted_lines, interface_reg_idxs, interface_line_idxs = get_sorted_lines(regional_lines, region_names);
+        new_lines, new_interfaces = make_pras_interfaces(sorted_lines, interface_reg_idxs, interface_line_idxs,N);
+    
         pras_system = PRAS.SystemModel(new_regions, new_interfaces, new_generators, region_gen_idxs, new_storage, region_stor_idxs, new_gen_stors,
                           region_genstor_idxs, new_lines,interface_line_idxs,my_timestamps);
     
@@ -889,20 +899,3 @@ function make_pras_system(sys::PSY.System;
     @info "Successfully built a PRAS $(system_model) system of type $(typeof(pras_system))."
     return pras_system
 end
-#=
-dup_uuids =[];
-for h_s in PSY.get_components(PSY.HybridSystem, sys)
-    h_s_subcomps = PSY._get_components(h_s)
-    for subcomp in h_s_subcomps
-        push!(dup_uuids,PSY.IS.get_uuid(subcomp))
-    end
-end
-get_components(ThermalGen, sys, x -> get_uuid(x) ∉ subcomponents)
-
-h_s = PSY.get_components(PSY.HybridSystem, sys)
-subcomponents =Set(PSY.IS.get_uuid.(PSY._get_components.(h_s)))
-get_components(ThermalGen, sys, x -> get_uuid(x) ∉ subcomponents)
-
-dup_uuids = PSY.IS.get_uuid.([component for component in PSY._get_components.(PSY.get_components(PSY.HybridSystem, sys))])
-
-=#

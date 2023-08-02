@@ -38,7 +38,7 @@ sys = PSY.System(rawsys; time_series_resolution = Dates.Hour(1)); # This system 
 system_period_of_interest = range(1,length = 300);
 pras_system_1 = SIIP2PRAS.make_pras_system(sys,system_model="Single-Node",aggregation="Area",period_of_interest=system_period_of_interest,outage_flag=false,lump_pv_wind_gens=false,availability_flag=false);
 pras_system_2 = SIIP2PRAS.make_pras_system(sys,system_model="Single-Node",aggregation="Area",period_of_interest=system_period_of_interest,outage_flag=false,lump_pv_wind_gens=true);
-pras_system_3 =  SIIP2PRAS.make_pras_system(sys,system_model="Zonal",aggregation="Area",period_of_interest=system_period_of_interest,outage_flag=true,lump_pv_wind_gens=false);
+pras_system_3 =  SIIP2PRAS.make_pras_system(sys,system_model="Zonal",aggregation="Area",period_of_interest=system_period_of_interest,outage_flag=true,lump_pv_wind_gens=false,availability_flag=true);
 
 
 location = dirname(pwd());
@@ -76,3 +76,5 @@ pras_system = SIIP2PRAS.make_pras_system(sys_DA,system_model="Single-Node",aggre
 pras_system = SIIP2PRAS.make_pras_system(sys_DA,system_model="Single-Node",aggregation="Area",outage_flag=false,lump_pv_wind_gens=false,availability_flag=true);
 
 pras_system = SIIP2PRAS.make_pras_system(sys_DA,system_model="Single-Node",aggregation="Area",outage_flag=true,lump_pv_wind_gens=false,availability_flag=true);
+
+# regional_lines = filter(x -> (PSY.get_name(PSY.get_area(PSY.get_from_bus(x))) != PSY.get_name(PSY.get_area(PSY.get_to_bus(x)))),available_lines)
