@@ -186,8 +186,8 @@ function make_pras_interfaces(sorted_lines::Vector{PSY.Branch},interface_reg_idx
             @warn "No outage information is available in ext of $(PSY.get_name(sorted_lines[i])). Using nominal outage and recovery probabilities for this line."
         end
     
-        line_λ[i,:] .= fill.(λ,1,N); # Not currently available/ defined in PowerSystems # should change when we have this
-        line_μ[i,:] .= fill.(μ,1,N); # Not currently available/ defined in PowerSystems
+        line_λ[i,:] = fill(λ,1,N); # Not currently available/ defined in PowerSystems # should change when we have this
+        line_μ[i,:] = fill(μ,1,N); # Not currently available/ defined in PowerSystems
     end
 
     new_lines = PRAS.Lines{N, 1, PRAS.Hour, PRAS.MW}(
