@@ -176,8 +176,18 @@ function make_pras_interfaces(sorted_lines::Vector{PSY.Branch},interface_reg_idx
         line_forward_cap[i,:] = fill.(floor.(Int,getfield(line_rating(sorted_lines[i]),:forward_capacity)),1,N);
         line_backward_cap[i,:] = fill.(floor.(Int,getfield(line_rating(sorted_lines[i]),:backward_capacity)),1,N);
 
-        line_λ[i,:] .= 0.0; # Not currently available/ defined in PowerSystems # should change when we have this
-        line_μ[i,:] .= 1.0; # Not currently available/ defined in PowerSystems
+        ext = PSY.get_ext(sorted_lines[i])
+        λ = 0.0;
+        μ = 1.0;
+        if ((haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
+            λ = ext["outage_probability"];
+            μ = ext["recovery_probability"];
+        else
+            @warn "No outage information is available in ext of $(PSY.get_name(sorted_lines[i])). Using nominal outage and recovery probabilities for this line."
+        end
+    
+        line_λ[i,:] .= fill.(λ,1,N); # Not currently available/ defined in PowerSystems # should change when we have this
+        line_μ[i,:] .= fill.(μ,1,N); # Not currently available/ defined in PowerSystems
     end
 
     new_lines = PRAS.Lines{N, 1, PRAS.Hour, PRAS.MW}(
