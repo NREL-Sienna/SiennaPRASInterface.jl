@@ -584,7 +584,7 @@ function make_pras_system(sys::PSY.System;
             end
         else
             if (~outage_flag)
-                if (gen_categories[idx] == "PowerSystems.ThermalStandard")
+                if (isa(g, PSY.ThermalGen))
                     p_m = string(PSY.get_prime_mover(g))
                     fl = string(PSY.get_fuel(g))
 
@@ -628,7 +628,7 @@ function make_pras_system(sys::PSY.System;
                         #μ = 1.0;
                     end
 
-                elseif (gen_categories[idx] == "PowerSystems.HydroDispatch")
+                elseif (isa(g, PSY.HydroGen))
                     p_m = string(PSY.get_prime_mover(g))
                     p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
 
