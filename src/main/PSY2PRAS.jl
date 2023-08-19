@@ -396,8 +396,8 @@ function make_pras_system(sys::PSY.System;
     region_load = Array{Int64,2}(undef,num_regions,N);
    
     for (idx,region) in enumerate(regions)
-        reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.StandardLoad, sys, region) :
-                                             PSY.get_components_in_aggregation_topology(PSY.StandardLoad, sys, region)
+        reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.PowerLoad, sys, region) :
+                                             PSY.get_components_in_aggregation_topology(PSY.PowerLoad, sys, region)
         if (length(reg_load_comps) > 0)
             region_load[idx,:]=floor.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_load_comps, name = "max_active_power")))
                             .*PSY.get_max_active_power.(reg_load_comps))); # Any issues with using the first of time_series_multiple?
