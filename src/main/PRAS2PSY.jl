@@ -138,7 +138,7 @@ function generate_csv_outage_profile(pras_system::PRAS.SystemModel;
 
     # Run PRAS Analysis
     @info "Running PRAS SequentialMonteCarlo Resource Adequacy analysis for $(num_runs) runs..."
-    shortfall_samples,gens_avail,stors_avail,gen_stors_avail,lines_avail = PRAS.assess(pras_system, PRAS.SequentialMonteCarlo(samples=num_runs),  PRAS.ShortfallSamples(),  PRAS.GeneratorAvailability(),PRAS.StorageAvailability(),PRAS.GeneratorStorageAvailability(),PRAS.LineAvailability())
+    shortfall_samples,gens_avail,stors_avail,gen_stors_avail,lines_avail = PRAS.assess(pras_system, PRAS.SequentialMonteCarlo(samples=num_runs,threaded = true, verbose = false),  PRAS.ShortfallSamples(),  PRAS.GeneratorAvailability(),PRAS.StorageAvailability(),PRAS.GeneratorStorageAvailability(),PRAS.LineAvailability())
     @info "Successfully completed PRAS Runs. Exporting outage profiles now..."
     # Setup to save the new PSY System with scenario timeseries data
     #working_dir = pwd();
