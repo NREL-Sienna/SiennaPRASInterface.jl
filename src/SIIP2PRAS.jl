@@ -24,6 +24,7 @@ import DataFrames
 import CSV
 import JSON
 import UUIDs
+import TimeSeries
 
 const PSY = PowerSystems
 #################################################################################
