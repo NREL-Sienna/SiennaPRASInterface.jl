@@ -13,6 +13,7 @@ df_outage = DataFrames.DataFrame(CSV.File(OUTAGE_INFO_FILE));
 
 # PSY-3.X HVDC Types
 const HVDCLineTypes = Union{PSY.TwoTerminalHVDCLine, PSY.TwoTerminalVSCDCLine}
+const TransformerTypes = [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer]
 #######################################################
 # Structs to parse and store the outage information
 #######################################################
@@ -922,13 +923,13 @@ function make_pras_system(sys::PSY.System;
         @info "Collecting all inter regional lines in PSY System..."
 
         lines = availability_flag ? 
-        collect(PSY.get_components((x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer]) && PSY.get_available(x)),PSY.Branch, sys)) :
-        collect(PSY.get_components(x -> ~in(typeof(x), [PSY.TapTransformer, PSY.Transformer2W,PSY.PhaseShiftingTransformer]), PSY.Branch, sys));
+        collect(PSY.get_components(x -> (typeof(x) ∉ TransformerTypes && PSY.get_available(x)), PSY.Branch, sys)) :
+        collect(PSY.get_components(x -> (typeof(x) ∉ TransformerTypes), PSY.Branch, sys));
 
         #######################################################
         # Inter-Regional Line Processing
         #######################################################
-        regional_lines = filter(x -> (PSY.get_name(PSY.get_area(PSY.get_from_bus(x))) != PSY.get_name(PSY.get_area(PSY.get_to_bus(x)))),lines);
+        regional_lines = filter(x -> ~(x.arc.from.area.name == x.arc.to.area.name),lines);
         sorted_lines, interface_reg_idxs, interface_line_idxs = get_sorted_lines(regional_lines, region_names);
         new_lines, new_interfaces = make_pras_interfaces(sorted_lines, interface_reg_idxs, interface_line_idxs,N);
     
