@@ -4,7 +4,7 @@
 # August 2022
 # SIIP --> PRAS Linkage Module
 #######################################################
-module SIIP2PRAS
+module Sienna2PRAS
 #################################################################################
 # Exports
 #################################################################################
@@ -34,4 +34,5 @@ include("parsers/power_system_table_data.jl") # Over-writes some PSY functions.
 include("main/PSY2PRAS.jl")
 include("main/PRAS2PSY.jl")
 include("util/add_csv_time_series_data.jl")
+include("util/runchecks.jl")
 end

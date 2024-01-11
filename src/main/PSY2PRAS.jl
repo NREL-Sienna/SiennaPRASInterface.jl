@@ -10,6 +10,9 @@ const OUTAGE_INFO_FILE =
     joinpath(@__DIR__, "descriptors", "outage-rates-ERCOT-modified.csv") 
 
 df_outage = DataFrames.DataFrame(CSV.File(OUTAGE_INFO_FILE));
+
+# PSY-3.X HVDC Types
+const HVDCLineTypes = Union{PSY.TwoTerminalHVDCLine, PSY.TwoTerminalVSCDCLine}
 #######################################################
 # Structs to parse and store the outage information
 #######################################################
@@ -31,21 +34,22 @@ end
 ##############################################
 # Converting FOR and MTTR to λ and μ
 ##############################################
-function outage_to_rate(outage_data::Tuple{Float64, Int64})
-    for_gen = outage_data[1]
-    mttr = outage_data[2]
-
-    if (for_gen >1.0)
+function outage_to_rate(for_gen::Float64, mttr::Int64)
+    if (for_gen > 1.0)
         for_gen = for_gen/100
     end
 
-    if (mttr != 0)
-        μ = 1 / mttr
-    else
+    if (for_gen == 1.0)
+        λ = 1.0
         μ = 0.0
+    else
+        if ~(mttr == 0)
+            μ = 1 / mttr
+        else
+            μ = 1.0
+        end
+        λ = (μ * for_gen) / (1 - for_gen)
     end
-    λ = (μ * for_gen) / (1 - for_gen)
-    #λ = for_gen
 
     return (λ = λ, μ = μ)
 end
@@ -58,8 +62,7 @@ end
 # Function to get available components in AggregationTopology
 #######################################################
 function get_available_components_in_aggregation_topology(type::Type{<:PSY.StaticInjection}, sys::PSY.System, region::PSY.AggregationTopology)
-    avail_comps =  [comp for comp in PSY.get_components_in_aggregation_topology(type, sys, region) if (PSY.get_available(comp))]
-
+    avail_comps =  filter(x ->(PSY.get_available(x)),collect(PSY.get_components_in_aggregation_topology(type, sys, region)))
     return avail_comps
 end
 
@@ -71,7 +74,7 @@ end
 # Functions to get generator category
 #######################################################
 function get_generator_category(gen::GEN) where {GEN <: PSY.RenewableGen}
-    return string(PSY.get_prime_mover(gen))
+    return string(PSY.get_prime_mover_type(gen))
 end
 
 function get_generator_category(gen::GEN) where {GEN <: PSY.ThermalGen}
@@ -107,12 +110,15 @@ function line_rating(line::Union{PSY.Line,PSY.MonitoredLine})
     return(forward_capacity = abs(rate) , backward_capacity = abs(rate))
 end
 
-function line_rating(line::PSY.HVDCLine)
+function line_rating(line::PSY.TwoTerminalHVDCLine)
     forward_capacity = getfield(PSY.get_active_power_limits_from(line), :max)
     backward_capacity = getfield(PSY.get_active_power_limits_to(line), :max)
     return(forward_capacity = abs(forward_capacity), backward_capacity = abs(backward_capacity))
 end
 
+function line_rating(line::DCLine) where {DCLine<:HVDCLineTypes}
+    error("line_rating isn't defined for $(typeof(line))")
+end
 #######################################################
 # Get sorted (reg_from,reg_to) of inter-regional lines
 #######################################################
@@ -216,13 +222,14 @@ function make_pras_interfaces(sorted_lines::Vector{PSY.Branch},interface_reg_idx
 
     return new_lines, new_interfaces
 end
+
 #######################################################
 # Main Function to make the PRAS System
 #######################################################
 function make_pras_system(sys::PSY.System;
-                          system_model::Union{Nothing, String} = nothing,aggregation::Union{Nothing, String} = nothing,
+                          system_model::Union{Nothing, String} = nothing, aggregation::Union{Nothing, String} = nothing,
                           period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false, 
-                          outage_csv_location::Union{Nothing, String} = nothing) 
+                          outage_csv_location::Union{Nothing, String} = nothing)
     """
     make_pras_system(psy_sys,system_model)
 
@@ -232,9 +239,9 @@ function make_pras_system(sys::PSY.System;
     ...
     # Arguments
     - `psy_sys::PSY.System`: PSY System
-    - `system_model::String`: "Single-Node" (or) "Zonal"
+    - `system_model::String`: "Copper Plate" (or) "Zonal"
     - `aggregation::String`: "Area" (or) "LoadZone" {Optional} 
-    - `num_time_steps::UnitRange`: Number of timesteps of PRAS SystemModel {Optional} 
+    - `num_time_steps::UnitRange`: Number of timesteps of PRAS SystemModel {Opt     ional} 
     ...
 
     # Examples
@@ -260,15 +267,39 @@ function make_pras_system(sys::PSY.System;
     #######################################################
     if (aggregation === nothing)
         aggregation_topology = "Area";
+    else
+        if(PSY.string_compare(aggregation, "Area"))
+            aggregation = "Area"
+        elseif (PSY.string_compare(aggregation, "LoadZone"))
+            aggregation = "LoadZone"
+        else
+            error("Unidentified aggregation passed.")
+        end
     end
 
+    aggregation_topology =
     if (aggregation=="Area")
-        aggregation_topology = PSY.Area;
-    
-    elseif (aggregation=="LoadZone")
-        aggregation_topology = PSY.LoadZone;
+        PSY.Area
     else
-        error("Unrecognized PSY AggregationTopology")
+        PSY.LoadZone
+    end
+    #######################################################
+    # Function to handle PSY timestamps
+    #######################################################
+    function get_period_of_interest(ts::TS) where {TS <: PSY.StaticTimeSeries}
+        return range(1,length = length(ts.data))
+    end
+
+    function get_period_of_interest(ts::TS) where {TS <: PSY.AbstractDeterministic}
+        return range(1,length = length(ts.data)*interval_len)
+    end
+
+    function get_len_ts_data(ts::TS) where {TS <: PSY.StaticTimeSeries}
+        return length(ts.data)
+    end
+
+    function get_len_ts_data(ts::TS) where {TS <: PSY.AbstractDeterministic}
+        return length(ts.data)*interval_len
     end
 
     all_ts = PSY.get_time_series_multiple(sys);
@@ -279,29 +310,11 @@ function make_pras_system(sys::PSY.System;
     sys_res_in_hour = round(Dates.Millisecond(PSY.get_time_series_resolution(sys)), Dates.Hour);
     interval_len = Int(sys_for_int_in_hour.value/sys_res_in_hour.value);
     sys_horizon =  PSY.get_forecast_horizon(sys);
-    #######################################################
-    # Function to handle PSY timestamps
-    #######################################################
-    function get_period_of_interest(ts::TS) where {TS <: PSY.StaticTimeSeries}
-        return range(1,length = length(ts.data))
-    end
 
-    function get_period_of_interest(ts::TS) where {TS <: PSY.Deterministic}
-        return range(1,length = length(ts.data)*interval_len)
-    end
-
-    function get_len_ts_data(ts::TS) where {TS <: PSY.StaticTimeSeries}
-        return length(ts.data)
-    end
-
-    function get_len_ts_data(ts::TS) where {TS <: PSY.Deterministic}
-        return length(ts.data)*interval_len
-    end
-    
     if (period_of_interest === nothing)
         period_of_interest = get_period_of_interest(first_ts_temp)
     else
-        if (PSY.Deterministic in sys_ts_types)
+        if (PSY.DeterministicSingleTimeSeries in sys_ts_types)
             if !(period_of_interest.start %  interval_len ==1 && period_of_interest.stop %  interval_len == 0)
                 error("This PSY System has Determinstic time series data with interval length of $(interval_len). The period of interest should therefore be multiples of $(interval_len) to account for forecast windows.")
             end
@@ -318,11 +331,13 @@ function make_pras_system(sys::PSY.System;
         error("Please check the system period of interest selected")
     end
 
+    #=
     # Check if all time series data has a scaling_factor_multiplier
     if(!all(.!isnothing.(getfield.(all_ts,:scaling_factor_multiplier))))
         #error("Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System.")
         @warn "Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System."
     end
+    =#
     # if outage_csv_location is passed, perform some data checks
     outage_ts_flag = false
     if (outage_csv_location !== nothing)
@@ -339,6 +354,26 @@ function make_pras_system(sys::PSY.System;
             @warn "Outage time series data is not available for all System timestamps in the CSV."
         end
     end
+
+    #######################################################
+    # Common function to handle getting time series values
+    #######################################################
+    function get_forecast_values(ts::TS) where {TS <: PSY.AbstractDeterministic}
+        if (typeof(ts) == PSY.DeterministicSingleTimeSeries)
+            forecast_vals = get_forecast_values(ts.single_time_series)
+        else
+            forecast_vals = []
+            for it in collect(keys(PSY.get_data(ts)))[det_ts_period_of_interest]
+                append!(forecast_vals,collect(values(PSY.get_window(ts, it; len=interval_len))))
+            end
+        end
+        return forecast_vals
+    end
+
+    function get_forecast_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
+        forecast_vals = values(PSY.get_data(ts))[period_of_interest]
+        return forecast_vals
+    end
     #######################################################
     # PRAS timestamps
     # Need this to select timeseries values of interest
@@ -352,7 +387,7 @@ function make_pras_system(sys::PSY.System;
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
     
     det_ts_period_of_interest = 
-    if (PSY.Deterministic in sys_ts_types)
+    if (PSY.DeterministicSingleTimeSeries in sys_ts_types)
         strt = 
         if (round(Int,period_of_interest.start/interval_len) ==0)
             1
@@ -364,20 +399,12 @@ function make_pras_system(sys::PSY.System;
         range(strt,length = (stp-strt)+1)
         
     end
-    #######################################################
-    # Common function to handle getting time series values
-    #######################################################
-    function get_forecast_values(ts::TS) where {TS <: PSY.Deterministic}
-        forecast_vals = []
-        for it in collect(keys(PSY.get_data(ts)))[det_ts_period_of_interest]
-            append!(forecast_vals,collect(values(PSY.get_window(ts, it; len=interval_len))))
-        end
-        return forecast_vals
-    end
    
-    function get_forecast_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
-        forecast_vals = values(PSY.get_data(ts))[period_of_interest]
-        return forecast_vals
+    LoadType = 
+    if (length(PSY.get_components(PSY.PowerLoad,sys)) > 0)
+        PSY.PowerLoad
+    else
+        PSY.StandardLoad
     end
     #######################################################
      # PRAS Regions - Areas in SIIP
@@ -396,8 +423,8 @@ function make_pras_system(sys::PSY.System;
     region_load = Array{Int64,2}(undef,num_regions,N);
    
     for (idx,region) in enumerate(regions)
-        reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.StandardLoad, sys, region) :
-                                             PSY.get_components_in_aggregation_topology(PSY.StandardLoad, sys, region)
+        reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(LoadType, sys, region) :
+                                             PSY.get_components_in_aggregation_topology(LoadType, sys, region)
         if (length(reg_load_comps) > 0)
             region_load[idx,:]=floor.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_load_comps, name = "max_active_power")))
                             .*PSY.get_max_active_power.(reg_load_comps))); # Any issues with using the first of time_series_multiple?
@@ -415,7 +442,15 @@ function make_pras_system(sys::PSY.System;
         if (num_regions>1)
             system_model = "Zonal"
         else
-            system_model = "Single-Node"
+            system_model = "Copper Plate"
+        end
+    else
+        if(PSY.string_compare(system_model, "Copper Plate"))
+            system_model = "Copper Plate"
+        elseif (PSY.string_compare(system_model, "Zonal"))
+            system_model = "Zonal"
+        else
+            error("Unidentified system model passed.")
         end
     end
     #######################################################
@@ -431,8 +466,8 @@ function make_pras_system(sys::PSY.System;
         for (idx,region) in enumerate(regions)
             reg_ren_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.RenewableGen, sys, region) :
                                                  PSY.get_components_in_aggregation_topology(PSY.RenewableGen, sys, region)
-            wind_gs_DA= [g for g in reg_ren_comps if (PSY.get_prime_mover(g) == PSY.PrimeMovers.WT)] 
-            pv_gs_DA= [g for g in reg_ren_comps if (PSY.get_prime_mover(g) == PSY.PrimeMovers.PVe)] 
+            wind_gs_DA= [g for g in reg_ren_comps if (PSY.get_prime_mover_type(g) == PSY.PrimeMovers.WT)] 
+            pv_gs_DA= [g for g in reg_ren_comps if (PSY.get_prime_mover_type(g) == PSY.PrimeMovers.PVe)] 
             reg_gen_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
                                                 PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
             gs= [g for g in reg_gen_comps if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && 
@@ -513,7 +548,7 @@ function make_pras_system(sys::PSY.System;
                 # Wind
                 temp_lumped_wind_gen = PSY.RenewableDispatch(nothing)
                 PSY.set_name!(temp_lumped_wind_gen,"Lumped_Wind_"*region_names[i])
-                PSY.set_prime_mover!(temp_lumped_wind_gen,PSY.PrimeMovers.WT)
+                PSY.set_prime_mover_type!(temp_lumped_wind_gen,PSY.PrimeMovers.WT)
                 ext = PSY.get_ext(temp_lumped_wind_gen)
                 ext["region_gens"] = reg_wind_gens_DA[i]
                 ext["outage_probability"] = 0.0
@@ -524,7 +559,7 @@ function make_pras_system(sys::PSY.System;
                 # PV
                 temp_lumped_pv_gen = PSY.RenewableDispatch(nothing)
                 PSY.set_name!(temp_lumped_pv_gen,"Lumped_PV_"*region_names[i])
-                PSY.set_prime_mover!(temp_lumped_pv_gen,PSY.PrimeMovers.PVe)
+                PSY.set_prime_mover_type!(temp_lumped_pv_gen,PSY.PrimeMovers.PVe)
                 ext = PSY.get_ext(temp_lumped_pv_gen)
                 ext["region_gens"] = reg_pv_gens_DA[i]
                 ext["outage_probability"] = 0.0
@@ -558,7 +593,7 @@ function make_pras_system(sys::PSY.System;
         # Nominal outage and recovery rate
         (λ,μ) = (0.0,1.0)
         
-        if (lump_pv_wind_gens && (PSY.get_prime_mover(g) == PSY.PrimeMovers.WT || PSY.get_prime_mover(g) == PSY.PrimeMovers.PVe))
+        if (lump_pv_wind_gens && (PSY.get_prime_mover_type(g) == PSY.PrimeMovers.WT || PSY.get_prime_mover_type(g) == PSY.PrimeMovers.PVe))
             reg_gens_DA = PSY.get_ext(g)["region_gens"];
             gen_cap_array[idx,:] = round.(Int,sum(get_forecast_values.(first.(PSY.get_time_series_multiple.(reg_gens_DA, name = "max_active_power")))
                                    .*PSY.get_max_active_power.(reg_gens_DA)));
@@ -574,7 +609,7 @@ function make_pras_system(sys::PSY.System;
         if (outage_ts_flag)
             try
                 @info "Using FOR time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]). Assuming the mean time to recover (MTTR) is 24 hours to compute the λ and μ time series data ..."
-                g_λ_μ_ts_data = outage_to_rate.(zip(outage_ts_data[!,PSY.get_name(g)],fill(24,length(outage_ts_data[!,PSY.get_name(g)]))))
+                g_λ_μ_ts_data = outage_to_rate.(outage_ts_data[!,PSY.get_name(g)],fill(24,length(outage_ts_data[!,PSY.get_name(g)])))
                 λ_gen[idx,:] = getfield.(g_λ_μ_ts_data,:λ)
                 μ_gen[idx,:] = getfield.(g_λ_μ_ts_data,:μ) # This assumes a mean time to recover of 24 hours.
             catch ex
@@ -585,7 +620,7 @@ function make_pras_system(sys::PSY.System;
         else
             if (~outage_flag)
                 if (isa(g, PSY.ThermalGen))
-                    p_m = string(PSY.get_prime_mover(g))
+                    p_m = string(PSY.get_prime_mover_type(g))
                     fl = string(PSY.get_fuel(g))
 
                     p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
@@ -613,7 +648,7 @@ function make_pras_system(sys::PSY.System;
                         f_or = getfield(outage_values[gen_idx],:FOR)
                         mttr_hr = getfield(outage_values[gen_idx],:MTTR)
 
-                        (λ,μ) = outage_to_rate((f_or,mttr_hr))
+                        (λ,μ) = outage_to_rate(f_or,mttr_hr)
 
                     elseif (length(temp_range)==1)
                         gen_idx = temp_range[1]
@@ -621,7 +656,7 @@ function make_pras_system(sys::PSY.System;
                         f_or = getfield(outage_values[gen_idx],:FOR)
                         mttr_hr = getfield(outage_values[gen_idx],:MTTR)
 
-                        (λ,μ) = outage_to_rate((f_or,mttr_hr))
+                        (λ,μ) = outage_to_rate(f_or,mttr_hr)
                     else
                         @warn "No outage information is available for $(PSY.get_name(g)) with a $(p_m) prime mover and $(fl) fuel type. Using nominal outage and recovery probabilities for this generator."
                         #λ = 0.0;
@@ -629,7 +664,7 @@ function make_pras_system(sys::PSY.System;
                     end
 
                 elseif (isa(g, PSY.HydroGen))
-                    p_m = string(PSY.get_prime_mover(g))
+                    p_m = string(PSY.get_prime_mover_type(g))
                     p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
 
                     temp_cap = floor(Int,PSY.get_max_active_power(g))
@@ -643,7 +678,7 @@ function make_pras_system(sys::PSY.System;
                                 f_or = getfield(outage_values[gen_idx],:FOR)
                                 mttr_hr = getfield(outage_values[gen_idx],:MTTR)
 
-                                (λ,μ) = outage_to_rate((f_or,mttr_hr))
+                                (λ,μ) = outage_to_rate(f_or,mttr_hr)
                                 break
                             else
                                 temp = y
@@ -822,7 +857,7 @@ function make_pras_system(sys::PSY.System;
         
         if (~outage_flag)
             if (typeof(g_s) ==PSY.HydroEnergyReservoir)
-                p_m = string(PSY.get_prime_mover(g_s))
+                p_m = string(PSY.get_prime_mover_type(g_s))
                 p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
 
                 temp_cap = floor(Int,PSY.get_max_active_power(g_s))
@@ -836,7 +871,7 @@ function make_pras_system(sys::PSY.System;
                             f_or = getfield(outage_values[gen_idx],:FOR)
                             mttr_hr = getfield(outage_values[gen_idx],:MTTR)
 
-                            (λ,μ) = outage_to_rate((f_or,mttr_hr))
+                            (λ,μ) = outage_to_rate(f_or,mttr_hr)
                             break
                         else
                             temp = y
@@ -900,7 +935,7 @@ function make_pras_system(sys::PSY.System;
         pras_system = PRAS.SystemModel(new_regions, new_interfaces, new_generators, region_gen_idxs, new_storage, region_stor_idxs, new_gen_stors,
                           region_genstor_idxs, new_lines,interface_line_idxs,my_timestamps);
     
-    elseif (system_model =="Single-Node")
+    elseif (system_model =="Copper Plate")
         load_vector = vec(sum(region_load,dims=1));
         pras_system = PRAS.SystemModel(new_generators, new_storage, new_gen_stors, my_timestamps, load_vector);
     else
@@ -909,3 +944,29 @@ function make_pras_system(sys::PSY.System;
     @info "Successfully built a PRAS $(system_model) system of type $(typeof(pras_system))."
     return pras_system
 end
+
+
+#######################################################
+# Main Function to make the PRAS System
+#######################################################
+function make_pras_system(sys_location::String;
+                          system_model::Union{Nothing, String} = nothing,aggregation::Union{Nothing, String} = nothing,
+                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false, 
+                          outage_csv_location::Union{Nothing, String} = nothing)
+
+    @info "Running checks on the System location provided ..."
+    runchecks(sys_location)
+    
+    @info "The PowerSystems System is being de-serialized from the System JSON ..."
+    sys = 
+    try
+        PSY.System(sys_location;time_series_read_only = true,runchecks = false);
+    catch
+        error("The PSY System could not be de-serialized using the location of JSON provided. Please check the location and make sure you have permission to access time_series_storage.h5")
+    end
+
+    make_pras_system(sys,system_model = system_model,aggregation = aggregation,period_of_interest = period_of_interest,
+                     outage_flag = outage_flag,lump_pv_wind_gens = lump_pv_wind_gens,availability_flag = availability_flag, 
+                     outage_csv_location = outage_csv_location) 
+end
+
