@@ -84,3 +84,7 @@ pras_system = Sienna2PRAS.make_pras_system(sys,system_model = "Zonal",aggregatio
 sys_location = "/Users/sdhulipa/Desktop/eagle/WECC_System/WECC_2012WreV_2035LReEDS_ITL.json"
 pras_system = Sienna2PRAS.make_pras_system(sys_location,system_model = "Zonal",aggregation = "Area",outage_flag = false,lump_pv_wind_gens = true,
 availability_flag = true) 
+
+sys_location = "/Users/sdhulipa/Desktop/eagle/WECC_System/WECC_2012WreV_2035LReEDS_ITL.json"
+pras_system = Sienna2PRAS.make_pras_system(sys_location,system_model = "Zonal",aggregation = "Area",outage_flag = false,lump_pv_wind_gens = true,
+availability_flag = true, pras_sys_exp_loc = "/Users/sdhulipa/Desktop/eagle/WECC_System/WECC_ITL.pras") 

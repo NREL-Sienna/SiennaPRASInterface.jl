@@ -1,7 +1,7 @@
 # Check if the base raw file passed has the right extension
 isjson = endswith(".json");
 iscsv = endswith(".csv");
-
+isprasfile = endswith(".pras");
 # Check if you can open a file
 function check_file(loc::String)
     io = try

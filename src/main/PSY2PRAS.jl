@@ -230,7 +230,7 @@ end
 function make_pras_system(sys::PSY.System;
                           system_model::Union{Nothing, String} = nothing, aggregation::Union{Nothing, String} = nothing,
                           period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false, 
-                          outage_csv_location::Union{Nothing, String} = nothing)
+                          outage_csv_location::Union{Nothing, String} = nothing, pras_sys_exp_loc::Union{Nothing, String} = nothing)
     """
     make_pras_system(psy_sys,system_model)
 
@@ -935,17 +935,40 @@ function make_pras_system(sys::PSY.System;
     
         pras_system = PRAS.SystemModel(new_regions, new_interfaces, new_generators, region_gen_idxs, new_storage, region_stor_idxs, new_gen_stors,
                           region_genstor_idxs, new_lines,interface_line_idxs,my_timestamps);
+
+        @info "Successfully built a PRAS $(system_model) system of type $(typeof(pras_system))."
+
+        if (pras_sys_exp_loc !== nothing)
+            if ~(isprasfile(pras_sys_exp_loc))
+                error("PRAS System export location should be a .pras file. $(pras_sys_exp_loc) is not a valid location.")
+            else
+                PRAS.savemodel(pras_system,pras_sys_exp_loc, string_length =100, verbose = true, compression_level = 9)
+                @info "PRAS System exported can be found here : $(pras_sys_exp_loc)"
+            end
+        end
+    
+        return pras_system
     
     elseif (system_model =="Copper Plate")
         load_vector = vec(sum(region_load,dims=1));
         pras_system = PRAS.SystemModel(new_generators, new_storage, new_gen_stors, my_timestamps, load_vector);
+
+        @info "Successfully built a PRAS $(system_model) system of type $(typeof(pras_system))."
+
+        if (pras_sys_exp_loc !== nothing)
+            if ~(isprasfile(pras_sys_exp_loc))
+                error("PRAS System export location should be a .pras file. $(pras_sys_exp_loc) is not a valid location.")
+            else
+                PRAS.savemodel(pras_system,pras_sys_exp_loc, string_length =100, verbose = true, compression_level = 9)
+                @info "PRAS System exported can be found here : $(pras_sys_exp_loc)"
+            end
+        end
+    
+        return pras_system
     else
         error("Unrecognized SystemModel; Please specify correctly if SystemModel is Single-Node or Zonal.")
     end
-    @info "Successfully built a PRAS $(system_model) system of type $(typeof(pras_system))."
-    return pras_system
 end
-
 
 #######################################################
 # Main Function to make the PRAS System
@@ -953,7 +976,7 @@ end
 function make_pras_system(sys_location::String;
                           system_model::Union{Nothing, String} = nothing,aggregation::Union{Nothing, String} = nothing,
                           period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false, 
-                          outage_csv_location::Union{Nothing, String} = nothing)
+                          outage_csv_location::Union{Nothing, String} = nothing, pras_sys_exp_loc::Union{Nothing, String} = nothing )
 
     @info "Running checks on the System location provided ..."
     runchecks(sys_location)
@@ -968,6 +991,6 @@ function make_pras_system(sys_location::String;
 
     make_pras_system(sys,system_model = system_model,aggregation = aggregation,period_of_interest = period_of_interest,
                      outage_flag = outage_flag,lump_pv_wind_gens = lump_pv_wind_gens,availability_flag = availability_flag, 
-                     outage_csv_location = outage_csv_location) 
+                     outage_csv_location = outage_csv_location, pras_sys_exp_loc = pras_sys_exp_loc) 
 end
 
