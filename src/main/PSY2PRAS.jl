@@ -616,12 +616,17 @@ function make_pras_system(sys::PSY.System;
             if (PSY.has_time_series(g) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g))))
                 gen_cap_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(g, name = "max_active_power")))
                                        *PSY.get_max_active_power(g));
+                if ~(all(gen_cap_array[idx,:] .>=0))
+                    "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data." 
+                    gen_cap_array[idx,:] = zeros(Int,N);
+                end
             else
                 if (PSY.get_max_active_power(g) > 0)
                     gen_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g)),1,N);
                 else
+                    @warn "Max active power for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data." 
                     gen_cap_array[idx,:] = zeros(Int,N); # to handle components with negative active power (usually UNAVAIALABLE)
-                
+                end
             end
         end
 
