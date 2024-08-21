@@ -617,7 +617,7 @@ function make_pras_system(sys::PSY.System;
                 gen_cap_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(g, name = "max_active_power")))
                                        *PSY.get_max_active_power(g));
                 if ~(all(gen_cap_array[idx,:] .>=0))
-                    "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data." 
+                    @warn "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data." 
                     gen_cap_array[idx,:] = zeros(Int,N);
                 end
             else
