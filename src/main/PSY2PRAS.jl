@@ -229,7 +229,7 @@ end
 #######################################################
 function make_pras_system(sys::PSY.System;
                           system_model::Union{Nothing, String} = nothing, aggregation::Union{Nothing, String} = nothing,
-                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false, 
+                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=true, 
                           outage_csv_location::Union{Nothing, String} = nothing, pras_sys_exp_loc::Union{Nothing, String} = nothing)
     """
     make_pras_system(psy_sys,system_model)
@@ -998,7 +998,7 @@ end
 #######################################################
 function make_pras_system(sys_location::String;
                           system_model::Union{Nothing, String} = nothing,aggregation::Union{Nothing, String} = nothing,
-                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=false, 
+                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=true, 
                           outage_csv_location::Union{Nothing, String} = nothing, pras_sys_exp_loc::Union{Nothing, String} = nothing)
 
     @info "Running checks on the System location provided ..."
