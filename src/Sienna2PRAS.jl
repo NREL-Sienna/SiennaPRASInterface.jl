@@ -25,8 +25,10 @@ import CSV
 import JSON
 import UUIDs
 import TimeSeries
+import InteractiveUtils
 
 const PSY = PowerSystems
+const IU = InteractiveUtils
 #################################################################################
 # Includes
 #################################################################################

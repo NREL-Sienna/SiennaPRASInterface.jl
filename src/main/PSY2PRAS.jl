@@ -357,7 +357,7 @@ function make_pras_system(sys::PSY.System;
     end
 
     det_ts_period_of_interest = 
-    if (~isempty(intersect(sys_ts_types, subtypes(PSY.AbstractDeterministic))))
+    if (~isempty(intersect(sys_ts_types, IU.subtypes(PSY.AbstractDeterministic))))
         strt = 
         if (round(Int,period_of_interest.start/interval_len) ==0)
             1
