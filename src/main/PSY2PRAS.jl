@@ -357,7 +357,7 @@ function make_pras_system(sys::PSY.System;
     end
 
     det_ts_period_of_interest = 
-    if (PSY.DeterministicSingleTimeSeries in sys_ts_types)
+    if (~isempty(intersect(sys_ts_types, subtypes(PSY.AbstractDeterministic))))
         strt = 
         if (round(Int,period_of_interest.start/interval_len) ==0)
             1
@@ -437,7 +437,6 @@ function make_pras_system(sys::PSY.System;
     region_load = Array{Int64,2}(undef,num_regions,N);
    
     for (idx,region) in enumerate(regions)
-        @show region.name
         reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(LoadType, sys, region) :
                                              PSY.get_components_in_aggregation_topology(LoadType, sys, region)
         if (length(reg_load_comps) > 0)
