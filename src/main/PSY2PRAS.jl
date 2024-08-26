@@ -356,6 +356,19 @@ function make_pras_system(sys::PSY.System;
         end
     end
 
+    det_ts_period_of_interest = 
+    if (PSY.DeterministicSingleTimeSeries in sys_ts_types)
+        strt = 
+        if (round(Int,period_of_interest.start/interval_len) ==0)
+            1
+        else
+            round(Int,period_of_interest.start/interval_len)
+        end
+        stp = round(Int,period_of_interest.stop/interval_len)
+
+        range(strt,length = (stp-strt)+1)
+        
+    end
     #######################################################
     # Common function to handle getting time series values
     #######################################################
@@ -400,21 +413,7 @@ function make_pras_system(sys::PSY.System;
     my_timestamps = StepRange(start_datetime_tz, Dates.Hour(sys_res_in_hour), finish_datetime_tz);
 
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
-    
-    det_ts_period_of_interest = 
-    if (PSY.DeterministicSingleTimeSeries in sys_ts_types)
-        strt = 
-        if (round(Int,period_of_interest.start/interval_len) ==0)
-            1
-        else
-            round(Int,period_of_interest.start/interval_len)
-        end
-        stp = round(Int,period_of_interest.stop/interval_len)
 
-        range(strt,length = (stp-strt)+1)
-        
-    end
-   
     LoadType = 
     if (length(PSY.get_components(PSY.PowerLoad,sys)) > 0)
         PSY.PowerLoad
@@ -438,6 +437,7 @@ function make_pras_system(sys::PSY.System;
     region_load = Array{Int64,2}(undef,num_regions,N);
    
     for (idx,region) in enumerate(regions)
+        @show region.name
         reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(LoadType, sys, region) :
                                              PSY.get_components_in_aggregation_topology(LoadType, sys, region)
         if (length(reg_load_comps) > 0)
