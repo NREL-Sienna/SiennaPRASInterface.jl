@@ -1,7 +1,7 @@
 name = "Sienna2PRAS"
 uuid = "4b496c86-8d00-441d-b504-079c710e0aa7"
 authors = ["Surya Chandan Dhulipala <suryachandan.dhulipala@nrel.gov>"]
-version = "3.0.0"
+version = "4.0.0"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -16,9 +16,5 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-CSV = "~0.10"
-DataFrames = "1"
-JSON = "~0.21"
-PRAS = "0.6.3"
-PowerSystems = "3"
-julia = "^1.6"
+PowerSystems = "4"
+julia = "^1.8"

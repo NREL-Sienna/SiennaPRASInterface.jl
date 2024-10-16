@@ -9,7 +9,7 @@
 # PSY has multiple CC units PRAS doesn't
 #######################################################
 const CC_RESTRICTIONS_UTIL_FILE =
-joinpath(@__DIR__, "descriptors", "cc_restrictions.json") 
+joinpath(dirname(@__DIR__), "descriptors", "cc_restrictions.json") 
 cc_restrictions_util_file = JSON.parsefile(CC_RESTRICTIONS_UTIL_FILE);
 #######################################################
 # Dict to handle different types of assets
