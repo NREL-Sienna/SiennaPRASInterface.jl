@@ -64,163 +64,43 @@ function make_pras_system(sys::PSY.System;
         end
     end
     #######################################################
-    # Double counting of HybridSystem subcomponents
+    # Esnure no double counting of HybridSystem subcomponents
+    # TODO: Not sure if we need this anymore.
     #######################################################
     dup_uuids =[];
     h_s_comps = availability_flag ? PSY.get_components(PSY.get_available, PSY.HybridSystem, sys) : PSY.get_components(PSY.HybridSystem, sys)
     for h_s in h_s_comps
-        h_s_subcomps = PSY._get_components(h_s)
-        for subcomp in h_s_subcomps
-            push!(dup_uuids,PSY.IS.get_uuid(subcomp))
-        end
-    end
-    #######################################################
-    # kwargs Handling
-    #######################################################
-    if (aggregation === nothing)
-        aggregation_topology = "Area";
-    else
-        if(PSY.string_compare(aggregation, "Area"))
-            aggregation = "Area"
-        elseif (PSY.string_compare(aggregation, "LoadZone"))
-            aggregation = "LoadZone"
-        else
-            error("Unidentified aggregation passed.")
-        end
-    end
-
-    aggregation_topology =
-    if (aggregation=="Area")
-        PSY.Area
-    else
-        PSY.LoadZone
-    end
-    #######################################################
-    # Function to handle PSY timestamps
-    #######################################################
-    function get_period_of_interest(ts::TS) where {TS <: PSY.StaticTimeSeries}
-        return range(1,length = length(ts.data))
-    end
-
-    function get_period_of_interest(ts::TS) where {TS <: PSY.AbstractDeterministic}
-        return range(1,length = length(ts.data)*interval_len)
-    end
-
-    function get_len_ts_data(ts::TS) where {TS <: PSY.StaticTimeSeries}
-        return length(ts.data)
-    end
-
-    function get_len_ts_data(ts::TS) where {TS <: PSY.AbstractDeterministic}
-        return length(ts.data)*interval_len
-    end
-
-    all_ts = PSY.get_time_series_multiple(sys);
-    first_ts_temp = first(all_ts);
-    sys_ts_types = unique(typeof.(all_ts));
-    # Time series information
-    sys_for_int_in_hour = round(Dates.Millisecond(PSY.get_forecast_interval(sys)), Dates.Hour);
-    sys_res_in_hour = round(Dates.Millisecond(PSY.get_time_series_resolution(sys)), Dates.Hour);
-    interval_len = Int(sys_for_int_in_hour.value/sys_res_in_hour.value);
-    sys_horizon =  PSY.get_forecast_horizon(sys);
-
-    if (period_of_interest === nothing)
-        period_of_interest = get_period_of_interest(first_ts_temp)
-    else
-        if (PSY.DeterministicSingleTimeSeries in sys_ts_types)
-            if !(period_of_interest.start %  interval_len ==1 && period_of_interest.stop %  interval_len == 0)
-                error("This PSY System has Determinstic time series data with interval length of $(interval_len). The period of interest should therefore be multiples of $(interval_len) to account for forecast windows.")
-            end
-        end
-    end
-
-    N = length(period_of_interest);
-    len_ts_data = get_len_ts_data(first_ts_temp)
-
-    if ((N+(period_of_interest.start-1))> len_ts_data)
-        error("Cannot make a PRAS System with $(N) timesteps with a PSY System with only $(length(first_ts_temp.data) - (period_of_interest.start-1)) timesteps of time series data")
-    end
-    if (period_of_interest.start >  len_ts_data || period_of_interest.stop >  len_ts_data)
-        error("Please check the system period of interest selected")
-    end
-
-    #=
-    # Check if all time series data has a scaling_factor_multiplier
-    if(!all(.!isnothing.(getfield.(all_ts,:scaling_factor_multiplier))))
-        #error("Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System.")
-        @warn "Not all time series associated with components have scaling factor multipliers. This might lead to discrepancies in time series data in the PRAS System."
-    end
-    =#
-    # if outage_csv_location is passed, perform some data checks
-    outage_ts_flag = false
-    if (outage_csv_location !== nothing)
-        outage_ts_data,outage_ts_flag = try
-            @info "Parsing the CSV with outage time series data ..."
-            DataFrames.DataFrame(CSV.File(outage_csv_location)), true
-        catch ex
-            error("Couldn't parse the CSV with outage data at $(outage_csv_location).") 
-            throw(ex)
-        end
-    end
-    if (outage_ts_flag)
-        if (N>DataFrames.nrow(outage_ts_data))
-            @warn "Outage time series data is not available for all System timestamps in the CSV."
-        end
-    end
-
-    det_ts_period_of_interest = 
-    if (~isempty(intersect(sys_ts_types, IU.subtypes(PSY.AbstractDeterministic))))
-        strt = 
-        if (round(Int,period_of_interest.start/interval_len) ==0)
-            1
-        else
-            round(Int,period_of_interest.start/interval_len)
-        end
-        stp = round(Int,period_of_interest.stop/interval_len)
-
-        range(strt,length = (stp-strt)+1)
-        
-    end
-    #######################################################
-    # Common function to handle getting time series values
-    #######################################################
-    function get_forecast_values(ts::TS) where {TS <: PSY.AbstractDeterministic}
-        if (typeof(ts) == PSY.DeterministicSingleTimeSeries)
-            forecast_vals = get_forecast_values(ts.single_time_series)
-        else
-            forecast_vals = []
-            for it in collect(keys(PSY.get_data(ts)))[det_ts_period_of_interest]
-                append!(forecast_vals,collect(values(PSY.get_window(ts, it; len=interval_len))))
-            end
-        end
-        return forecast_vals
-    end
-
-    function get_forecast_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
-        forecast_vals = values(PSY.get_data(ts))[period_of_interest]
-        return forecast_vals
-    end
-    #######################################################
-    # Functions to handle components with no time series
-    # usually the ones who's availability is set to false
-    #######################################################
-    function get_first_ts(ts::TS) where {TS <: Channel{Any}}
-        if isempty(ts)
-            return nothing
-        else
-            return first(ts)
-        end
-    end
-    function get_forecast_values(ts::Nothing)
-        return zeros(length(period_of_interest))
+        push!(dup_uuids,PSY.IS.get_uuid.(PSY._get_components(h_s))...)
     end
     #######################################################
     # PRAS timestamps
     # Need this to select timeseries values of interest
+    # TODO: Is it okay to assume each System will have a 
+    # SingleTimeSeries? 
     #######################################################
-    start_datetime = PSY.IS.get_initial_timestamp(first_ts_temp);
-    start_datetime = start_datetime + Dates.Hour((period_of_interest.start-1)*sys_res_in_hour);
-    start_datetime_tz = TimeZones.ZonedDateTime(start_datetime,TimeZones.tz"UTC");
-    finish_datetime_tz = start_datetime_tz +  Dates.Hour((N-1)*sys_res_in_hour);
+    # 
+    s2p_meta = S2P_metadata()
+    
+    ts_counts = PSY.get_time_series_counts(sys);
+    if (~iszero(ts_counts.static_time_series_count))
+        filter_func = x -> (typeof(x) <: PSY.StaticTimeSeries)
+        all_ts = PSY.get_time_series_multiple(sys, filter_func);
+        start_datetime = PSY.IS.get_initial_timestamp(first(all_ts));
+        s2p_meta.first_timestamp = start_datetime
+        s2p_meta.first_timeseries = first(all_ts)
+    else
+        filter_func = x -> (typeof(x) <: PSY.Forecast)
+        all_ts = PSY.get_time_series_multiple(sys, filter_func);
+        start_datetime = PSY.IS.get_initial_timestamp(first(all_ts));
+        s2p_meta.first_timestamp = start_datetime
+        s2p_meta.first_timeseries = first(all_ts)
+    end
+    # add N to S2P_metadata object
+    add_N!(s2p_meta)
+   # TODO: Is it okay to just get the first elemnt of vector returned by PSY.get_time_series_resolutions?
+    sys_res_in_hour = round(Dates.Millisecond(first(PSY.get_time_series_resolutions(sys))), Dates.Hour);
+    start_datetime_tz = TimeZones.ZonedDateTime(s2p_meta.first_timestamp,TimeZones.tz"UTC");
+    finish_datetime_tz = start_datetime_tz +  Dates.Hour((s2p_meta.N-1)*sys_res_in_hour);
     my_timestamps = StepRange(start_datetime_tz, Dates.Hour(sys_res_in_hour), finish_datetime_tz);
 
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
@@ -235,7 +115,7 @@ function make_pras_system(sys::PSY.System;
      # PRAS Regions - Areas in SIIP
     #######################################################
     @info "Processing Regions in PSY System... "
-    regions = collect(PSY.get_components(aggregation_topology, sys));
+    regions = collect(PSY.get_components(aggregation, sys));
     if (length(regions)!=0)
         @info "The PSY System has $(length(regions)) regions based on PSY AggregationTopology : $(aggregation_topology)."
     else

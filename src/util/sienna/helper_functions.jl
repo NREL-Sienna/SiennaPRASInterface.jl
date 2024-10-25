@@ -7,11 +7,7 @@ function get_available_components_in_aggregation_topology(type::Type{<:PSY.Stati
 end
 
 #######################################################
-# Helper Functions
-# Generators
-#######################################################
-#######################################################
-# Functions to get generator category
+# get generator category
 #######################################################
 function get_generator_category(gen::GEN) where {GEN <: PSY.RenewableGen}
     return string(PSY.get_prime_mover_type(gen))
@@ -39,10 +35,6 @@ function get_generator_category(stor::GEN) where {GEN <: PSY.HybridSystem}
     return "Hybrid-System"
 end
 #######################################################
-# Helper Functions
-# Lines
-#######################################################
-#######################################################
 # Line Rating
 #######################################################
 function line_rating(line::Union{PSY.Line,PSY.MonitoredLine})
@@ -58,6 +50,40 @@ end
 
 function line_rating(line::DCLine) where {DCLine<:HVDCLineTypes}
     error("line_rating isn't defined for $(typeof(line))")
+end
+
+#######################################################
+# Common function to handle getting time series values
+#######################################################
+function get_forecast_values(ts::TS) where {TS <: PSY.AbstractDeterministic}
+    if (typeof(ts) == PSY.DeterministicSingleTimeSeries)
+        forecast_vals = get_forecast_values(ts.single_time_series)
+    else
+        forecast_vals = []
+        for it in collect(keys(PSY.get_data(ts)))[det_ts_period_of_interest]
+            append!(forecast_vals,collect(values(PSY.get_window(ts, it; len=interval_len))))
+        end
+    end
+    return forecast_vals
+end
+
+function get_forecast_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
+    forecast_vals = values(PSY.get_data(ts))[period_of_interest]
+    return forecast_vals
+end
+#######################################################
+# Functions to handle components with no time series
+# usually the ones who's availability is set to false
+#######################################################
+function get_first_ts(ts::TS) where {TS <: Channel{Any}}
+    if isempty(ts)
+        return nothing
+    else
+        return first(ts)
+    end
+end
+function get_forecast_values(ts::Nothing)
+    return zeros(length(period_of_interest))
 end
 
 
