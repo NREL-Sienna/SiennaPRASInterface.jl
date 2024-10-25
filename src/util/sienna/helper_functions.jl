@@ -59,3 +59,5 @@ end
 function line_rating(line::DCLine) where {DCLine<:HVDCLineTypes}
     error("line_rating isn't defined for $(typeof(line))")
 end
+
+

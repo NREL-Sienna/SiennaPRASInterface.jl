@@ -3,21 +3,19 @@
 # from Sienna/Data PowerSytems.jl System
 #######################################################
 function make_pras_system(sys::PSY.System;
-                          system_model::Union{Nothing, String} = nothing, aggregation::Union{Nothing, String} = nothing,
-                          period_of_interest::Union{Nothing, UnitRange} = nothing,outage_flag=true,lump_pv_wind_gens=false,availability_flag=true, 
-                          outage_csv_location::Union{Nothing, String} = nothing, pras_sys_exp_loc::Union{Nothing, String} = nothing)
+                          aggregation::Union{Nothing, Type{AT}} = nothing, availability=true, lump_region_renewable_gens=false,
+                          export_location::Union{Nothing, String} = nothing) where {AT<:PSY.AggregationTopology}
     """
     make_pras_system(psy_sys,system_model)
 
-    PSY System and System Model ("Single-Node","Zonal") are taken as arguments 
-    and a PRAS SystemModel is returned.
-    
+    Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemModel is returned.
     ...
     # Arguments
-    - `psy_sys::PSY.System`: PSY System
-    - `system_model::String`: "Copper Plate" (or) "Zonal"
-    - `aggregation::String`: "Area" (or) "LoadZone" {Optional} 
-    - `num_time_steps::UnitRange`: Number of timesteps of PRAS SystemModel {Opt     ional} 
+    - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
+    - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional} 
+    - `availability::Bool`: Takes into account avaialability of StaticInjection components when building the PRAS System {Optional} 
+    - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional} 
+    - `export_location::String`: Export location of the .pras file  
     ...
 
     # Examples
@@ -27,15 +25,42 @@ function make_pras_system(sys::PSY.System;
     ```
     """
     # PRAS needs Sienna\Data PowerSystems.jl System to be in NATURAL_UNITS
-    PSY.set_units_base_system!(sys, PSY.IS.UnitSystem.NATURAL_UNITS); 
+    PSY.set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS); 
 
-    # Parse the default outage data CSV if outgae data isn't avaialable in the System
-    outage_values =[]
-    if ~(outage_flag)
-        df_outage = DataFrames.DataFrame(CSV.File(OUTAGE_INFO_FILE));
-
+    # Check if any GeometricDistributionForcedOutage objects exist in the System
+    outages = PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, sys)
+    
+    # If no GeometricDistributionForcedOutage objects exist, add them to relevant components in the System
+    if (outages.length == 0)
+        @warn "No forced outage data available in the Sienna/Data System. Using generic outage data ..."
+        df_outage = DataFrames.DataFrame(CSV.File(OUTAGE_INFO_FILE, types=Dict(:tech => String, :PrimeMovers => String, :ThermalFuels => String), missingstring = "NA"));
+        
+        outage_values =outage_data[]
         for row in eachrow(df_outage)
-            push!(outage_values, outage_data(row.PrimeMovers,row.ThermalFuels,row.NameplateLimit_MW,(row.FOR/100),row.MTTR))
+            if (ismissing(row.ThermalFuels))
+                push!(outage_values, outage_data(PSY.PrimeMovers(row.PrimeMovers),row.ThermalFuels,row.NameplateLimit_MW,(row.FOR/100),row.MTTR))
+            else
+                push!(outage_values, outage_data(PSY.PrimeMovers(row.PrimeMovers),PSY.ThermalFuels(row.ThermalFuels),row.NameplateLimit_MW,(row.FOR/100),row.MTTR))
+            end
+        end
+        
+        # Add min capacity fields to outage_data objects
+        add_min_capacity!(outage_values)
+        # Adding generic data to components in the System
+        for outage_val in outage_values
+            λ, μ = rate_to_probability(outage_val.FOR, outage_val.MTTR)
+            transition_data = PSY.GeometricDistributionForcedOutage(;mean_time_to_recovery=outage_val.MTTR,outage_transition_probability=λ)
+
+            comps = 
+            if ismissing(outage_val.fuel)
+                PSY.get_components(x -> (PSY.get_prime_mover_type(x) ==  outage_val.prime_mover && outage_val.min_capacity <= PSY.get_max_active_power(x) < outage_val.max_capacity), PSY.Generator, sys)
+            else
+                PSY.get_components(x -> (PSY.get_prime_mover_type(x) ==  outage_val.prime_mover && PSY.get_fuel(x) ==  outage_val.fuel && outage_val.min_capacity <= PSY.get_max_active_power(x) < outage_val.max_capacity) , PSY.ThermalGen, sys)
+            end
+
+            for comp in comps
+                PSY.add_supplemental_attribute!(sys, comp, transition_data)
+            end
         end
     end
     #######################################################
