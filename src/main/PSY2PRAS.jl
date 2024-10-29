@@ -20,7 +20,7 @@ function make_pras_system(sys::PSY.System;
 
     # Examples
     ```julia-repl
-    julia> make_pras_system(psy_sys,system_model,period_of_interest)
+    julia> make_pras_system(psy_sys)
     PRAS SystemModel
     ```
     """
@@ -64,15 +64,6 @@ function make_pras_system(sys::PSY.System;
         end
     end
     #######################################################
-    # Esnure no double counting of HybridSystem subcomponents
-    # TODO: Not sure if we need this anymore.
-    #######################################################
-    dup_uuids =[];
-    h_s_comps = availability_flag ? PSY.get_components(PSY.get_available, PSY.HybridSystem, sys) : PSY.get_components(PSY.HybridSystem, sys)
-    for h_s in h_s_comps
-        push!(dup_uuids,PSY.IS.get_uuid.(PSY._get_components(h_s))...)
-    end
-    #######################################################
     # PRAS timestamps
     # Need this to select timeseries values of interest
     # TODO: Is it okay to assume each System will have a 
@@ -83,20 +74,32 @@ function make_pras_system(sys::PSY.System;
     
     ts_counts = PSY.get_time_series_counts(sys);
     if (~iszero(ts_counts.static_time_series_count))
+        s2p_meta.has_static_timeseries = true
         filter_func = x -> (typeof(x) <: PSY.StaticTimeSeries)
+        s2p_meta.filter_func = filter_func
         all_ts = PSY.get_time_series_multiple(sys, filter_func);
         start_datetime = PSY.IS.get_initial_timestamp(first(all_ts));
         s2p_meta.first_timestamp = start_datetime
         s2p_meta.first_timeseries = first(all_ts)
     else
-        filter_func = x -> (typeof(x) <: PSY.Forecast)
-        all_ts = PSY.get_time_series_multiple(sys, filter_func);
-        start_datetime = PSY.IS.get_initial_timestamp(first(all_ts));
-        s2p_meta.first_timestamp = start_datetime
-        s2p_meta.first_timeseries = first(all_ts)
+        if (~iszero(ts_counts.forecast_count))
+            s2p_meta.has_forecasts = true
+            filter_func = x -> (typeof(x) <: PSY.Forecast)
+            s2p_meta.filter_func = filter_func
+            all_ts = PSY.get_time_series_multiple(sys, filter_func);
+            start_datetime = PSY.IS.get_initial_timestamp(first(all_ts));
+            s2p_meta.first_timestamp = start_datetime
+            s2p_meta.first_timeseries = first(all_ts)
+        end
+    end
+
+    # Ensure Sienna/Data System has either static time series or forecasts
+    if ~(s2p_meta.has_static_timeseries) && ~(s2p_meta.has_forecasts)
+        error("Sienna/Data PowerSystems System has no time series data (static time series data and/or forecasts)")
     end
     # add N to S2P_metadata object
     add_N!(s2p_meta)
+
    # TODO: Is it okay to just get the first elemnt of vector returned by PSY.get_time_series_resolutions?
     sys_res_in_hour = round(Dates.Millisecond(first(PSY.get_time_series_resolutions(sys))), Dates.Hour);
     start_datetime_tz = TimeZones.ZonedDateTime(s2p_meta.first_timestamp,TimeZones.tz"UTC");
@@ -104,98 +107,91 @@ function make_pras_system(sys::PSY.System;
     my_timestamps = StepRange(start_datetime_tz, Dates.Hour(sys_res_in_hour), finish_datetime_tz);
 
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
+    #######################################################
+    # Ensure no double counting of HybridSystem subcomponents
+    # TODO: Not sure if we need this anymore.
+    #######################################################
+    dup_uuids =Base.UUID[];
+    h_s_comps = availability ? PSY.get_components(PSY.get_available, PSY.HybridSystem, sys) : PSY.get_components(PSY.HybridSystem, sys)
+    for h_s in h_s_comps
+        push!(dup_uuids,PSY.IS.get_uuid.(PSY._get_components(h_s))...)
+    end
+    # Add HybridSystem sub component UUIDs to s2p_meta 
+    if ~(isempty(dup_uuids))
+        s2p_meta.hs_uuids = dup_uuids
+    end
 
-    LoadType = 
+    # TODO: Do we still need to do this? From now, PSS/e parser
+    # will return PSY.StandardLoad objects
     if (length(PSY.get_components(PSY.PowerLoad,sys)) > 0)
-        PSY.PowerLoad
-    else
-        PSY.StandardLoad
+        s2p_meta.load_type = PSY.PowerLoad
     end
     #######################################################
      # PRAS Regions - Areas in SIIP
     #######################################################
-    @info "Processing Regions in PSY System... "
+    @info "Processing $(aggregation) objects in Sienna/Data PowerSystems System... "
     regions = collect(PSY.get_components(aggregation, sys));
-    if (length(regions)!=0)
-        @info "The PSY System has $(length(regions)) regions based on PSY AggregationTopology : $(aggregation_topology)."
+    if ~(length(regions)==0)
+        @info "The Sienna/Data PowerSystems System has $(length(regions)) regions based on PSY AggregationTopology : $(aggregation)."
     else
-        error("No regions in the PSY System. Cannot proceed with the process of making a PRAS SystemModel.")
+        error("No regions in the Sienna/Data PowerSystems System. Cannot proceed with the process of making a PRAS SystemModel.")
     end 
 
     region_names = PSY.get_name.(regions);
     num_regions = length(region_names);
 
-    region_load = Array{Int64,2}(undef,num_regions,N);
+    region_load = Array{Int64,2}(undef,num_regions,s2p_meta.N);
    
     for (idx,region) in enumerate(regions)
-        reg_load_comps = availability_flag ? get_available_components_in_aggregation_topology(LoadType, sys, region) :
-                                             PSY.get_components_in_aggregation_topology(LoadType, sys, region)
+        reg_load_comps = availability ? get_available_components_in_aggregation_topology(s2p_meta.load_type, sys, region) :
+                                             PSY.get_components_in_aggregation_topology(s2p_meta.load_type, sys, region)
         if (length(reg_load_comps) > 0)
-            region_load[idx,:]=floor.(Int,sum(get_forecast_values.(get_first_ts.(PSY.get_time_series_multiple.(reg_load_comps, name = "max_active_power")))
+
+            region_load[idx,:]=floor.(Int,sum(get_ts_values.(get_first_ts.(PSY.get_time_series_multiple.(reg_load_comps,s2p_meta.filter_func, name = "max_active_power")))
                                .*PSY.get_max_active_power.(reg_load_comps))); # Any issues with using the first of time_series_multiple?
         else
-            region_load[idx,:] = zeros(Int64,N)
+            region_load[idx,:] = zeros(Int64,s2p_meta.N)
         end
     end
 
-    new_regions = PRAS.Regions{N,PRAS.MW}(region_names, region_load);
-
-    #######################################################
-    # kwargs Handling
-    #######################################################
-    if (system_model === nothing)
-        if (num_regions>1)
-            system_model = "Zonal"
-        else
-            system_model = "Copper Plate"
-        end
-    else
-        if(PSY.string_compare(system_model, "Copper Plate"))
-            system_model = "Copper Plate"
-        elseif (PSY.string_compare(system_model, "Zonal"))
-            system_model = "Zonal"
-        else
-            error("Unidentified system model passed.")
-        end
-    end
+    new_regions = PRAS.Regions{s2p_meta.N,PRAS.MW}(region_names, region_load);
     #######################################################
     # Generator Region Indices
     #######################################################
     gens=Array{PSY.Generator}[];
     start_id = Array{Int64}(undef,num_regions); 
     region_gen_idxs = Array{UnitRange{Int64},1}(undef,num_regions); 
-    reg_wind_gens_DA = []
-    reg_pv_gens_DA = []
+    reg_wind_gens = []
+    reg_pv_gens = []
 
-    if (lump_pv_wind_gens)
+    if (lump_region_renewable_gens)
         for (idx,region) in enumerate(regions)
-            reg_ren_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.RenewableGen, sys, region) :
+            reg_ren_comps = availability ? get_available_components_in_aggregation_topology(PSY.RenewableGen, sys, region) :
                                                  PSY.get_components_in_aggregation_topology(PSY.RenewableGen, sys, region)
-            wind_gs_DA= [g for g in reg_ren_comps if (PSY.get_prime_mover_type(g) == PSY.PrimeMovers.WT)] 
-            pv_gs_DA= [g for g in reg_ren_comps if (PSY.get_prime_mover_type(g) == PSY.PrimeMovers.PVe)] 
-            reg_gen_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
+            wind_gs = filter(x -> (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.WT), reg_ren_comps)
+            pv_gs =  filter(x -> (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe), reg_ren_comps)
+            reg_gen_comps = availability ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
                                                 PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
-            gs= [g for g in reg_gen_comps if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && 
-                                              PSY.IS.get_uuid(g) ∉ union(dup_uuids,PSY.IS.get_uuid.(wind_gs_DA),PSY.IS.get_uuid.(pv_gs_DA)))] 
+            gs = filter(x -> (~(typeof(x) == PSY.HydroEnergyReservoir) && ~(iszero(PSY.get_max_active_power(x))) &&  PSY.IS.get_uuid(x) ∉ union(s2p_meta.hs_uuids,PSY.IS.get_uuid.(wind_gs),PSY.IS.get_uuid.(pv_gs))),reg_gen_comps)
             push!(gens,gs)
-            push!(reg_wind_gens_DA,wind_gs_DA)
-            push!(reg_pv_gens_DA,pv_gs_DA)
+            push!(reg_wind_gens,wind_gs)
+            push!(reg_pv_gens,pv_gs)
 
             if (idx==1)
                 start_id[idx] = 1
             else 
-                if (length(reg_wind_gens_DA[idx-1]) > 0 && length(reg_pv_gens_DA[idx-1]) > 0)
+                if (length(reg_wind_gens[idx-1]) > 0 && length(reg_pv_gens[idx-1]) > 0)
                     start_id[idx] =start_id[idx-1]+length(gens[idx-1])+2
-                elseif (length(reg_wind_gens_DA[idx-1]) > 0 || length(reg_pv_gens_DA[idx-1]) > 0)
+                elseif (length(reg_wind_gens[idx-1]) > 0 || length(reg_pv_gens[idx-1]) > 0)
                     start_id[idx] =start_id[idx-1]+length(gens[idx-1])+1
                 else
                     start_id[idx] =start_id[idx-1]+length(gens[idx-1])
                 end
             end
 
-            if (length(reg_wind_gens_DA[idx]) > 0 && length(reg_pv_gens_DA[idx]) > 0)
+            if (length(reg_wind_gens[idx]) > 0 && length(reg_pv_gens[idx]) > 0)
                 region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx])+2)
-            elseif (length(reg_wind_gens_DA[idx]) > 0 || length(reg_pv_gens_DA[idx]) > 0)
+            elseif (length(reg_wind_gens[idx]) > 0 || length(reg_pv_gens[idx]) > 0)
                 region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx])+1)
             else
                 region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
@@ -206,6 +202,7 @@ function make_pras_system(sys::PSY.System;
             reg_gen_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
                                                 PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
             gs= [g for g in reg_gen_comps if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ dup_uuids)]
+            gs = filter(x -> (~(typeof(x) == PSY.HydroEnergyReservoir) && ~(iszero(PSY.get_max_active_power(x))) &&  PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids),reg_gen_comps)
             push!(gens,gs)
             idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(gens[idx-1])
             region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
@@ -220,9 +217,9 @@ function make_pras_system(sys::PSY.System;
 
     for (idx,region) in enumerate(regions)
         #push!(stors,[s for s in PSY.get_components_in_aggregation_topology(PSY.Storage, sys, region)])
-        reg_stor_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.Storage, sys, region) :
+        reg_stor_comps = availability ? get_available_components_in_aggregation_topology(PSY.Storage, sys, region) :
                                              PSY.get_components_in_aggregation_topology(PSY.Storage, sys, region)
-        push!(stors,[s for s in reg_stor_comps if (PSY.IS.get_uuid(s) ∉ dup_uuids)])
+        push!(stors,filter(x -> (PSY.IS.get_uuid(x) ∉ dup_uuids), reg_stor_comps))
         idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(stors[idx-1])
         region_stor_idxs[idx] = range(start_id[idx], length=length(stors[idx]))
     end
@@ -234,9 +231,9 @@ function make_pras_system(sys::PSY.System;
     region_genstor_idxs = Array{UnitRange{Int64},1}(undef,num_regions);
 
     for (idx,region) in enumerate(regions)
-        reg_gen_stor_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.StaticInjection, sys, region) :
-                                                 PSY.get_components_in_aggregation_topology(PSY.StaticInjection, sys, region)
-        gs= [g for g in reg_gen_stor_comps if (typeof(g) == PSY.HydroEnergyReservoir || typeof(g)==PSY.HybridSystem)]
+        reg_gen_stor_comps = availability ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
+                                                 PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
+        gs= filter(x -> (typeof(x) == PSY.HydroEnergyReservoir || typeof(x)==PSY.HybridSystem), reg_gen_stor_comps)
         push!(gen_stors,gs)
         idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(gen_stors[idx-1])
         region_genstor_idxs[idx] = range(start_id[idx], length=length(gen_stors[idx]))
@@ -247,28 +244,24 @@ function make_pras_system(sys::PSY.System;
     @info "Processing Generators in PSY System... "
     
     # Lumping Wind and PV Generators per Region
-    if (lump_pv_wind_gens)
+    if (lump_region_renewable_gens)
         for i in 1: num_regions
-            if (length(reg_wind_gens_DA[i])>0)
+            if (length(reg_wind_gens[i])>0)
                 # Wind
                 temp_lumped_wind_gen = PSY.RenewableDispatch(nothing)
                 PSY.set_name!(temp_lumped_wind_gen,"Lumped_Wind_"*region_names[i])
                 PSY.set_prime_mover_type!(temp_lumped_wind_gen,PSY.PrimeMovers.WT)
                 ext = PSY.get_ext(temp_lumped_wind_gen)
-                ext["region_gens"] = reg_wind_gens_DA[i]
-                ext["outage_probability"] = 0.0
-                ext["recovery_probability"] = 1.0
+                ext["region_gens"] = reg_wind_gens[i]
                 push!(gens[i],temp_lumped_wind_gen)
             end
-            if (length(reg_pv_gens_DA[i])>0)
+            if (length(reg_pv_gens[i])>0)
                 # PV
                 temp_lumped_pv_gen = PSY.RenewableDispatch(nothing)
                 PSY.set_name!(temp_lumped_pv_gen,"Lumped_PV_"*region_names[i])
                 PSY.set_prime_mover_type!(temp_lumped_pv_gen,PSY.PrimeMovers.PVe)
                 ext = PSY.get_ext(temp_lumped_pv_gen)
-                ext["region_gens"] = reg_pv_gens_DA[i]
-                ext["outage_probability"] = 0.0
-                ext["recovery_probability"] = 1.0
+                ext["region_gens"] = reg_pv_gens[i]
                 push!(gens[i],temp_lumped_pv_gen)
             end
         end
@@ -277,7 +270,7 @@ function make_pras_system(sys::PSY.System;
     gen=[];
     for i in 1: num_regions
         if (length(gens[i]) != 0)
-            append!(gen,gens[i])
+            push!(gen,gens[i]...)
         end
     end
     
@@ -290,139 +283,56 @@ function make_pras_system(sys::PSY.System;
     gen_categories = get_generator_category.(gen);
     n_gen = length(gen_names);
 
-    gen_cap_array = Matrix{Int64}(undef, n_gen, N);
-    λ_gen = Matrix{Float64}(undef, n_gen, N);
-    μ_gen = Matrix{Float64}(undef, n_gen, N);
+    gen_cap_array = Matrix{Int64}(undef, n_gen, s2p_meta.N);
+    λ_gen = Matrix{Float64}(undef, n_gen, s2p_meta.N);
+    μ_gen = Matrix{Float64}(undef, n_gen, s2p_meta.N);
 
-    for (idx,g) in enumerate(gen)
-        # Nominal outage and recovery rate
-        (λ,μ) = (0.0,1.0)
-        
-        if (lump_pv_wind_gens && (PSY.get_prime_mover_type(g) == PSY.PrimeMovers.WT || PSY.get_prime_mover_type(g) == PSY.PrimeMovers.PVe))
+    for (idx,g) in enumerate(gen) 
+        if (lump_region_renewable_gens && (PSY.get_prime_mover_type(g) == PSY.PrimeMovers.WT || PSY.get_prime_mover_type(g) == PSY.PrimeMovers.PVe))
             reg_gens_DA = PSY.get_ext(g)["region_gens"];
-            gen_cap_array[idx,:] = round.(Int,sum(get_forecast_values.(get_first_ts.(PSY.get_time_series_multiple.(reg_gens_DA, name = "max_active_power")))
+            gen_cap_array[idx,:] = round.(Int,sum(get_ts_values.(get_first_ts.(PSY.get_time_series_multiple.(reg_gens_DA,s2p_meta.filter_func, name = "max_active_power")))
                                    .*PSY.get_max_active_power.(reg_gens_DA)));
         else
-            if (PSY.has_time_series(g) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g))))
-                gen_cap_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(g, name = "max_active_power")))
+            if (PSY.has_time_series(g) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g,s2p_meta.filter_func))))
+                gen_cap_array[idx,:] = floor.(Int,get_ts_values(get_first_ts(PSY.get_time_series_multiple(g,s2p_meta.filter_func, name = "max_active_power")))
                                        *PSY.get_max_active_power(g));
                 if ~(all(gen_cap_array[idx,:] .>=0))
                     @warn "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data." 
-                    gen_cap_array[idx,:] = zeros(Int,N);
+                    gen_cap_array[idx,:] = zeros(Int,s2p_meta.N);
                 end
             else
                 if (PSY.get_max_active_power(g) > 0)
-                    gen_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g)),1,N);
+                    gen_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g)),1,s2p_meta.N);
                 else
                     @warn "Max active power for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data." 
-                    gen_cap_array[idx,:] = zeros(Int,N); # to handle components with negative active power (usually UNAVAIALABLE)
+                    gen_cap_array[idx,:] = zeros(Int,s2p_meta.N); # to handle components with negative active power (usually UNAVAIALABLE)
                 end
             end
         end
 
-        if (outage_ts_flag)
-            try
-                @info "Using FOR time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]). Assuming the mean time to recover (MTTR) is 24 hours to compute the λ and μ time series data ..."
-                g_λ_μ_ts_data = outage_to_rate.(outage_ts_data[!,PSY.get_name(g)],fill(24,length(outage_ts_data[!,PSY.get_name(g)])))
-                λ_gen[idx,:] = getfield.(g_λ_μ_ts_data,:λ)
-                μ_gen[idx,:] = getfield.(g_λ_μ_ts_data,:μ) # This assumes a mean time to recover of 24 hours.
-            catch ex
-                @warn "FOR time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is not available in the CSV. Using nominal outage and recovery probabilities for this generator." 
-                λ_gen[idx,:] = fill.(λ,1,N); 
-                μ_gen[idx,:] = fill.(μ,1,N);
+        # Get GeometricForcedOutage SupplementalAttribute of the generator g
+        outage_sup_attrs = PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, g)
+        
+        if (length(outage_sup_attrs) > 0)
+            transition_data = first(outage_sup_attrs)
+            λ = PSY.get_outage_transition_probability(transition_data)
+            μ = 1 / PSY.get_mean_time_to_recovery(transition_data) 
+
+            if (PSY.has_time_series(transition_data, PSY.SingleTimeSeries))
+                λ_gen[idx,:] = PSY.get_time_series_values(PSY.SingleTimeSeries, transition_data, "outage_probability")
+                μ_gen[idx,:] = PSY.get_time_series_values(PSY.SingleTimeSeries, transition_data, "recovery_probability")
+            else
+                λ_gen[idx,:] = fill.(λ,1,s2p_meta.N); 
+                μ_gen[idx,:] = fill.(μ,1,s2p_meta.N); 
             end
         else
-            if (~outage_flag)
-                if (isa(g, PSY.ThermalGen))
-                    p_m = string(PSY.get_prime_mover_type(g))
-                    fl = string(PSY.get_fuel(g))
-
-                    p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
-                    fl_idx =  findall(x -> x == fl, getfield.(outage_values[p_m_idx],:thermal_fuel))
-                    
-                    if (length(fl_idx) ==0)
-                        fl_idx =  findall(x -> x == "NA", getfield.(outage_values[p_m_idx],:thermal_fuel))
-                    end
-
-                    temp_range = p_m_idx[fl_idx]
-
-                    temp_cap = floor(Int,PSY.get_max_active_power(g))
-
-                    if (length(temp_range)>1)
-                        gen_idx = temp_range[1]
-                        for (x,y) in zip(temp_range,getfield.(outage_values[temp_range],:capacity))
-                            temp=0
-                            if (temp<temp_cap<y)
-                                gen_idx = x
-                                break
-                            else
-                                temp = y
-                            end
-                        end
-                        f_or = getfield(outage_values[gen_idx],:FOR)
-                        mttr_hr = getfield(outage_values[gen_idx],:MTTR)
-
-                        (λ,μ) = outage_to_rate(f_or,mttr_hr)
-
-                    elseif (length(temp_range)==1)
-                        gen_idx = temp_range[1]
-                        
-                        f_or = getfield(outage_values[gen_idx],:FOR)
-                        mttr_hr = getfield(outage_values[gen_idx],:MTTR)
-
-                        (λ,μ) = outage_to_rate(f_or,mttr_hr)
-                    else
-                        @warn "No outage information is available for $(PSY.get_name(g)) with a $(p_m) prime mover and $(fl) fuel type. Using nominal outage and recovery probabilities for this generator."
-                        #λ = 0.0;
-                        #μ = 1.0;
-                    end
-
-                elseif (isa(g, PSY.HydroGen))
-                    p_m = string(PSY.get_prime_mover_type(g))
-                    p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
-
-                    temp_cap = floor(Int,PSY.get_max_active_power(g))
-                    
-                    if (length(p_m_idx)>1)
-                        for (x,y) in zip(p_m_idx,getfield.(outage_values[p_m_idx],:capacity))
-                            temp=0
-                            if (temp<temp_cap<y)
-                                gen_idx = x
-
-                                f_or = getfield(outage_values[gen_idx],:FOR)
-                                mttr_hr = getfield(outage_values[gen_idx],:MTTR)
-
-                                (λ,μ) = outage_to_rate(f_or,mttr_hr)
-                                break
-                            else
-                                temp = y
-                            end
-                        end
-                    end
-                else
-                    @warn "No outage information is available for $(PSY.get_name(g)) of type $(gen_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-                    #λ = 0.0;
-                    #μ = 1.0;
-
-                end
-
-            else
-                ext = PSY.get_ext(g)
-                if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
-                    @warn "No outage information is available in ext field of $(PSY.get_name(g)) of type $(gen_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-                    #λ = 0.0;
-                    #μ = 1.0;
-                else
-                    λ = ext["outage_probability"];
-                    μ = ext["recovery_probability"];
-                end
-            end
-            λ_gen[idx,:] = fill.(λ,1,N); 
-            μ_gen[idx,:] = fill.(μ,1,N); 
+            λ_gen[idx,:] = zeros(Float64,1,s2p_meta.N); 
+            μ_gen[idx,:] = ones(Float64,1,s2p_meta.N); 
         end
+       
     end
 
-    new_generators = PRAS.Generators{N,1,PRAS.Hour,PRAS.MW}(gen_names, get_generator_category.(gen), gen_cap_array , λ_gen ,μ_gen);
+    new_generators = PRAS.Generators{s2p_meta.N,1,PRAS.Hour,PRAS.MW}(gen_names, get_generator_category.(gen), gen_cap_array , λ_gen ,μ_gen);
         
     #######################################################
     # PRAS Storages

@@ -55,20 +55,20 @@ end
 #######################################################
 # Common function to handle getting time series values
 #######################################################
-function get_forecast_values(ts::TS) where {TS <: PSY.AbstractDeterministic}
+function get_ts_values(ts::TS) where {TS <: PSY.AbstractDeterministic}
     if (typeof(ts) == PSY.DeterministicSingleTimeSeries)
-        forecast_vals = get_forecast_values(ts.single_time_series)
+        forecast_vals = get_ts_values(ts.single_time_series)
     else
         forecast_vals = []
-        for it in collect(keys(PSY.get_data(ts)))[det_ts_period_of_interest]
+        for it in collect(keys(PSY.get_data(ts)))
             append!(forecast_vals,collect(values(PSY.get_window(ts, it; len=interval_len))))
         end
     end
     return forecast_vals
 end
 
-function get_forecast_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
-    forecast_vals = values(PSY.get_data(ts))[period_of_interest]
+function get_ts_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
+    forecast_vals = values(PSY.get_data(ts))
     return forecast_vals
 end
 #######################################################

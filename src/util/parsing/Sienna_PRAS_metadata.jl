@@ -4,11 +4,14 @@
 mutable struct S2P_metadata
     has_static_timeseries::Bool
     has_forecasts::Bool
+    filter_func::Function
     N::Int64
     first_timestamp::Union{Nothing, Dates.DateTime}
     first_timeseries::Union{Nothing, Union{<:PSY.Forecast, <:PSY.StaticTimeSeries}}
+    hs_uuids::Vector{Base.UUID}
+    load_type::Union{Nothing, Type{<:PSY.StaticLoad}}
     
-    S2P_metadata(has_st_timeseries = true, has_forecasts = false, N = 0, first_timestamp = nothing, first_ts = nothing) =new(has_st_timeseries,has_forecasts,N,first_timestamp, first_ts)
+    S2P_metadata(has_st_timeseries = false, has_forecasts = false, filter_func = x -> (typeof(x) <: PSY.StaticTimeSeries), N = 0, first_timestamp = nothing, first_ts = nothing, hs_uuids = Vector{Base.UUID}[], load_type = PSY.StandardLoad) =new(has_st_timeseries,has_forecasts,filter_func,N,first_timestamp, first_ts, hs_uuids, load_type)
 end 
 
 function add_N!(s2p_meta::S2P_metadata)
