@@ -38,7 +38,7 @@ end
 # Line Rating
 #######################################################
 function line_rating(line::Union{PSY.Line,PSY.MonitoredLine})
-    rate = PSY.get_rate(line);
+    rate = PSY.get_rating(line);
     return(forward_capacity = abs(rate) , backward_capacity = abs(rate))
 end
 
