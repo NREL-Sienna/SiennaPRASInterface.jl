@@ -216,7 +216,6 @@ function make_pras_system(sys::PSY.System;
     region_stor_idxs = Array{UnitRange{Int64},1}(undef,num_regions);
 
     for (idx,region) in enumerate(regions)
-        #push!(stors,[s for s in PSY.get_components_in_aggregation_topology(PSY.Storage, sys, region)])
         reg_stor_comps = availability ? get_available_components_in_aggregation_topology(PSY.Storage, sys, region) :
                                              PSY.get_components_in_aggregation_topology(PSY.Storage, sys, region)
         push!(stors,filter(x -> (PSY.IS.get_uuid(x) ∉ dup_uuids), reg_stor_comps))
@@ -310,26 +309,7 @@ function make_pras_system(sys::PSY.System;
             end
         end
 
-        # Get GeometricForcedOutage SupplementalAttribute of the generator g
-        outage_sup_attrs = PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, g)
-        
-        if (length(outage_sup_attrs) > 0)
-            transition_data = first(outage_sup_attrs)
-            λ = PSY.get_outage_transition_probability(transition_data)
-            μ = 1 / PSY.get_mean_time_to_recovery(transition_data) 
-
-            if (PSY.has_time_series(transition_data, PSY.SingleTimeSeries))
-                λ_gen[idx,:] = PSY.get_time_series_values(PSY.SingleTimeSeries, transition_data, "outage_probability")
-                μ_gen[idx,:] = PSY.get_time_series_values(PSY.SingleTimeSeries, transition_data, "recovery_probability")
-            else
-                λ_gen[idx,:] = fill.(λ,1,s2p_meta.N); 
-                μ_gen[idx,:] = fill.(μ,1,s2p_meta.N); 
-            end
-        else
-            λ_gen[idx,:] = zeros(Float64,1,s2p_meta.N); 
-            μ_gen[idx,:] = ones(Float64,1,s2p_meta.N); 
-        end
-       
+        λ_gen[idx,:],μ_gen[idx,:] = get_outage_time_series_data(g, s2p_meta)
     end
 
     new_generators = PRAS.Generators{s2p_meta.N,1,PRAS.Hour,PRAS.MW}(gen_names, get_generator_category.(gen), gen_cap_array , λ_gen ,μ_gen);
@@ -343,7 +323,7 @@ function make_pras_system(sys::PSY.System;
     stor=[];
     for i in 1: num_regions
         if (length(stors[i]) != 0)
-            append!(stor,stors[i])
+            push!(stor,stors[i]...)
         end
     end
 
@@ -357,44 +337,27 @@ function make_pras_system(sys::PSY.System;
 
     n_stor = length(stor_names);
 
-    stor_charge_cap_array = Matrix{Int64}(undef, n_stor, N);
-    stor_discharge_cap_array = Matrix{Int64}(undef, n_stor, N);
-    stor_energy_cap_array = Matrix{Int64}(undef, n_stor, N);
-    stor_chrg_eff_array = Matrix{Float64}(undef, n_stor, N);
-    stor_dischrg_eff_array  = Matrix{Float64}(undef, n_stor, N);
-    λ_stor = Matrix{Float64}(undef, n_stor, N);   
-    μ_stor = Matrix{Float64}(undef, n_stor, N);
+    stor_charge_cap_array = Matrix{Int64}(undef, n_stor, s2p_meta.N);
+    stor_discharge_cap_array = Matrix{Int64}(undef, n_stor, s2p_meta.N);
+    stor_energy_cap_array = Matrix{Int64}(undef, n_stor, s2p_meta.N);
+    stor_chrg_eff_array = Matrix{Float64}(undef, n_stor, s2p_meta.N);
+    stor_dischrg_eff_array  = Matrix{Float64}(undef, n_stor, s2p_meta.N);
+    λ_stor = Matrix{Float64}(undef, n_stor, s2p_meta.N);   
+    μ_stor = Matrix{Float64}(undef, n_stor, s2p_meta.N);
 
     for (idx,s) in enumerate(stor)
-        stor_charge_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_input_active_power_limits(s), :max)),1,N);
-        stor_discharge_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_output_active_power_limits(s), :max)),1,N);
-        stor_energy_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_state_of_charge_limits(s),:max)),1,N);
-        stor_chrg_eff_array[idx,:] = fill(getfield(PSY.get_efficiency(s), :in),1,N);
-        stor_dischrg_eff_array[idx,:]  = fill.(getfield(PSY.get_efficiency(s), :out),1,N);
-
-        if (~outage_flag)
-            @warn "No outage information is available for $(PSY.get_name(s)) of type $(stor_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-            λ = 0.0;
-            μ = 1.0;
-        else
-            ext = PSY.get_ext(s)
-            if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
-                @warn "No outage information is available in ext field of $(PSY.get_name(s)) of type $(stor_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-                λ = 0.0;
-                μ = 1.0;
-            else
-                λ = ext["outage_probability"];
-                μ = ext["recovery_probability"];
-            end
-        end
+        stor_charge_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_input_active_power_limits(s), :max)),1,s2p_meta.N);
+        stor_discharge_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_output_active_power_limits(s), :max)),1,s2p_meta.N);
+        stor_energy_cap_array[idx,:] = fill(floor(Int,getfield(PSY.get_storage_level_limits(s),:max)*PSY.get_storage_capacity(s)),1,s2p_meta.N);
+        stor_chrg_eff_array[idx,:] = fill(getfield(PSY.get_efficiency(s), :in),1,s2p_meta.N);
+        stor_dischrg_eff_array[idx,:]  = fill.(getfield(PSY.get_efficiency(s), :out),1,s2p_meta.N);
         
-        λ_stor[idx,:] = fill.(λ,1,N); 
-        μ_stor[idx,:] = fill.(μ,1,N); 
+        λ_stor[idx,:],μ_stor[idx,:] = get_outage_time_series_data(s, s2p_meta)
     end
     
-    stor_cryovr_eff = ones(n_stor,N);   # Not currently available/ defined in PowerSystems
+    stor_cryovr_eff = ones(n_stor,s2p_meta.N);   # Not currently available/ defined in PowerSystems
     
-    new_storage = PRAS.Storages{N,1,PRAS.Hour,PRAS.MW,PRAS.MWh}(stor_names,get_generator_category.(stor),
+    new_storage = PRAS.Storages{s2p_meta.N,1,PRAS.Hour,PRAS.MW,PRAS.MWh}(stor_names,get_generator_category.(stor),
                                             stor_charge_cap_array,stor_discharge_cap_array,stor_energy_cap_array,
                                             stor_chrg_eff_array,stor_dischrg_eff_array, stor_cryovr_eff,
                                             λ_stor,μ_stor);
