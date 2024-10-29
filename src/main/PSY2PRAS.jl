@@ -371,7 +371,7 @@ function make_pras_system(sys::PSY.System;
     gen_stor=[];
     for i in 1: num_regions
         if (length(gen_stors[i]) != 0)
-            append!(gen_stor,gen_stors[i])
+            push!(gen_stor,gen_stors[i]...)
         end
     end
     
@@ -385,122 +385,79 @@ function make_pras_system(sys::PSY.System;
     
     n_genstors = length(gen_stor_names);
 
-    gen_stor_charge_cap_array = Matrix{Int64}(undef, n_genstors, N);
-    gen_stor_discharge_cap_array = Matrix{Int64}(undef, n_genstors, N);
-    gen_stor_enrgy_cap_array = Matrix{Int64}(undef, n_genstors, N);
-    gen_stor_inflow_array = Matrix{Int64}(undef, n_genstors, N);
-    gen_stor_gridinj_cap_array = Matrix{Int64}(undef, n_genstors, N);
+    gen_stor_charge_cap_array = Matrix{Int64}(undef, n_genstors, s2p_meta.N);
+    gen_stor_discharge_cap_array = Matrix{Int64}(undef, n_genstors, s2p_meta.N);
+    gen_stor_enrgy_cap_array = Matrix{Int64}(undef, n_genstors, s2p_meta.N);
+    gen_stor_inflow_array = Matrix{Int64}(undef, n_genstors, s2p_meta.N);
+    gen_stor_gridinj_cap_array = Matrix{Int64}(undef, n_genstors, s2p_meta.N);
 
-    λ_genstors = Matrix{Float64}(undef, n_genstors, N);   
-    μ_genstors = Matrix{Float64}(undef, n_genstors, N);  
+    λ_genstors = Matrix{Float64}(undef, n_genstors, s2p_meta.N);   
+    μ_genstors = Matrix{Float64}(undef, n_genstors, s2p_meta.N);  
 
     for (idx,g_s) in enumerate(gen_stor)
         if(typeof(g_s) ==PSY.HydroEnergyReservoir)
             if (PSY.has_time_series(g_s))
-                if ("inflow" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
-                    gen_stor_charge_cap_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(g_s, name = "inflow")))
+                if ("inflow" in PSY.get_name.(PSY.get_time_series_multiple(g_s,s2p_meta.filter_func)))
+                    gen_stor_charge_cap_array[idx,:] = floor.(Int,get_ts_values(get_first_ts(PSY.get_time_series_multiple(g_s,s2p_meta.filter_func, name = "inflow")))
                                                        *PSY.get_inflow(g_s));
-                    gen_stor_discharge_cap_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(g_s, name = "inflow")))
+                    gen_stor_discharge_cap_array[idx,:] = floor.(Int,get_ts_values(get_first_ts(PSY.get_time_series_multiple(g_s,s2p_meta.filter_func, name = "inflow")))
                                                           *PSY.get_inflow(g_s));
-                    gen_stor_inflow_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(g_s, name = "inflow")))
+                    gen_stor_inflow_array[idx,:] = floor.(Int,get_ts_values(get_first_ts(PSY.get_time_series_multiple(g_s,s2p_meta.filter_func, name = "inflow")))
                                                    *PSY.get_inflow(g_s));
                 else
-                    gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
-                    gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
-                    gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
+                    gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,s2p_meta.N);
+                    gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,s2p_meta.N);
+                    gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,s2p_meta.N);
                 end
-                if ("storage_capacity" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
-                    gen_stor_enrgy_cap_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(g_s, name = "storage_capacity")))
+                if ("storage_capacity" in PSY.get_name.(PSY.get_time_series_multiple(g_s,s2p_meta.filter_func)))
+                    gen_stor_enrgy_cap_array[idx,:] = floor.(Int,get_ts_values(get_first_ts(PSY.get_time_series_multiple(g_s,s2p_meta.filter_func, name = "storage_capacity")))
                                                       *PSY.get_storage_capacity(g_s));
                 else
-                    gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,PSY.get_storage_capacity(g_s)),1,N);
+                    gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,PSY.get_storage_capacity(g_s)),1,s2p_meta.N);
                 end
-                if ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g_s)))
-                    gen_stor_gridinj_cap_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(g_s, name = "max_active_power")))
+                if ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func)))
+                    gen_stor_gridinj_cap_array[idx,:] = floor.(Int,get_ts_values(get_first_ts(PSY.get_time_series_multiple(g_s,s2p_meta.filter_func, name = "max_active_power")))
                                                         *PSY.get_max_active_power(g_s));
                 else
-                    gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g_s)),1,N);
+                    gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g_s)),1,s2p_meta.N);
                 end
             else
-                gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
-                gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
-                gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,PSY.get_storage_capacity(g_s)),1,N);
+                gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,s2p_meta.N);
+                gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,s2p_meta.N);
+                gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,PSY.get_storage_capacity(g_s)),1,s2p_meta.N);
                 gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_inflow(g_s)),1,N);
-                gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g_s)),1,N);
+                gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(g_s)),1,s2p_meta.N);
             end  
         else
-            gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_input_active_power_limits(PSY.get_storage(g_s)), :max)),1,N);
-            gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_output_active_power_limits(PSY.get_storage(g_s)), :max)),1,N);
-            gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_state_of_charge_limits(PSY.get_storage(g_s)), :max)),1,N); 
-            gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.getfield(PSY.get_output_active_power_limits(g_s), :max)),1,N);
+            gen_stor_charge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_input_active_power_limits(PSY.get_storage(g_s)), :max)),1,s2p_meta.N);
+            gen_stor_discharge_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_output_active_power_limits(PSY.get_storage(g_s)), :max)),1,s2p_meta.N);
+            gen_stor_enrgy_cap_array[idx,:] = fill.(floor.(Int,getfield(PSY.get_state_of_charge_limits(PSY.get_storage(g_s)), :max)),1,s2p_meta.N); 
+            gen_stor_gridinj_cap_array[idx,:] = fill.(floor.(Int,PSY.getfield(PSY.get_output_active_power_limits(g_s), :max)),1,s2p_meta.N);
             
-            if (PSY.has_time_series(PSY.get_renewable_unit(g_s)) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s)))))
-                gen_stor_inflow_array[idx,:] = floor.(Int,get_forecast_values(get_first_ts(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s), name = "max_active_power")))
+            if (PSY.has_time_series(PSY.get_renewable_unit(g_s)) && ("max_active_power" in PSY.get_name.(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s),s2p_meta.filter_func))))
+                gen_stor_inflow_array[idx,:] = floor.(Int,get_ts_values(get_first_ts(PSY.get_time_series_multiple(PSY.get_renewable_unit(g_s),s2p_meta.filter_func, name = "max_active_power")))
                                                *PSY.get_max_active_power(PSY.get_renewable_unit(g_s))); 
             else
-                gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(PSY.get_renewable_unit(g_s))),1,N); 
+                gen_stor_inflow_array[idx,:] = fill.(floor.(Int,PSY.get_max_active_power(PSY.get_renewable_unit(g_s))),1,s2p_meta.N); 
             end
         end
         
-        if (~outage_flag)
-            if (typeof(g_s) ==PSY.HydroEnergyReservoir)
-                p_m = string(PSY.get_prime_mover_type(g_s))
-                p_m_idx = findall(x -> x == p_m, getfield.(outage_values,:prime_mover))
-
-                temp_cap = floor(Int,PSY.get_max_active_power(g_s))
-                
-                if (length(p_m_idx)>1)
-                    for (x,y) in zip(p_m_idx,getfield.(outage_values[p_m_idx],:capacity))
-                        temp=0
-                        if (temp<temp_cap<y)
-                            gen_idx = x
-
-                            f_or = getfield(outage_values[gen_idx],:FOR)
-                            mttr_hr = getfield(outage_values[gen_idx],:MTTR)
-
-                            (λ,μ) = outage_to_rate(f_or,mttr_hr)
-                            break
-                        else
-                            temp = y
-                        end
-                    end
-                end
-            else
-                @warn "No outage information is available for $(PSY.get_name(g_s)) of type $(gen_stor_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-                λ = 0.0;
-                μ = 1.0;
-            end
-
-        else
-            ext = PSY.get_ext(g_s)
-            if (!(haskey(ext,"outage_probability") && haskey(ext,"recovery_probability")))
-                @warn "No outage information is available in ext field of $(PSY.get_name(g_s)) of type $(gen_stor_categories[idx]). Using nominal outage and recovery probabilities for this generator."
-                λ = 0.0;
-                μ = 1.0;
-            else
-                λ = ext["outage_probability"];
-                μ = ext["recovery_probability"];
-            end
-        end
-        
-        λ_genstors[idx,:] = fill.(λ,1,N); 
-        μ_genstors[idx,:] = fill.(μ,1,N);
+        λ_genstors[idx,:], μ_genstors[idx,:] = get_outage_time_series_data(g_s, s2p_meta)
     end
     
-    gen_stor_gridwdr_cap_array = zeros(Int64,n_genstors, N); # Not currently available/ defined in PowerSystems
-    gen_stor_charge_eff = ones(n_genstors,N);                # Not currently available/ defined in PowerSystems
-    gen_stor_discharge_eff = ones(n_genstors,N);             # Not currently available/ defined in PowerSystems
-    gen_stor_cryovr_eff = ones(n_genstors,N);                # Not currently available/ defined in PowerSystems
+    gen_stor_gridwdr_cap_array = zeros(Int64,n_genstors, s2p_meta.N); # Not currently available/ defined in PowerSystems
+    gen_stor_charge_eff = ones(n_genstors, s2p_meta.N);                # Not currently available/ defined in PowerSystems
+    gen_stor_discharge_eff = ones(n_genstors,s2p_meta.N);             # Not currently available/ defined in PowerSystems
+    gen_stor_cryovr_eff = ones(n_genstors,s2p_meta.N);                # Not currently available/ defined in PowerSystems
 
     
-    new_gen_stors = PRAS.GeneratorStorages{N,1,PRAS.Hour,PRAS.MW,PRAS.MWh}(gen_stor_names,get_generator_category.(gen_stor),
+    new_gen_stors = PRAS.GeneratorStorages{s2p_meta.N,1,PRAS.Hour,PRAS.MW,PRAS.MWh}(gen_stor_names,get_generator_category.(gen_stor),
                                                     gen_stor_charge_cap_array, gen_stor_discharge_cap_array, gen_stor_enrgy_cap_array,
                                                     gen_stor_charge_eff, gen_stor_discharge_eff, gen_stor_cryovr_eff,
                                                     gen_stor_inflow_array, gen_stor_gridwdr_cap_array, gen_stor_gridinj_cap_array,
                                                     λ_genstors, μ_genstors);
-
     #######################################################
-    # PRAS SystemModel
+    # Network
     #######################################################
     if (system_model=="Zonal")
         #######################################################
