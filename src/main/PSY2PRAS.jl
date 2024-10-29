@@ -2,8 +2,8 @@
 # Main function to build a instance of PRAS SystemModel
 # from Sienna/Data PowerSytems.jl System
 #######################################################
-function make_pras_system(sys::PSY.System;
-                          aggregation::Union{Nothing, Type{AT}} = nothing, availability=true, lump_region_renewable_gens=false,
+function make_pras_system(sys::PSY.System, aggregation::Type{AT};
+                          availability=true, lump_region_renewable_gens=false,
                           export_location::Union{Nothing, String} = nothing) where {AT<:PSY.AggregationTopology}
     """
     make_pras_system(psy_sys,system_model)
@@ -32,7 +32,7 @@ function make_pras_system(sys::PSY.System;
     
     # If no GeometricDistributionForcedOutage objects exist, add them to relevant components in the System
     if (outages.length == 0)
-        @warn "No forced outage data available in the Sienna/Data System. Using generic outage data ..."
+        @warn "No forced outage data available in the Sienna/Data PowerSystems System. Using generic outage data ..."
         df_outage = DataFrames.DataFrame(CSV.File(OUTAGE_INFO_FILE, types=Dict(:tech => String, :PrimeMovers => String, :ThermalFuels => String), missingstring = "NA"));
         
         outage_values =outage_data[]
@@ -199,9 +199,8 @@ function make_pras_system(sys::PSY.System;
         end
     else
         for (idx,region) in enumerate(regions)
-            reg_gen_comps = availability_flag ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
+            reg_gen_comps = availability ? get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
                                                 PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
-            gs= [g for g in reg_gen_comps if (typeof(g) != PSY.HydroEnergyReservoir && PSY.get_max_active_power(g)!=0 && PSY.IS.get_uuid(g) ∉ dup_uuids)]
             gs = filter(x -> (~(typeof(x) == PSY.HydroEnergyReservoir) && ~(iszero(PSY.get_max_active_power(x))) &&  PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids),reg_gen_comps)
             push!(gens,gs)
             idx==1 ? start_id[idx] = 1 : start_id[idx] =start_id[idx-1]+length(gens[idx-1])
@@ -268,7 +267,7 @@ function make_pras_system(sys::PSY.System;
 
     gen=[];
     for i in 1: num_regions
-        if (length(gens[i]) != 0)
+        if ~(length(gens[i]) == 0)
             push!(gen,gens[i]...)
         end
     end
@@ -463,7 +462,7 @@ function make_pras_system(sys::PSY.System;
         #######################################################
         # PRAS Lines 
         #######################################################
-        @info "Collecting all inter regional lines in PSY System..."
+        @info "Collecting all inter regional lines in Sienna/Data PowerSystems System..."
 
         lines = availability ? 
         collect(PSY.get_components(x -> (typeof(x) ∉ TransformerTypes && PSY.get_available(x)), PSY.Branch, sys)) :
@@ -474,12 +473,12 @@ function make_pras_system(sys::PSY.System;
         #######################################################
         regional_lines = filter(x -> ~(x.arc.from.area.name == x.arc.to.area.name),lines);
         sorted_lines, interface_reg_idxs, interface_line_idxs = get_sorted_lines(regional_lines, region_names);
-        new_lines, new_interfaces = make_pras_interfaces(sorted_lines, interface_reg_idxs, interface_line_idxs,s2p_meta.N);
+        new_lines, new_interfaces = make_pras_interfaces(sorted_lines, interface_reg_idxs, interface_line_idxs,s2p_meta);
     
         pras_system = PRAS.SystemModel(new_regions, new_interfaces, new_generators, region_gen_idxs, new_storage, region_stor_idxs, new_gen_stors,
                           region_genstor_idxs, new_lines,interface_line_idxs,my_timestamps);
 
-        @info "Successfully built a PRAS $(system_model) system of type $(typeof(pras_system))."
+        @info "Successfully built a PRAS SystemModel of type $(typeof(pras_system))."
 
         export_pras_system(pras_system,export_location::Union{Nothing, String})
     
@@ -489,7 +488,7 @@ function make_pras_system(sys::PSY.System;
         load_vector = vec(sum(region_load,dims=1));
         pras_system = PRAS.SystemModel(new_generators, new_storage, new_gen_stors, my_timestamps, load_vector);
 
-        @info "Successfully built a PRAS $(system_model) system of type $(typeof(pras_system))."
+        @info "Successfully built a PRAS SystemModel of type $(typeof(pras_system))."
 
         export_pras_system(pras_system,export_location::Union{Nothing, String})
     
@@ -498,8 +497,8 @@ function make_pras_system(sys::PSY.System;
 end
 
 
-function make_pras_system(sys_location::String;
-                          aggregation::Union{Nothing, Type{AT}} = nothing, availability=true, lump_region_renewable_gens=false,
+function make_pras_system(sys_location::String,aggregation::Type{AT};
+                          availability=true, lump_region_renewable_gens=false,
                           export_location::Union{Nothing, String} = nothing) where {AT<:PSY.AggregationTopology}
 
     @info "Running checks on the Sienna/Data PowerSystems System location provided ..."

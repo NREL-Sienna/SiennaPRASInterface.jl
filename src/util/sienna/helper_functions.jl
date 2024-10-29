@@ -86,15 +86,20 @@ function get_forecast_values(ts::Nothing)
     return zeros(length(period_of_interest))
 end
 
-function get_outage_time_series_data(gen::SI, s2p_meta::S2P_metadata) where {SI <: PSY.StaticInjection}
+function get_outage_time_series_data(gen::Union{SI,BR}, s2p_meta::S2P_metadata) where {SI <: PSY.StaticInjection, BR <: PSY.Branch}
     # Get GeometricForcedOutage SupplementalAttribute of the generator g
     outage_sup_attrs = PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, gen)
     λ_gen,μ_gen = zeros(Float64,1,s2p_meta.N), ones(Float64,1,s2p_meta.N);   
     if (length(outage_sup_attrs) > 0)
         transition_data = first(outage_sup_attrs)
         λ = PSY.get_outage_transition_probability(transition_data)
-        μ = 1 / PSY.get_mean_time_to_recovery(transition_data) 
-
+        μ = 
+        if (iszero(PSY.get_mean_time_to_recovery(transition_data)))
+            1.0
+        else
+            1 / PSY.get_mean_time_to_recovery(transition_data)
+        end
+         
         λ_gen,μ_gen = 
         if (PSY.has_time_series(transition_data, PSY.SingleTimeSeries))
            PSY.get_time_series_values(PSY.SingleTimeSeries, transition_data, "outage_probability"),
@@ -102,6 +107,8 @@ function get_outage_time_series_data(gen::SI, s2p_meta::S2P_metadata) where {SI 
         else
             fill.(λ,1,s2p_meta.N), fill.(μ,1,s2p_meta.N); 
         end
+    else
+        @warn "No GeometricForcedOutage SupplementalAttribute available for $(PSY.get_name(gen)) of $(typeof(gen)). Using nominal outage and recovery probabilities for this component."
     end
 
     return λ_gen,μ_gen
