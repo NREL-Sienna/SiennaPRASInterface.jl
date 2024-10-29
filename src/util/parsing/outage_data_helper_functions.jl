@@ -9,8 +9,15 @@ mutable struct outage_data
     MTTR::Int64
     min_capacity::Int64
 
-    outage_data(prime_mover  = PSY.PrimeMovers.OT, fuel =PSY.ThermalFuels.OTHER, max_capacity = 100, FOR=0.5,MTTR = 50, min_capacity = 0) =new(prime_mover,fuel,max_capacity,FOR,MTTR,min_capacity)
-end 
+    outage_data(
+        prime_mover=PSY.PrimeMovers.OT,
+        fuel=PSY.ThermalFuels.OTHER,
+        max_capacity=100,
+        FOR=0.5,
+        MTTR=50,
+        min_capacity=0,
+    ) = new(prime_mover, fuel, max_capacity, FOR, MTTR, min_capacity)
+end
 
 ##############################################
 # Converting FOR and MTTR to λ and μ
@@ -19,7 +26,7 @@ function rate_to_probability(for_gen::Float64, mttr::Int64)
 
     # Check to make sure FOR data is not in % 
     if (for_gen > 1.0)
-        for_gen = for_gen/100
+        for_gen = for_gen / 100
     end
 
     if (for_gen == 1.0)
@@ -34,29 +41,29 @@ function rate_to_probability(for_gen::Float64, mttr::Int64)
         λ = (μ * for_gen) / (1 - for_gen)
     end
 
-    return (λ = λ, μ = μ)
+    return (λ=λ, μ=μ)
 end
 
 # Defined on outage_data for Base.sort! to work
-Base.isless(data_1::outage_data, data_2::outage_data) = data_1.max_capacity < data_2.max_capacity
+Base.isless(data_1::outage_data, data_2::outage_data) =
+    data_1.max_capacity < data_2.max_capacity
 
 function add_min_capacity!(outage_values::Vector{outage_data})
-    for (p_m, fuel) in unique(zip(getfield.(outage_values,:prime_mover), getfield.(outage_values,:fuel)))
-        filtered_data = 
-        if (ismissing(fuel))
-            filter(x -> x.prime_mover == p_m , outage_values)
+    for (p_m, fuel) in
+        unique(zip(getfield.(outage_values, :prime_mover), getfield.(outage_values, :fuel)))
+        filtered_data = if (ismissing(fuel))
+            filter(x -> x.prime_mover == p_m, outage_values)
         else
             filter(x -> (x.prime_mover == p_m && x.fuel == fuel), outage_values)
         end
-        
+
         sort!(filtered_data)
-        for (i,data) in enumerate(filtered_data)
-            if (i==1)
+        for (i, data) in enumerate(filtered_data)
+            if (i == 1)
                 continue
             else
-                data.min_capacity = filtered_data[i-1].max_capacity
+                data.min_capacity = filtered_data[i - 1].max_capacity
             end
         end
-
     end
 end

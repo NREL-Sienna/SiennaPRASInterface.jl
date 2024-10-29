@@ -26,7 +26,6 @@ import JSON
 import UUIDs
 import TimeSeries
 
-
 const PSY = PowerSystems
 #################################################################################
 # Includes

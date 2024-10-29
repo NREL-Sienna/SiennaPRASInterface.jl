@@ -42,7 +42,18 @@ end
 
 # Make a PRAS System from PSY-4.X System
 rts_pras_sys = Sienna2PRAS.make_pras_system(rts_da_sys, PSY.Area);
-rts_pras_sys = Sienna2PRAS.make_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true);
-rts_pras_sys = Sienna2PRAS.make_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true, availability = false);
-rts_pras_sys = Sienna2PRAS.make_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true, availability = false, export_location = "rts.pras");
-
+rts_pras_sys =
+    Sienna2PRAS.make_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true);
+rts_pras_sys = Sienna2PRAS.make_pras_system(
+    rts_da_sys,
+    PSY.Area,
+    lump_region_renewable_gens=true,
+    availability=false,
+);
+rts_pras_sys = Sienna2PRAS.make_pras_system(
+    rts_da_sys,
+    PSY.Area,
+    lump_region_renewable_gens=true,
+    availability=false,
+    export_location="rts.pras",
+);

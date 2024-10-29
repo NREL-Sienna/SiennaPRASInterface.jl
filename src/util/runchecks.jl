@@ -24,16 +24,25 @@ function runchecks(sys_location::String)
 
     sys_dir = dirname(sys_location)
     sys_json_name = basename(sys_location)
-    other_sienna_files = ["$(first(split(sys_json_name,".json")))_time_series_storage.h5","$(first(split(sys_json_name,".json")))_metadata.json"]
+    other_sienna_files = [
+        "$(first(split(sys_json_name,".json")))_time_series_storage.h5",
+        "$(first(split(sys_json_name,".json")))_metadata.json",
+    ]
     (root, dirs, files) = first(walkdir(sys_dir))
-    if(~all(other_sienna_files .∈ Ref(files)))
-        error("All files avaialble to de-serialize the System aren't available in the System JSON folder")
+    if (~all(other_sienna_files .∈ Ref(files)))
+        error(
+            "All files avaialble to de-serialize the System aren't available in the System JSON folder",
+        )
     end
 
-    io, bool = check_file(joinpath(sys_dir,"$(first(split(sys_json_name,".json")))_time_series_storage.h5"))
+    io, bool = check_file(
+        joinpath(sys_dir, "$(first(split(sys_json_name,".json")))_time_series_storage.h5"),
+    )
     if (bool)
         close(io)
     else
-        error("You don't have access to $(first(split(sys_json_name,".json")))_time_series_storage.h5. Change permissions to this file.")
+        error(
+            "You don't have access to $(first(split(sys_json_name,".json")))_time_series_storage.h5. Change permissions to this file.",
+        )
     end
-end 
+end
