@@ -57,3 +57,8 @@ rts_pras_sys = Sienna2PRAS.make_pras_system(
     availability=false,
     export_location="rts.pras",
 );
+rts_sys_location = "/Users/sdhulipa/Old Mac Backup/Desktop/OneDrive-Backup/NREL-Github/temp/PSCB_test/RTS_4.X.json"
+rts_pras_sys = Sienna2PRAS.make_pras_system(
+    rts_sys_location,
+    PSY.Area,
+);

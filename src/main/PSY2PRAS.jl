@@ -896,7 +896,7 @@ function make_pras_system(
 
     make_pras_system(
         sys,
-        aggregation=aggregation,
+        aggregation,
         availability=availability,
         lump_region_renewable_gens=lump_region_renewable_gens,
         export_location=export_location,
