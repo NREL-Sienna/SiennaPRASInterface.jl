@@ -16,8 +16,7 @@ import Random123: Philox4x
 import StatsBase: mean, std, stderror
 import TimeZones: ZonedDateTime, @tz_str
 
-export
-    assess,
+export assess,
 
     # Metrics
     ReliabilityMetric,
