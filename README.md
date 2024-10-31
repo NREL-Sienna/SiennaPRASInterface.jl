@@ -1,4 +1,4 @@
-# PRASInterface
+# PRASInterface.jl
 
 [![Main - CI](https://github.com/NREL-Sienna/PRASInterface.jl/actions/workflows/main-tests.yml/badge.svg)](https://github.com/NREL-Sienna/PRASInterface.jl/actions/workflows/main-tests.yml)
 [![codecov](https://codecov.io/gh/NREL-Sienna/PRASInterface.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/NREL-SIENNA/PRASInterface.jl)
