@@ -11,6 +11,7 @@ import PowerSystems
 import PowerSystemCaseBuilder
 import CSV
 import DataFrames
+import Dates
 
 const PSY = PowerSystems
 const PSCB = PowerSystemCaseBuilder
@@ -41,16 +42,16 @@ for row in DataFrames.eachrow(gen_for_data)
 end
 
 # Make a PRAS System from PSY-4.X System
-rts_pras_sys = Sienna2PRAS.make_pras_system(rts_da_sys, PSY.Area);
+rts_pras_sys = Sienna2PRAS.generate_pras_system(rts_da_sys, PSY.Area);
 rts_pras_sys =
-    Sienna2PRAS.make_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true);
-rts_pras_sys = Sienna2PRAS.make_pras_system(
+    Sienna2PRAS.generate_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true);
+rts_pras_sys = Sienna2PRAS.generate_pras_system(
     rts_da_sys,
     PSY.Area,
     lump_region_renewable_gens=true,
     availability=false,
 );
-rts_pras_sys = Sienna2PRAS.make_pras_system(
+rts_pras_sys = Sienna2PRAS.generate_pras_system(
     rts_da_sys,
     PSY.Area,
     lump_region_renewable_gens=true,
@@ -58,7 +59,17 @@ rts_pras_sys = Sienna2PRAS.make_pras_system(
     export_location="rts.pras",
 );
 rts_sys_location = "/Users/sdhulipa/Old Mac Backup/Desktop/OneDrive-Backup/NREL-Github/temp/PSCB_test/RTS_4.X.json"
-rts_pras_sys = Sienna2PRAS.make_pras_system(
+rts_pras_sys = Sienna2PRAS.generate_pras_system(
     rts_sys_location,
     PSY.Area,
 );
+
+##############################################
+# Make generator outage draws
+##############################################
+initial_time = Dates.DateTime("2020-01-01") # Initial timestamp similar to DecisionModel etc.
+resolution = Dates.Hour(1) # Because now you can have mutiple resolutions of time series in a System
+horizon = 24 # Horizon similar to DecisionModel etc.
+steps = 2 # Number of steps similar to a simulation
+
+Sienna2PRAS.make_generator_outage_draws!(rts_da_sys, initial_time, resolution, steps, horizon)

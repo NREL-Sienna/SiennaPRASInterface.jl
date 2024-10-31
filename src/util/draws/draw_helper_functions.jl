@@ -1,10 +1,5 @@
 ##############################################
 # Helpful Reference ; https://core.ac.uk/download/pdf/13643059.pdf
-# Import Necessary Packages
-##############################################
-import Random
-import Dates: Hour
-##############################################
 # Converting FOR and MTTR to λ and μ
 ##############################################
 function rate_to_probability(for_gen::Float64, mttr::Int64)
@@ -168,11 +163,11 @@ end
 
 # Initial time, resolution and length
 function get_timestamps(
-    initial_time::DateTime,
+    initial_time::Dates.DateTime,
     resolution::TIMEPERIOD,
     steps::Int,
     horizon::Int,
-) where {TIMEPERIOD <: TimePeriod}
+) where {TIMEPERIOD <: Dates.TimePeriod}
     finish_time = initial_time + (resolution * ((steps * horizon) - 1))
     return collect(StepRange(initial_time, resolution, finish_time))
 end

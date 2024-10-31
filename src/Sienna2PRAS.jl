@@ -8,11 +8,12 @@ module Sienna2PRAS
 #################################################################################
 # Exports
 #################################################################################
-export make_pras_system
+export generate_pras_system
 export generate_outage_profile
 export generate_csv_outage_profile
 export add_csv_time_series!
 export add_csv_time_series_single_stage!
+export make_generator_outage_draws!
 #################################################################################
 # Imports
 #################################################################################
@@ -25,6 +26,8 @@ import CSV
 import JSON
 import UUIDs
 import TimeSeries
+import Random123
+import Random
 
 const PSY = PowerSystems
 #################################################################################
@@ -40,6 +43,8 @@ include("util/parsing/outage_data_helper_functions.jl")
 include("util/parsing/PRAS_export.jl")
 include("util/sienna/helper_functions.jl")
 include("util/sienna/add_csv_time_series_data.jl")
+include("util/draws/draw_helper_functions.jl")
+include("util/draws/sienna_draws.jl")
 
 include("main/PSY2PRAS.jl")
 include("main/PRAS2PSY.jl")
