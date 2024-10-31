@@ -12,7 +12,7 @@ export make_generator_outage_draws!
 # Imports
 #################################################################################
 import PowerSystems
-import PRAS
+import .PRASBase
 import Dates
 import TimeZones
 import DataFrames
@@ -27,6 +27,12 @@ const PSY = PowerSystems
 #################################################################################
 # Includes
 #################################################################################
+const PRAS_VERSION = "v0.6.0"
+
+include("PRASBase/PRASBase.jl")
+include("ResourceAdequacy/ResourceAdequacy.jl")
+include("CapacityCredit/CapacityCredit.jl")
+
 include("parsers/power_system_table_data.jl") # Over-writes some PSY functions.
 
 include("util/definitions.jl")
@@ -40,7 +46,7 @@ include("util/sienna/add_csv_time_series_data.jl")
 include("util/draws/draw_helper_functions.jl")
 include("util/draws/sienna_draws.jl")
 
-include("main/PSY2PRAS.jl")
-include("main/PRAS2PSY.jl")
+include("PSY2PRAS.jl")
+include("PRAS2PSY.jl")
 
 end
