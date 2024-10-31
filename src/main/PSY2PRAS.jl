@@ -2,7 +2,7 @@
 # Main function to build a instance of PRAS SystemModel
 # from Sienna/Data PowerSytems.jl System
 #######################################################
-function make_pras_system(
+function generate_pras_system(
     sys::PSY.System,
     aggregation::Type{AT};
     availability=true,
@@ -875,7 +875,7 @@ function make_pras_system(
     end
 end
 
-function make_pras_system(
+function generate_pras_system(
     sys_location::String,
     aggregation::Type{AT};
     availability=true,
@@ -894,7 +894,7 @@ function make_pras_system(
         )
     end
 
-    make_pras_system(
+    generate_pras_system(
         sys,
         aggregation,
         availability=availability,
