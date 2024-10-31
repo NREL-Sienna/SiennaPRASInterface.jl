@@ -59,10 +59,7 @@ rts_pras_sys = Sienna2PRAS.generate_pras_system(
     export_location="rts.pras",
 );
 rts_sys_location = "/Users/sdhulipa/Old Mac Backup/Desktop/OneDrive-Backup/NREL-Github/temp/PSCB_test/RTS_4.X.json"
-rts_pras_sys = Sienna2PRAS.generate_pras_system(
-    rts_sys_location,
-    PSY.Area,
-);
+rts_pras_sys = Sienna2PRAS.generate_pras_system(rts_sys_location, PSY.Area);
 
 ##############################################
 # Make generator outage draws
@@ -72,4 +69,10 @@ resolution = Dates.Hour(1) # Because now you can have mutiple resolutions of tim
 horizon = 24 # Horizon similar to DecisionModel etc.
 steps = 2 # Number of steps similar to a simulation
 
-Sienna2PRAS.make_generator_outage_draws!(rts_da_sys, initial_time, resolution, steps, horizon)
+Sienna2PRAS.make_generator_outage_draws!(
+    rts_da_sys,
+    initial_time,
+    resolution,
+    steps,
+    horizon,
+)

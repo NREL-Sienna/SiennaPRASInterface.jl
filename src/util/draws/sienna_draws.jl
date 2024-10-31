@@ -74,4 +74,3 @@ function make_generator_outage_draws!(
         )
     end
 end
-
