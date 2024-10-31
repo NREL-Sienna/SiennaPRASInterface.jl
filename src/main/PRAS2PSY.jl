@@ -1,11 +1,3 @@
-#######################################################
-# Surya
-# NREL
-# January 2021
-# SIIP --> PRAS Linkage Module
-#######################################################
-# Generate Outage Profile
-#######################################################
 function generate_outage_profile(
     pras_system::PRAS.SystemModel,
     psy_sys::PSY.System;
@@ -16,7 +8,7 @@ function generate_outage_profile(
     """
     generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
 
-    Process the assess results to get timeseries of generator status and include 
+    Process the assess results to get timeseries of generator status and include
     this timeseries data to the corresponding component in PSY System and exported
     using to_json method (serializing the PSY System).
 
@@ -138,7 +130,7 @@ function generate_csv_outage_profile(
     """
     generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
 
-    Process the assess results to get timeseries of generator status and include 
+    Process the assess results to get timeseries of generator status and include
     this timeseries data to the corresponding component in PSY System and exported
     using to_json method (serializing the PSY System).
 

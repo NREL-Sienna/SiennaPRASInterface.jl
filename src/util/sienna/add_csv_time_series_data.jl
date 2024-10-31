@@ -5,7 +5,7 @@
 # Generate PSY System from CSV Outage Profiles
 # TODO: Handle Lumped Wind Plants
 #######################################################
-#  Handling CC units using cc_restrictions.json because 
+#  Handling CC units using cc_restrictions.json because
 # PSY has multiple CC units PRAS doesn't
 #######################################################
 const CC_RESTRICTIONS_UTIL_FILE =
@@ -21,7 +21,7 @@ csv_dict = Dict([
     ("Branch.csv", PSY.Branch),
 ]);
 #######################################################
-# Generate Outage Profile for two stage SIIP Simulations
+# Generate Outage Profile for two stage PowerSimulations
 #######################################################
 function add_csv_time_series!(
     sys_DA::PSY.System,
@@ -219,7 +219,7 @@ function add_csv_time_series!(
 end
 
 #######################################################
-# Generate Outage Profile for single stage SIIP Simulations
+# Generate Outage Profile for single stage PowerSimulations
 #######################################################
 function add_csv_time_series_single_stage!(
     sys_DA::PSY.System,

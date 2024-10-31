@@ -16,10 +16,10 @@ function generate_pras_system(
     ...
     # Arguments
     - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
-    - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional} 
-    - `availability::Bool`: Takes into account avaialability of StaticInjection components when building the PRAS System {Optional} 
-    - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional} 
-    - `export_location::String`: Export location of the .pras file  
+    - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional}
+    - `availability::Bool`: Takes into account avaialability of StaticInjection components when building the PRAS System {Optional}
+    - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional}
+    - `export_location::String`: Export location of the .pras file
     ...
 
     # Examples
@@ -119,10 +119,10 @@ function generate_pras_system(
     #######################################################
     # PRAS timestamps
     # Need this to select timeseries values of interest
-    # TODO: Is it okay to assume each System will have a 
-    # SingleTimeSeries? 
+    # TODO: Is it okay to assume each System will have a
+    # SingleTimeSeries?
     #######################################################
-    # 
+    #
     s2p_meta = S2P_metadata()
 
     ts_counts = PSY.get_time_series_counts(sys)
@@ -175,7 +175,7 @@ function generate_pras_system(
     for h_s in h_s_comps
         push!(dup_uuids, PSY.IS.get_uuid.(PSY._get_components(h_s))...)
     end
-    # Add HybridSystem sub component UUIDs to s2p_meta 
+    # Add HybridSystem sub component UUIDs to s2p_meta
     if ~(isempty(dup_uuids))
         s2p_meta.hs_uuids = dup_uuids
     end
@@ -186,7 +186,7 @@ function generate_pras_system(
         s2p_meta.load_type = PSY.PowerLoad
     end
     #######################################################
-    # PRAS Regions - Areas in SIIP
+    # PRAS Regions - Areas in PowerSystems.jl
     #######################################################
     @info "Processing $(aggregation) objects in Sienna/Data PowerSystems System... "
     regions = collect(PSY.get_components(aggregation, sys))
@@ -807,7 +807,7 @@ function generate_pras_system(
     #######################################################
     if (num_regions > 1)
         #######################################################
-        # PRAS Lines 
+        # PRAS Lines
         #######################################################
         @info "Collecting all inter regional lines in Sienna/Data PowerSystems System..."
 
