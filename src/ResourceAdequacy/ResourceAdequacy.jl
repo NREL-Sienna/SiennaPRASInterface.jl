@@ -1,6 +1,6 @@
 @reexport module ResourceAdequacy
 
-using MinCostFlows
+using ..MinCostFlows
 using ..PRASBase
 
 import Base: -, broadcastable, getindex, merge!
@@ -18,52 +18,52 @@ import TimeZones: ZonedDateTime, @tz_str
 
 export assess,
 
-    # Metrics
-    ReliabilityMetric,
-    LOLE,
-    EUE,
-    val,
-    stderror,
+	# Metrics
+	ReliabilityMetric,
+	LOLE,
+	EUE,
+	val,
+	stderror,
 
-    # Simulation specifications
-    Convolution,
-    SequentialMonteCarlo,
+	# Simulation specifications
+	Convolution,
+	SequentialMonteCarlo,
 
-    # Result specifications
-    Shortfall,
-    ShortfallSamples,
-    Surplus,
-    SurplusSamples,
-    Flow,
-    FlowSamples,
-    Utilization,
-    UtilizationSamples,
-    StorageEnergy,
-    StorageEnergySamples,
-    GeneratorStorageEnergy,
-    GeneratorStorageEnergySamples,
-    GeneratorAvailability,
-    StorageAvailability,
-    GeneratorStorageAvailability,
-    LineAvailability,
+	# Result specifications
+	Shortfall,
+	ShortfallSamples,
+	Surplus,
+	SurplusSamples,
+	Flow,
+	FlowSamples,
+	Utilization,
+	UtilizationSamples,
+	StorageEnergy,
+	StorageEnergySamples,
+	GeneratorStorageEnergy,
+	GeneratorStorageEnergySamples,
+	GeneratorAvailability,
+	StorageAvailability,
+	GeneratorStorageAvailability,
+	LineAvailability,
 
-    # Convenience re-exports
-    ZonedDateTime,
-    @tz_str
+	# Convenience re-exports
+	ZonedDateTime,
+	@tz_str
 
 abstract type ReliabilityMetric end
 abstract type SimulationSpec end
 abstract type ResultSpec end
 abstract type ResultAccumulator{S <: SimulationSpec, R <: ResultSpec} end
 abstract type Result{
-    N, # Number of timesteps simulated
-    L, # Length of each simulation timestep
-    T <: Period, # Units of each simulation timestep
+	N, # Number of timesteps simulated
+	L, # Length of each simulation timestep
+	T <: Period, # Units of each simulation timestep
 } end
 
 MeanVariance = Series{
-    Number,
-    Tuple{Mean{Float64, EqualWeight}, Variance{Float64, Float64, EqualWeight}},
+	Number,
+	Tuple{Mean{Float64, EqualWeight}, Variance{Float64, Float64, EqualWeight}},
 }
 
 include("metrics.jl")

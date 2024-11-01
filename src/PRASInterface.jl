@@ -11,27 +11,30 @@ export make_generator_outage_draws!
 #################################################################################
 # Imports
 #################################################################################
-import PowerSystems
-import .PRASBase
-import Dates
-import TimeZones
-import DataFrames
-import CSV
-import JSON
-import UUIDs
-import TimeSeries
-import Random123
-import Random
+using PowerSystems: PowerSystems
+using Dates: Dates
+using TimeZones: TimeZones
+using DataFrames: DataFrames
+using CSV: CSV
+using JSON: JSON
+using UUIDs: UUIDs
+using TimeSeries: TimeSeries
+using Random123: Random123
+using Random: Random
 
 const PSY = PowerSystems
 #################################################################################
 # Includes
 #################################################################################
-const PRAS_VERSION = "v0.6.0"
 
-include("PRASBase/PRASBase.jl")
-include("ResourceAdequacy/ResourceAdequacy.jl")
-include("CapacityCredit/CapacityCredit.jl")
+module PRAS
+	using Reexport
+	const PRAS_VERSION = "v0.6.0"
+	include("MinCostFlows/MinCostFlows.jl")
+	include("PRASBase/PRASBase.jl")
+	include("ResourceAdequacy/ResourceAdequacy.jl")
+	include("CapacityCredit/CapacityCredit.jl")
+end
 
 include("util/definitions.jl")
 include("util/runchecks.jl")
