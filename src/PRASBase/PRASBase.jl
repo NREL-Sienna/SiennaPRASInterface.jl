@@ -65,6 +65,8 @@ export
     SystemModel,
     savemodel
 
+import ..PRAS: PRAS_VERSION
+
 include("units.jl")
 include("collections.jl")
 include("assets.jl")

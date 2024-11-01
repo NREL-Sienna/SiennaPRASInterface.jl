@@ -7,14 +7,15 @@ function rate_to_probability(for_gen::Float64, mttr::Int64)
         for_gen = for_gen / 100
     end
 
-    if ~(mttr == 0)
+    if for_gen == 1.0
+        return (λ=1.0, μ=0.0)  # can we error here instead?
+    end
+    if mttr != 0
         μ = 1 / mttr
     else # MTTR of 0.0 doesn't make much sense.
         μ = 1.0
     end
-    λ = (μ * for_gen) / (1 - for_gen)
-
-    return (λ=λ, μ=μ)
+    return (λ=(μ * for_gen) / (1 - for_gen), μ=μ)
 end
 
 ##############################################

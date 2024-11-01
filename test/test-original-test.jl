@@ -27,7 +27,7 @@ const PSCB = PowerSystemCaseBuilder
     gen_for_data = CSV.read(joinpath(@__DIR__, "descriptors/gen.csv"), DataFrames.DataFrame)
 
     for row in DataFrames.eachrow(gen_for_data)
-        λ, μ = rate_to_probability(row.FOR, row["MTTR Hr"])
+        λ, μ = PRASInterface.rate_to_probability(row.FOR, row["MTTR Hr"])
         transition_data = PSY.GeometricDistributionForcedOutage(;
             mean_time_to_recovery=row["MTTR Hr"],
             outage_transition_probability=λ,
@@ -43,19 +43,19 @@ const PSCB = PowerSystemCaseBuilder
     end
 
     # Make a PRAS System from PSY-4.X System
-    rts_pras_sys = Sienna2PRAS.generate_pras_system(rts_da_sys, PSY.Area)
-    rts_pras_sys = Sienna2PRAS.generate_pras_system(
+    rts_pras_sys = PRASInterface.generate_pras_system(rts_da_sys, PSY.Area)
+    rts_pras_sys = PRASInterface.generate_pras_system(
         rts_da_sys,
         PSY.Area,
         lump_region_renewable_gens=true,
     )
-    rts_pras_sys = Sienna2PRAS.generate_pras_system(
+    rts_pras_sys = PRASInterface.generate_pras_system(
         rts_da_sys,
         PSY.Area,
         lump_region_renewable_gens=true,
         availability=false,
     )
-    rts_pras_sys = Sienna2PRAS.generate_pras_system(
+    rts_pras_sys = PRASInterface.generate_pras_system(
         rts_da_sys,
         PSY.Area,
         lump_region_renewable_gens=true,
@@ -75,7 +75,7 @@ const PSCB = PowerSystemCaseBuilder
     horizon = 24 # Horizon similar to DecisionModel etc.
     steps = 2 # Number of steps similar to a simulation
 
-    Sienna2PRAS.make_generator_outage_draws!(
+    PRASInterface.make_generator_outage_draws!(
         rts_da_sys,
         initial_time,
         resolution,
