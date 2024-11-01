@@ -1,6 +1,6 @@
 @reexport module ResourceAdequacy
 
-using MinCostFlows
+using ..MinCostFlows
 using ..PRASBase
 
 import Base: -, broadcastable, getindex, merge!

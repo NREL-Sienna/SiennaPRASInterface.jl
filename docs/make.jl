@@ -1,4 +1,5 @@
 using Documenter, PRASInterface
+import OrderedCollections: OrderedDict
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
@@ -9,7 +10,7 @@ pages = OrderedDict(
 )
 
 makedocs(
-    modules=[PRASInteface],
+    modules=[PRASInterface],
     format=Documenter.HTML(prettyurls=haskey(ENV, "GITHUB_ACTIONS")),
     sitename="PRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",

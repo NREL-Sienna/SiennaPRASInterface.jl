@@ -1,7 +1,5 @@
 @reexport module PRASBase
 
-import ..PRAS_VERSION
-
 import Base: broadcastable
 
 import Dates: @dateformat_str, AbstractDateTime, DateTime, Period, Minute, Hour, Day, Year
@@ -66,6 +64,8 @@ export
     # Main data structure
     SystemModel,
     savemodel
+
+import ..PRAS: PRAS_VERSION
 
 include("units.jl")
 include("collections.jl")

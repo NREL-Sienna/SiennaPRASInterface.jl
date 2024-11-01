@@ -19,31 +19,6 @@ mutable struct outage_data
     ) = new(prime_mover, fuel, max_capacity, FOR, MTTR, min_capacity)
 end
 
-##############################################
-# Converting FOR and MTTR to λ and μ
-##############################################
-function rate_to_probability(for_gen::Float64, mttr::Int64)
-
-    # Check to make sure FOR data is not in % 
-    if (for_gen > 1.0)
-        for_gen = for_gen / 100
-    end
-
-    if (for_gen == 1.0)
-        λ = 1.0
-        μ = 0.0
-    else
-        if ~(mttr == 0)
-            μ = 1 / mttr
-        else
-            μ = 1.0
-        end
-        λ = (μ * for_gen) / (1 - for_gen)
-    end
-
-    return (λ=λ, μ=μ)
-end
-
 # Defined on outage_data for Base.sort! to work
 Base.isless(data_1::outage_data, data_2::outage_data) =
     data_1.max_capacity < data_2.max_capacity
