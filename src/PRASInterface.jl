@@ -28,12 +28,12 @@ const PSY = PowerSystems
 #################################################################################
 
 module PRAS
-	using Reexport
-	const PRAS_VERSION = "v0.6.0"
-	include("MinCostFlows/MinCostFlows.jl")
-	include("PRASBase/PRASBase.jl")
-	include("ResourceAdequacy/ResourceAdequacy.jl")
-	include("CapacityCredit/CapacityCredit.jl")
+using Reexport
+const PRAS_VERSION = "v0.6.0"
+include("MinCostFlows/MinCostFlows.jl")
+include("PRASBase/PRASBase.jl")
+include("ResourceAdequacy/ResourceAdequacy.jl")
+include("CapacityCredit/CapacityCredit.jl")
 end
 
 include("util/definitions.jl")
