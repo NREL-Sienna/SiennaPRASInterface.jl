@@ -18,7 +18,7 @@ makedocs(
 )
 
 deploydocs(
-    repo="github.com/NREL-SIENNA/PRASInterface.git",
+    repo="github.com/NREL-SIENNA/PRASInterface.jl.git",
     target="build",
     branch="gh-pages",
     devbranch="main",
