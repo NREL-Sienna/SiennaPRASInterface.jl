@@ -1,33 +1,37 @@
-#######################################################
-# Main function to build a instance of PRAS SystemModel
-# from Sienna/Data PowerSytems.jl System
-#######################################################
+"""
+    generate_pras_system(sys::PSY.System, aggregation; kwargs...)
+
+Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemModel is returned.
+...
+
+# Arguments
+
+  - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
+  - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional}
+  - `availability::Bool`: Takes into account avaialability of StaticInjection components when building the PRAS System {Optional}
+  - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional}
+  - `export_location::String`: Export location of the .pras file
+    ...
+
+# Returns
+
+    - `PRAS.SystemModel`: PRAS SystemModel object
+
+# Examples
+
+```julia-repl
+julia> make_pras_system(psy_sys)
+PRAS SystemModel
+```
+"""
 function generate_pras_system(
     sys::PSY.System,
     aggregation::Type{AT};
     availability=true,
     lump_region_renewable_gens=false,
     export_location::Union{Nothing, String}=nothing,
-) where {AT <: PSY.AggregationTopology}
-    """
-    make_pras_system(psy_sys,system_model)
+)::PRAS.SystemModel where {AT <: PSY.AggregationTopology}
 
-    Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemModel is returned.
-    ...
-    # Arguments
-    - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
-    - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional}
-    - `availability::Bool`: Takes into account avaialability of StaticInjection components when building the PRAS System {Optional}
-    - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional}
-    - `export_location::String`: Export location of the .pras file
-    ...
-
-    # Examples
-    ```julia-repl
-    julia> make_pras_system(psy_sys)
-    PRAS SystemModel
-    ```
-    """
     # PRAS needs Sienna\Data PowerSystems.jl System to be in NATURAL_UNITS
     PSY.set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
 
