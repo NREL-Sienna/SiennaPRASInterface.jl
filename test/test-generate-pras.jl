@@ -71,6 +71,16 @@ function test_names_equal(
     return false
 end
 
+function array_all_equal(x::AbstractVector{T}, v::T) where {T}
+    for (i, xi) in enumerate(x)
+        if !isapprox(xi, v)
+            @error "array[$i]: $xi != $v"
+            return false
+        end
+    end
+    return true
+end
+
 @testset "RTS GMLC" begin
     rts_da_sys = get_rts_gmlc_outage()
     area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
@@ -83,6 +93,14 @@ end
             )
         )
     storage_names = PSY.get_name.(PSY.get_components(PSY.Storage, rts_da_sys))
+    generatorstorage_names =
+        PSY.get_name.(
+            PSY.get_components(
+                x -> PSY.get_available(x) && PSY.get_rating(x) > 0,
+                Union{PSY.HydroEnergyReservoir, PSY.HybridSystem},
+                rts_da_sys,
+            )
+        )
 
     # Make a PRAS System from PSY-4.X System
     rts_pras_sys = generate_pras_system(rts_da_sys, PSY.Area)
@@ -91,6 +109,9 @@ end
     @test test_names_equal(rts_pras_sys.regions.names, area_names)
     @test test_names_equal(rts_pras_sys.generators.names, generator_names)
     @test test_names_equal(rts_pras_sys.storages.names, storage_names)
+    @test test_names_equal(rts_pras_sys.generatorstorages.names, generatorstorage_names)
+    #TODO: Test all (inter-aggregation topology) lines exist
+    #TODO: Test load
 
     # Test that timestamps look right
     # get time series length
@@ -104,17 +125,27 @@ end
     idx = findfirst(x -> x == "201_HYDRO_4", rts_pras_sys.generators.names)
     hydro_component = PSY.get_component(PSY.HydroDispatch, rts_da_sys, "201_HYDRO_4")
     max_capacity =
-        PSY.get_time_series_values(
-            PSY.SingleTimeSeries,
-            hydro_component,
-            "max_active_power",
-        ) .* PSY.get_max_active_power(hydro_component)
-    @test isapprox(rts_pras_sys.generators.capacity[idx, 1], max_capacity[1]) broken = true
-    @test all(isapprox.(rts_pras_sys.generators.capacity[idx, :], max_capacity)) broken =
-        true
+        floor.(
+            PSY.get_time_series_values(
+                PSY.SingleTimeSeries,
+                hydro_component,
+                "max_active_power",
+            )
+        )
+    @test rts_pras_sys.generators.capacity[idx, 1] == max_capacity[1]
+    @test all(rts_pras_sys.generators.capacity[idx, :] .== max_capacity)
+
+    thermal_component = PSY.get_component(PSY.ThermalStandard, rts_da_sys, "322_CT_6")
+    @test array_all_equal(
+        rts_pras_sys.generators.capacity[
+            findfirst(x -> x == "322_CT_6", rts_pras_sys.generators.names),
+            :,
+        ],
+        Int(floor(PSY.get_max_active_power(thermal_component))),
+    )
 
     # Test Assess Run
-    sequential_monte_carlo = PRASInterface.PRAS.SequentialMonteCarlo(samples=2)
+    sequential_monte_carlo = PRASInterface.PRAS.SequentialMonteCarlo(samples=2, seed=1)
     shortfalls, = PRASInterface.PRAS.assess(
         rts_pras_sys,
         sequential_monte_carlo,
@@ -158,16 +189,6 @@ end
     end
 end
 
-function array_all_equal(x::AbstractVector{T}, v::T) where {T}
-    for (i, xi) in enumerate(x)
-        if !isapprox(xi, v)
-            @error "array[$i]: $xi != $v"
-            return false
-        end
-    end
-    return true
-end
-
 @testset "RTS GMLC with default data" begin
     rts_da_sys = PSCB.build_system(PSCB.PSISystems, "RTS_GMLC_DA_sys")
     area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
@@ -192,3 +213,7 @@ end
     @test array_all_equal(rts_pras_sys.generators.λ[idx, :], λ)
     @test array_all_equal(rts_pras_sys.generators.μ[idx, :], μ)
 end
+
+# TODO: We want to test time-series λ, μ
+# TODO: test HybridSystems
+# TODO: Unit test line/interface
