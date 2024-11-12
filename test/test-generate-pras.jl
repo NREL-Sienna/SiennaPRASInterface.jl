@@ -101,6 +101,17 @@ end
                 rts_da_sys,
             )
         )
+    line_names =
+        PSY.get_name.(
+            PSY.get_components(PSY.Branch, rts_da_sys) do c
+                PSY.get_available(c) && !(
+                    c isa PSY.TapTransformer ||
+                    c isa PSY.Transformer2W ||
+                    c isa PSY.PhaseShiftingTransformer
+                )  # From definitions.jl
+                PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
+            end
+        )
 
     # Make a PRAS System from PSY-4.X System
     rts_pras_sys = generate_pras_system(rts_da_sys, PSY.Area)
@@ -110,8 +121,7 @@ end
     @test test_names_equal(rts_pras_sys.generators.names, generator_names)
     @test test_names_equal(rts_pras_sys.storages.names, storage_names)
     @test test_names_equal(rts_pras_sys.generatorstorages.names, generatorstorage_names)
-    #TODO: Test all (inter-aggregation topology) lines exist
-    #TODO: Test load
+    @test test_names_equal(rts_pras_sys.lines.names, line_names)
 
     # Test that timestamps look right
     # get time series length
@@ -143,6 +153,17 @@ end
         ],
         Int(floor(PSY.get_max_active_power(thermal_component))),
     )
+
+    load_values = zeros(Float64, length(rts_pras_sys.regions.names), length(psy_ts))
+    for load in PSY.get_components(PSY.PowerLoad, rts_da_sys)
+        region = PSY.get_area(PSY.get_bus(load))
+        # Fast enough for # areas < 10
+        idx = findfirst(x -> x == PSY.get_name(region), rts_pras_sys.regions.names)
+        max_active_power =
+            PSY.get_time_series_values(PSY.SingleTimeSeries, load, "max_active_power")
+        load_values[idx, :] += max_active_power
+    end
+    @test all(rts_pras_sys.regions.load .== Int.(floor.(load_values)))
 
     # Test Assess Run
     sequential_monte_carlo = PRASInterface.PRAS.SequentialMonteCarlo(samples=2, seed=1)
@@ -216,4 +237,5 @@ end
 
 # TODO: We want to test time-series λ, μ
 # TODO: test HybridSystems
-# TODO: Unit test line/interface
+# TODO: Unit test line_and_interfaces.jl
+# TODO: Unit test util/sienna/helper_functions.jl
