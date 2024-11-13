@@ -8,6 +8,7 @@ export generate_csv_outage_profile
 export add_csv_time_series!
 export add_csv_time_series_single_stage!
 export make_generator_outage_draws!
+export PRAS
 #################################################################################
 # Imports
 #################################################################################

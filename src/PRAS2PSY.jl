@@ -1,3 +1,28 @@
+"""
+generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
+
+Process the assess results to get timeseries of generator status and include
+this timeseries data to the corresponding component in PSY System and exported
+using to_json method (serializing the PSY System).
+
+...
+
+# Arguments
+
+  - `pras_system::PRAS.SystemModel`: PRAS System
+  - `num_runs::Int64`: Number of PRAS runs
+  - `psy_sys::PSY.System`: PSY System
+  - `num_scenarios::Int64`: Number of scenarios of user interest.
+  - `location::String`: Location to store outage profile.
+    ...
+
+# Examples
+
+```julia-repl
+julia> generate_outage_profile(results, pras_sys, psy_sys, 1)
+PSY System exported using to_json method in InfrastructureSystems
+```
+"""
 function generate_outage_profile(
     pras_system::PRAS.SystemModel,
     psy_sys::PSY.System;
@@ -5,28 +30,7 @@ function generate_outage_profile(
     num_runs::Union{Nothing, Int}=nothing,
     num_scenarios::Union{Nothing, Int}=nothing,
 )
-    """
-    generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
 
-    Process the assess results to get timeseries of generator status and include
-    this timeseries data to the corresponding component in PSY System and exported
-    using to_json method (serializing the PSY System).
-
-    ...
-    # Arguments
-    - `pras_system::PRAS.SystemModel`: PRAS System
-    - `num_runs::Int64`: Number of PRAS runs
-    - `psy_sys::PSY.System`: PSY System
-    - `num_scenarios::Int64`: Number of scenarios of user interest.
-    - `location::String`: Location to store outage profile.
-    ...
-
-    # Examples
-    ```julia-repl
-    julia> generate_outage_profile(results,pras_sys,psy_sys,1)
-    PSY System exported using to_json method in InfrastructureSystems
-    ```
-    """
     #kwargs handling
     if (location === nothing)
         location = dirname(dirname(@__DIR__))
@@ -121,34 +125,38 @@ function generate_outage_profile(
     @info "Succesfully exported PSY System(s). The .json files and corresponding data .h5 files for all scenarios are available here : $(dir_name)."
 end
 
+"""
+generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
+
+Process the assess results to get timeseries of generator status and include
+this timeseries data to the corresponding component in PSY System and exported
+using to_json method (serializing the PSY System).
+
+...
+
+# Arguments
+
+  - `pras_system::PRAS.SystemModel`: PRAS System
+  - `num_runs::Int64`: Number of PRAS runs
+  - `psy_sys::PSY.System`: PSY System
+  - `num_scenarios::Int64`: Number of scenarios of user interest.
+  - `location::String`: Location to store outage profile.
+    ...
+
+# Examples
+
+```julia-repl
+julia> generate_outage_profile(results, pras_sys, psy_sys, 1)
+PSY System exported using to_json method in InfrastructureSystems
+```
+"""
 function generate_csv_outage_profile(
     pras_system::PRAS.SystemModel;
     location::Union{Nothing, String}=nothing,
     num_runs::Union{Nothing, Int}=nothing,
     num_scenarios::Union{Nothing, Int}=nothing,
 )
-    """
-    generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
 
-    Process the assess results to get timeseries of generator status and include
-    this timeseries data to the corresponding component in PSY System and exported
-    using to_json method (serializing the PSY System).
-
-    ...
-    # Arguments
-    - `pras_system::PRAS.SystemModel`: PRAS System
-    - `num_runs::Int64`: Number of PRAS runs
-    - `psy_sys::PSY.System`: PSY System
-    - `num_scenarios::Int64`: Number of scenarios of user interest.
-    - `location::String`: Location to store outage profile.
-    ...
-
-    # Examples
-    ```julia-repl
-    julia> generate_outage_profile(results,pras_sys,psy_sys,1)
-    PSY System exported using to_json method in InfrastructureSystems
-    ```
-    """
     #kwargs handling
     if (location === nothing)
         location = dirname(dirname(@__DIR__))
