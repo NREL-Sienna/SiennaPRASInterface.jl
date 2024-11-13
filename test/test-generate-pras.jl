@@ -104,11 +104,8 @@ end
     line_names =
         PSY.get_name.(
             PSY.get_components(PSY.Branch, rts_da_sys) do c
-                PSY.get_available(c) && !(
-                    c isa PSY.TapTransformer ||
-                    c isa PSY.Transformer2W ||
-                    c isa PSY.PhaseShiftingTransformer
-                )  # From definitions.jl
+                PSY.get_available(c) &&
+                    !(any(c isa T for T in PRASInterface.TransformerTypes))  # From definitions.jl
                 PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
             end
         )
@@ -134,7 +131,7 @@ end
     # 201_HYDRO_4 should have max active power from time series
     idx = findfirst(x -> x == "201_HYDRO_4", rts_pras_sys.generators.names)
     hydro_component = PSY.get_component(PSY.HydroDispatch, rts_da_sys, "201_HYDRO_4")
-    max_capacity =
+    max_power_ts =
         floor.(
             PSY.get_time_series_values(
                 PSY.SingleTimeSeries,
@@ -142,8 +139,8 @@ end
                 "max_active_power",
             )
         )
-    @test rts_pras_sys.generators.capacity[idx, 1] == max_capacity[1]
-    @test all(rts_pras_sys.generators.capacity[idx, :] .== max_capacity)
+    @test rts_pras_sys.generators.capacity[idx, 1] == max_power_ts[1]
+    @test all(rts_pras_sys.generators.capacity[idx, :] .== max_power_ts)
 
     thermal_component = PSY.get_component(PSY.ThermalStandard, rts_da_sys, "322_CT_6")
     @test array_all_equal(
@@ -155,7 +152,7 @@ end
     )
 
     load_values = zeros(Float64, length(rts_pras_sys.regions.names), length(psy_ts))
-    for load in PSY.get_components(PSY.PowerLoad, rts_da_sys)
+    for load in PSY.get_components(PSY.StaticLoad, rts_da_sys)
         region = PSY.get_area(PSY.get_bus(load))
         # Fast enough for # areas < 10
         idx = findfirst(x -> x == PSY.get_name(region), rts_pras_sys.regions.names)
