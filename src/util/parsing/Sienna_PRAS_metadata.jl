@@ -9,7 +9,6 @@ mutable struct S2P_metadata
     first_timestamp::Union{Nothing, Dates.DateTime}
     first_timeseries::Union{Nothing, Union{<:PSY.Forecast, <:PSY.StaticTimeSeries}}
     hs_uuids::Vector{Base.UUID}
-    load_type::Union{Nothing, Type{<:PSY.StaticLoad}}
 
     S2P_metadata(
         has_st_timeseries=false,
@@ -18,8 +17,7 @@ mutable struct S2P_metadata
         N=0,
         first_timestamp=nothing,
         first_ts=nothing,
-        hs_uuids=Vector{Base.UUID}[],
-        load_type=PSY.StandardLoad,
+        hs_uuids=Vector{Base.UUID}[]
     ) = new(
         has_st_timeseries,
         has_forecasts,
@@ -27,8 +25,7 @@ mutable struct S2P_metadata
         N,
         first_timestamp,
         first_ts,
-        hs_uuids,
-        load_type,
+        hs_uuids
     )
 end
 
