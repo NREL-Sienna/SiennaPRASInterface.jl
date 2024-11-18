@@ -27,6 +27,11 @@ EUE(x::AbstractShortfallResult, ::Colon, ::Colon) =
 
 # Sample-averaged shortfall data
 
+"""
+    ShortfallResult
+
+Matrix-like data structure for storing shortfall means
+"""
 struct ShortfallResult{N, L, T <: Period, E <: EnergyUnit} <:
        AbstractShortfallResult{N, L, T}
     nsamples::Union{Int, Nothing}
