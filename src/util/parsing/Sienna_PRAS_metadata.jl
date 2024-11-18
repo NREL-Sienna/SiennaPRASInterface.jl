@@ -17,7 +17,7 @@ mutable struct S2P_metadata
         N=0,
         first_timestamp=nothing,
         first_ts=nothing,
-        hs_uuids=Vector{Base.UUID}[]
+        hs_uuids=Vector{Base.UUID}[],
     ) = new(
         has_st_timeseries,
         has_forecasts,
@@ -25,7 +25,7 @@ mutable struct S2P_metadata
         N,
         first_timestamp,
         first_ts,
-        hs_uuids
+        hs_uuids,
     )
 end
 

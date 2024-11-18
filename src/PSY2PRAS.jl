@@ -204,11 +204,8 @@ function generate_pras_system(
     for (idx, region) in enumerate(regions)
         reg_load_comps =
             availability ?
-            get_available_components_in_aggregation_topology(
-                PSY.StaticLoad,
-                sys,
-                region,
-            ) : PSY.get_components_in_aggregation_topology(PSY.StaticLoad, sys, region)
+            get_available_components_in_aggregation_topology(PSY.StaticLoad, sys, region) :
+            PSY.get_components_in_aggregation_topology(PSY.StaticLoad, sys, region)
         if (length(reg_load_comps) > 0)
             region_load[idx, :] =
                 floor.(
@@ -258,54 +255,56 @@ function generate_pras_system(
             )
             if (length(wind_gs) > 1)
                 temp_lumped_wind_gen = PSY.RenewableDispatch(nothing)
-                PSY.set_bus!(temp_lumped_wind_gen,PSY.get_bus(first(wind_gs)))
+                PSY.set_bus!(temp_lumped_wind_gen, PSY.get_bus(first(wind_gs)))
                 PSY.set_name!(temp_lumped_wind_gen, "Lumped_Wind_" * region_names[idx])
                 PSY.set_prime_mover_type!(temp_lumped_wind_gen, PSY.PrimeMovers.WT)
                 ext = PSY.get_ext(temp_lumped_wind_gen)
-                ext["region_gen_ts"] = round.(
-                    Int,
-                    sum(
-                        get_ts_values.(
-                            get_first_ts.(
-                                PSY.get_time_series_multiple.(
-                                    wind_gs,
-                                    s2p_meta.filter_func,
-                                    name="max_active_power",
+                ext["region_gen_ts"] =
+                    round.(
+                        Int,
+                        sum(
+                            get_ts_values.(
+                                get_first_ts.(
+                                    PSY.get_time_series_multiple.(
+                                        wind_gs,
+                                        s2p_meta.filter_func,
+                                        name="max_active_power",
+                                    )
                                 )
-                            )
-                        ) .* PSY.get_max_active_power.(wind_gs),
-                    ),
-                )
-                PSY.set_base_power!(temp_lumped_wind_gen,maximum(ext["region_gen_ts"]))
-                PSY.set_rating!(temp_lumped_wind_gen,maximum(ext["region_gen_ts"]))
-                PSY.add_component!(sys,temp_lumped_wind_gen)
+                            ) .* PSY.get_max_active_power.(wind_gs),
+                        ),
+                    )
+                PSY.set_base_power!(temp_lumped_wind_gen, maximum(ext["region_gen_ts"]))
+                PSY.set_rating!(temp_lumped_wind_gen, maximum(ext["region_gen_ts"]))
+                PSY.add_component!(sys, temp_lumped_wind_gen)
                 for comp in wind_gs
                     PSY.remove_component!(sys, comp)
                 end
             end
             if (length(pv_gs) > 1)
                 temp_lumped_pv_gen = PSY.RenewableDispatch(nothing)
-                PSY.set_bus!(temp_lumped_pv_gen,PSY.get_bus(first(pv_gs)))
+                PSY.set_bus!(temp_lumped_pv_gen, PSY.get_bus(first(pv_gs)))
                 PSY.set_name!(temp_lumped_pv_gen, "Lumped_PV_" * region_names[idx])
                 PSY.set_prime_mover_type!(temp_lumped_pv_gen, PSY.PrimeMovers.PVe)
                 ext = PSY.get_ext(temp_lumped_pv_gen)
-                ext["region_gen_ts"] = round.(
-                    Int,
-                    sum(
-                        get_ts_values.(
-                            get_first_ts.(
-                                PSY.get_time_series_multiple.(
-                                    pv_gs,
-                                    s2p_meta.filter_func,
-                                    name="max_active_power",
+                ext["region_gen_ts"] =
+                    round.(
+                        Int,
+                        sum(
+                            get_ts_values.(
+                                get_first_ts.(
+                                    PSY.get_time_series_multiple.(
+                                        pv_gs,
+                                        s2p_meta.filter_func,
+                                        name="max_active_power",
+                                    )
                                 )
-                            )
-                        ) .* PSY.get_max_active_power.(pv_gs),
-                    ),
-                )
-                PSY.set_base_power!(temp_lumped_pv_gen,maximum(ext["region_gen_ts"]))
-                PSY.set_rating!(temp_lumped_pv_gen,maximum(ext["region_gen_ts"]))
-                PSY.add_component!(sys,temp_lumped_pv_gen)
+                            ) .* PSY.get_max_active_power.(pv_gs),
+                        ),
+                    )
+                PSY.set_base_power!(temp_lumped_pv_gen, maximum(ext["region_gen_ts"]))
+                PSY.set_rating!(temp_lumped_pv_gen, maximum(ext["region_gen_ts"]))
+                PSY.add_component!(sys, temp_lumped_pv_gen)
                 for comp in pv_gs
                     PSY.remove_component!(sys, comp)
                 end
@@ -316,11 +315,8 @@ function generate_pras_system(
     for (idx, region) in enumerate(regions)
         reg_gen_comps =
             availability ?
-            get_available_components_in_aggregation_topology(
-                PSY.Generator,
-                sys,
-                region,
-            ) : PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
+            get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
+            PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
         gs = filter(
             x -> (
                 ~(typeof(x) == PSY.HydroEnergyReservoir) &&
@@ -376,7 +372,7 @@ function generate_pras_system(
     # PRAS Generators
     #######################################################
     @info "Processing Generators in PSY System... "
-    
+
     gen = []
     for i in 1:num_regions
         if ~(length(gens[i]) == 0)
@@ -399,7 +395,9 @@ function generate_pras_system(
 
     for (idx, g) in enumerate(gen)
         if (
-            lump_region_renewable_gens && occursin("Lumped", g.name) && (
+            lump_region_renewable_gens &&
+            occursin("Lumped", g.name) &&
+            (
                 PSY.get_prime_mover_type(g) == PSY.PrimeMovers.WT ||
                 PSY.get_prime_mover_type(g) == PSY.PrimeMovers.PVe
             )
@@ -854,7 +852,7 @@ function generate_pras_system(
 
     @info "The Sienna/Data PowerSystems System is being de-serialized from the System JSON ..."
     sys = try
-        PSY.System(sys_location;runchecks=false)
+        PSY.System(sys_location; runchecks=false)
     catch
         error(
             "Sienna/Data PowerSystems System could not be de-serialized using the location of JSON provided. Please check the location and make sure you have permission to access time_series_storage.h5",
