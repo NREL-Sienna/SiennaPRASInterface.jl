@@ -1,9 +1,19 @@
-##############################################
-# Main function to make generator outage draws
-##############################################
 # TODO Try Threefry and others (https://juliarandom.github.io/RandomNumbers.jl/stable/man/random123/)
 rng = Random123.Philox4x((0, 0), 10)
 
+"""
+    make_generator_outage_draws!(
+        sys,
+        initial_time::Dates.DateTime=nothing,
+        resolution::TIMEPERIOD=nothing,
+        steps::Int=nothing,
+        horizon::Int=nothing,
+    ) where {TIMEPERIOD <: Dates.TimePeriod}
+
+Adds availability time series to the generators in the system.
+
+Main function to make generator outage draws.
+"""
 function make_generator_outage_draws!(
     sys::PSY.System,
     initial_time::Dates.DateTime=nothing,

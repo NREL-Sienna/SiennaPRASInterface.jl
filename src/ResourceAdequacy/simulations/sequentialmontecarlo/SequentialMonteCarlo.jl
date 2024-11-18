@@ -2,6 +2,29 @@ include("SystemState.jl")
 include("DispatchProblem.jl")
 include("utils.jl")
 
+"""
+    SequentialMonteCarlo(;
+        samples::Int=10_000,
+        seed::Integer=rand(UInt64),
+        verbose::Bool=false,
+        threaded::Bool=true
+    )
+
+Sequential Monte Carlo simulation parameters for PRAS analysis
+
+It it recommended that you fix the random seed.
+
+# Arguments
+
+  - `samples::Int=10_000`: Number of samples
+  - `seed::Integer=rand(UInt64)`: Random seed
+  - `verbose::Bool=false`: Print progress
+  - `threaded::Bool=true`: Use multi-threading
+
+# Returns
+
+  - `SequentialMonteCarlo`: PRAS analysis method
+"""
 struct SequentialMonteCarlo <: SimulationSpec
     nsamples::Int
     seed::UInt64
@@ -20,6 +43,22 @@ struct SequentialMonteCarlo <: SimulationSpec
     end
 end
 
+"""
+    assess(system::SystemModel, method::SequentialMonteCarlo, resultspecs::ResultSpec...)
+
+Run a Sequential Monte Carlo simulation on a `system` using the `method` data
+and return `resultspecs`.
+
+# Arguments
+
+  - `system::SystemModel`: PRAS data structure
+  - `method::SequentialMonteCarlo`: method for PRAS analysis
+  - `resultspecs::ResultSpec...`: PRAS metric for metrics like [`Shortfall`](@ref) missing generation
+
+# Returns
+
+  - `results::Tuple{Vararg{ResultAccumulator{SequentialMonteCarlo}}}`: PRAS metric results
+"""
 function assess(
     system::SystemModel,
     method::SequentialMonteCarlo,

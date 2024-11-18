@@ -1,14 +1,39 @@
+"""
+PowerSystems Interface for Probabilistic Resource Adequacy Studies (PRAS)
+
+# Key Functions
+
+  - [`generate_pras_system`](@ref): convert PSY to PRAS model
+  - [`assess`](@ref): assess PRAS model
+
+# Key PRAS Types
+
+  - [`SystemModel`](@ref): PRAS data structure
+  - [`SequentialMonteCarlo`](@ref): method for PRAS analysis
+  - [`Shortfall`](@ref): PRAS metric for missing generation
+  - [`LOLE`](@ref): PRAS metric for loss of load expectation
+  - [`EUE`](@ref): PRAS metric for energy unserved expectation
+"""
 module PRASInterface
 #################################################################################
 # Exports
 #################################################################################
 export generate_pras_system
+export PRAS
+export SystemModel
+export assess
+export SequentialMonteCarlo
+export Shortfall
+export LOLE
+export EUE
+export val
+export stderror
 export generate_outage_profile
 export generate_csv_outage_profile
 export add_csv_time_series!
 export add_csv_time_series_single_stage!
 export make_generator_outage_draws!
-export PRAS
+
 #################################################################################
 # Imports
 #################################################################################
@@ -28,6 +53,17 @@ const PSY = PowerSystems
 # Includes
 #################################################################################
 
+"""
+    PRAS
+
+Module for Probabilistic Resource Adequacy Studies (PRAS).
+
+Re-exported in PRASInterface
+
+# Source
+
+https://github.com/NREL/PRAS.jl
+"""
 module PRAS
 using Reexport
 const PRAS_VERSION = "v0.6.0"
@@ -36,6 +72,15 @@ include("PRASBase/PRASBase.jl")
 include("ResourceAdequacy/ResourceAdequacy.jl")
 include("CapacityCredit/CapacityCredit.jl")
 end
+
+import .PRAS.assess
+import .PRAS.LOLE
+import .PRAS.EUE
+import .PRAS.val
+import .PRAS.stderror
+import .PRAS.SequentialMonteCarlo
+import .PRAS.Shortfall
+import .PRAS.SystemModel
 
 include("util/definitions.jl")
 include("util/runchecks.jl")

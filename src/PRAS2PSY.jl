@@ -1,5 +1,5 @@
 """
-generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
+    generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
 
 Process the assess results to get timeseries of generator status and include
 this timeseries data to the corresponding component in PSY System and exported
@@ -126,7 +126,7 @@ function generate_outage_profile(
 end
 
 """
-generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
+    generate_outage_profile(pras_system,num_runs,psy_sys,num_scenarios,location)
 
 Process the assess results to get timeseries of generator status and include
 this timeseries data to the corresponding component in PSY System and exported

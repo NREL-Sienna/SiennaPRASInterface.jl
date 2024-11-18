@@ -1,6 +1,8 @@
-#######################################################
-# Get sorted (reg_from,reg_to) of inter-regional lines
-#######################################################
+"""
+    get_sorted_region_tuples(lines::Vector{PSY.Branch}, region_names::Vector{String})
+
+Get sorted (reg_from, reg_to) tuples of inter-regional lines.
+"""
 function get_sorted_region_tuples(lines::Vector{PSY.Branch}, region_names::Vector{String})
     region_idxs = Dict(name => idx for (idx, name) in enumerate(region_names))
 
@@ -20,9 +22,22 @@ function get_sorted_region_tuples(lines::Vector{PSY.Branch}, region_names::Vecto
     return line_from_to_reg_idxs
 end
 
-#######################################################
-# Get sorted lines and other indices necessary for PRAS
-#######################################################
+"""
+    get_sorted_lines(lines::Vector{PSY.Branch}, region_names::Vector{String})
+
+Get sorted lines, interface region indices, and interface line indices.
+
+# Arguments
+
+  - `lines::Vector{PSY.Branch}`: Lines
+  - `region_names::Vector{String}`: Region names
+
+# Returns
+
+  - `sorted_lines::Vector{PSY.Branch}`: Sorted lines
+  - `interface_reg_idxs::Vector{Tuple{Int, Int}}`: Interface region indices
+  - `interface_line_idxs::Vector{UnitRange{Int}}`: Interface line indices
+"""
 function get_sorted_lines(lines::Vector{PSY.Branch}, region_names::Vector{String})
     line_from_to_reg_idxs = get_sorted_region_tuples(lines, region_names)
     line_ordering = sortperm(line_from_to_reg_idxs)
@@ -38,9 +53,21 @@ function get_sorted_lines(lines::Vector{PSY.Branch}, region_names::Vector{String
     return sorted_lines, interface_reg_idxs, interface_line_idxs
 end
 
-#######################################################
-# Make PRAS Lines and Interfaces
-#######################################################
+"""
+    make_pras_interfaces(
+        sorted_lines::Vector{PSY.Branch},
+        interface_reg_idxs::Vector{Tuple{Int64, Int64}},
+        interface_line_idxs::Vector{UnitRange{Int64}},
+        s2p_meta::S2P_metadata,
+    )
+
+Converts PSY branches and interaces indices into PRAS Lines and Interfaces.
+
+# Returns
+
+  - `new_lines::PRAS.Lines`: PRAS Lines
+  - `new_interfaces::PRAS.Interfaces`: PRAS Interfaces
+"""
 function make_pras_interfaces(
     sorted_lines::Vector{PSY.Branch},
     interface_reg_idxs::Vector{Tuple{Int64, Int64}},

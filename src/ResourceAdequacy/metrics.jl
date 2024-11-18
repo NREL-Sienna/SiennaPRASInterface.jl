@@ -54,8 +54,11 @@ end
 Base.isapprox(x::ReliabilityMetric, y::ReliabilityMetric) =
     isapprox(val(x), val(y)) && isapprox(stderror(x), stderror(y))
 
-# Loss-of-Load Expectation
+"""
+    LOLE
 
+Loss of load expectation metric. Contains a mean and standard error estimate.
+"""
 struct LOLE{N, L, T <: Period} <: ReliabilityMetric
     lole::MeanEstimate
 
@@ -83,8 +86,11 @@ function Base.show(io::IO, x::LOLE{N, L, T}) where {N, L, T}
     )
 end
 
-# Expected Unserved Energy
+"""
+    EUE
 
+Expected unserved energy expectation metric. Contains a mean and standard error estimate.
+"""
 struct EUE{N, L, T <: Period, E <: EnergyUnit} <: ReliabilityMetric
     eue::MeanEstimate
 

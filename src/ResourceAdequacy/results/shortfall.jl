@@ -1,4 +1,12 @@
+
+"""
+    Shortfall
+
+Shortfall metric represents lost load at regions and timesteps
+in ShortfallMatrix with a (regions, timestamps) matrix API.
+"""
 struct Shortfall <: ResultSpec end
+
 abstract type AbstractShortfallResult{N, L, T} <: Result{N, L, T} end
 
 # Colon indexing
