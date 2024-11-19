@@ -56,17 +56,11 @@ include("PSY2PRAS.jl")
 include("PRAS2PSY.jl")
 
 """
-    estimate_resource_adequacy(
-        sys::PSY.System;
-        samples::Int=10_000,
-        resultsspecs::Vector{PRAS.ResultSpec}=[Shortfall],
-        seed::Int=0,
-        verbose::Bool=false,
-        threaded::Bool=true,
-        aggregation::Type{AT}=PSY.Area,
-        availability::Bool=true,
-        lump_region_renewable_gens::Bool=false,
-        export_location::Union{Nothing, String}=nothing,
+    assess(
+        sys::PSY.System,
+        aggregation::Type{AT},
+        method::PRAS.SimulationSpec,
+        resultsspecs::PRAS.ResourceAdequacy.ResultSpec...,
     ) where {AT <: PSY.AggregationTopology}
 
 Estimate resource adequacy using Monte Carlo simulation.
@@ -74,40 +68,21 @@ Estimate resource adequacy using Monte Carlo simulation.
 # Arguments
 
   - `sys::PSY.System`: PowerSystems.jl system model
-  - `samples::Int`: Number of samples to use in the Monte Carlo simulation
-  - `resultsspecs::Vector{PRAS.ResourceAdequacy.ResultSpec}`: Vector of result specifications to use in PRAS simulation
-  - `seed::Int`: Random seed for the Monte Carlo simulation
-  - `verbose::Bool`: Print progress information in PRAS simulation
-  - `threaded::Bool`: Use threading in PRAS simulation
   - `aggregation::Type{AT}`: Aggregation topology to use in translating to PRAS
-  - `availability::Bool`: Use available components
-  - `lump_region_renewable_gens::Bool`: Lump renewable generators in PRAS model
-  - `export_location::Union{Nothing, String}`: Location to export PRAS system. Default is no export.
+  - `method::PRAS.SimulationSpec`: Simulation method to use
+  - `resultsspec::PRAS.ResourceAdequacy.ResultSpec...`: Results to compute
 
 # Returns
 
   - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
 """
-function estimate_resource_adequacy(
-    sys::PSY.System;
-    samples::Int=10_000,
-    resultsspecs::Vector{PRAS.ResourceAdequacy.ResultSpec}=PRAS.ResourceAdequacy.ResultSpec[PRAS.Shortfall()],
-    seed::Int=0,
-    verbose::Bool=false,
-    threaded::Bool=true,
-    aggregation::Type{AT}=PSY.Area,
-    availability::Bool=true,
-    lump_region_renewable_gens::Bool=false,
-    export_location::Union{Nothing, String}=nothing,
+function PRAS.assess(
+    sys::PSY.System,
+    aggregation::Type{AT},
+    method::PRAS.ResourceAdequacy.SimulationSpec,
+    resultsspecs::PRAS.ResourceAdequacy.ResultSpec...,
 ) where {AT <: PSY.AggregationTopology}
-    pras_system = generate_pras_system(
-        sys,
-        aggregation;
-        availability,
-        lump_region_renewable_gens,
-        export_location,
-    )
-    method = PRAS.SequentialMonteCarlo(; samples, seed, verbose, threaded)
+    pras_system = generate_pras_system(sys, aggregation)
     return PRAS.assess(pras_system, method, resultsspecs...)
 end
 

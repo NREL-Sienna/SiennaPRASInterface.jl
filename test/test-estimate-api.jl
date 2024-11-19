@@ -1,15 +1,17 @@
 @testset "estimate_resource_adequacy" begin
     rts_da_sys = get_rts_gmlc_outage()
 
-    shortfalls, = estimate_resource_adequacy(rts_da_sys; samples=2, seed=1)
-    @test shortfalls isa PRASInterface.PRAS.ResourceAdequacy.ShortfallResult
+    sequential_monte_carlo = PRAS.SequentialMonteCarlo(samples=2, seed=1)
+    shortfalls, =
+        PRAS.assess(rts_da_sys, PSY.Area, sequential_monte_carlo, PRAS.Shortfall())
+    @test shortfalls isa PRAS.ResourceAdequacy.ShortfallResult
 
-    lole = PRASInterface.PRAS.LOLE(shortfalls)
-    eue = PRASInterface.PRAS.EUE(shortfalls)
-    @test lole isa PRASInterface.PRAS.ReliabilityMetric
-    @test eue isa PRASInterface.PRAS.ReliabilityMetric
-    @test PRASInterface.PRAS.val(lole) >= 0 && PRASInterface.PRAS.val(lole) <= 10
-    @test PRASInterface.PRAS.stderror(lole) >= 0 && PRASInterface.PRAS.stderror(lole) <= 10
-    @test PRASInterface.PRAS.val(eue) >= 0 && PRASInterface.PRAS.val(eue) <= 10
-    @test PRASInterface.PRAS.stderror(eue) >= 0 && PRASInterface.PRAS.stderror(eue) <= 10
+    lole = PRAS.LOLE(shortfalls)
+    eue = PRAS.EUE(shortfalls)
+    @test lole isa PRAS.ReliabilityMetric
+    @test eue isa PRAS.ReliabilityMetric
+    @test PRAS.val(lole) >= 0 && PRAS.val(lole) <= 10
+    @test PRAS.stderror(lole) >= 0 && PRAS.stderror(lole) <= 10
+    @test PRAS.val(eue) >= 0 && PRAS.val(eue) <= 10
+    @test PRAS.stderror(eue) >= 0 && PRAS.stderror(eue) <= 10
 end
