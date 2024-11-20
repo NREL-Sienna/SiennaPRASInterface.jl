@@ -41,7 +41,7 @@ initialize_availability!(rng, availability, nexttransition, devices, t_last)
   - `rng::Random.AbstractRNG`: Random number generator
   - `availability::Vector{Bool}`: Vector of availability status
   - `nexttransition::Vector{Int}`: Vector of next transition time
-  - `devices::Vector{PSY.Generator}`: Vector of devices with supplemental attributes
+  - `devices::Vector{PSY.Generator}`: Vector of devices with outage SupplementalAttributes
   - `t_last::Int`: Last time step
 
 # Returns
