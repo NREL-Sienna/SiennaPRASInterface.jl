@@ -13,7 +13,9 @@ const OUTAGE_INFO_FILE =
 const HVDCLineTypes = Union{PSY.TwoTerminalHVDCLine, PSY.TwoTerminalVSCDCLine}
 
 """
-    Supported Transformer Types
+    Filtered Transformer Types
+
+These transformers are not modeled as lines in PRAS.
 """
 const TransformerTypes =
     [PSY.TapTransformer, PSY.Transformer2W, PSY.PhaseShiftingTransformer]
