@@ -1,6 +1,20 @@
 using PRASInterface
 using Test
 
+import PowerSystems
+import PowerSystemCaseBuilder
+import CSV
+import DataFrames
+import Dates
+import Test
+import TimeSeries
+using Dates: DateTime
+
+const PSY = PowerSystems
+const PSCB = PowerSystemCaseBuilder
+
+include("rts_gmlc.jl")
+
 #=
 Don't add your tests to runtests.jl. Instead, create files named
 
