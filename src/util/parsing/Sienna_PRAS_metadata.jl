@@ -1,6 +1,8 @@
-#######################################################
-# Structs to parse and store the outage information
-#######################################################
+"""
+    S2P_metadata
+
+Struct to store metadata for the Sienna to PRAS conversion
+"""
 mutable struct S2P_metadata
     has_static_timeseries::Bool
     has_forecasts::Bool

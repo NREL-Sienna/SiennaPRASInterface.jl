@@ -1,8 +1,12 @@
-# Check if the base raw file passed has the right extension
-isjson = endswith(".json");
-iscsv = endswith(".csv");
-isprasfile = endswith(".pras");
-# Check if you can open a file
+isjson = endswith(".json")
+iscsv = endswith(".csv")
+isprasfile = endswith(".pras")
+
+"""
+    check_file(loc::String)
+
+Check if the file exists and is openable.
+"""
 function check_file(loc::String)
     io = try
         open(loc)
@@ -17,6 +21,11 @@ function check_file(loc::String)
     end
 end
 
+"""
+    runchecks(sys_location::String)
+
+Check if the System JSON file is serialized as well as other files required.
+"""
 function runchecks(sys_location::String)
     if ~(isjson(sys_location))
         error("The System location passed is not a serialized System JSON file")

@@ -1,28 +1,26 @@
-#######################################################
-# Surya
-# NREL
-# July 2021
 # Generate PSY System from CSV Outage Profiles
 # TODO: Handle Lumped Wind Plants
-#######################################################
-#  Handling CC units using cc_restrictions.json because
-# PSY has multiple CC units PRAS doesn't
-#######################################################
+
+"""
+    FILE with restrictions on CC units in PRAS
+"""
 const CC_RESTRICTIONS_UTIL_FILE =
     joinpath(dirname(@__DIR__), "descriptors", "cc_restrictions.json")
-cc_restrictions_util_file = JSON.parsefile(CC_RESTRICTIONS_UTIL_FILE);
-#######################################################
-# Dict to handle different types of assets
-#######################################################
-csv_dict = Dict([
-    ("Generator.csv", PSY.Generator),
-    ("Storage.csv", "Storage.csv"),
-    ("GeneratorStorage.csv", PSY.StaticInjection),
-    ("Branch.csv", PSY.Branch),
-]);
-#######################################################
-# Generate Outage Profile for two stage PowerSimulations
-#######################################################
+
+cc_restrictions_util_file = JSON.parsefile(CC_RESTRICTIONS_UTIL_FILE)
+
+"""
+    add_csv_time_series!(
+        sys_DA,
+        sys_RT,
+        outage_csv_location::String;
+        days_of_interest::Union{Nothing, UnitRange}=nothing,
+        add_scenario::Union{Nothing, Int}=nothing,
+    )
+
+Generates outage profile for two stage PowerSimulation and adds availability time series
+data to Generators in PSY System from CSV files.
+"""
 function add_csv_time_series!(
     sys_DA::PSY.System,
     sys_RT::PSY.System,
@@ -218,9 +216,16 @@ function add_csv_time_series!(
     return sys_DA, sys_RT
 end
 
-#######################################################
-# Generate Outage Profile for single stage PowerSimulations
-#######################################################
+"""
+    add_csv_time_series_single_stage!(
+        sys_DA,
+        outage_csv_location::String;
+        days_of_interest::Union{Nothing, UnitRange}=nothing,
+        add_scenario::Union{Nothing, Int}=nothing,
+    )
+
+Generates outage profile for single stage PowerSimulation and adds availability time series.
+"""
 function add_csv_time_series_single_stage!(
     sys_DA::PSY.System,
     outage_csv_location::String;

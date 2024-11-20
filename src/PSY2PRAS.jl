@@ -20,7 +20,7 @@ Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemMode
 # Examples
 
 ```julia-repl
-julia> make_pras_system(psy_sys)
+julia> generate_pras_system(psy_sys)
 PRAS SystemModel
 ```
 """
@@ -879,6 +879,23 @@ function generate_pras_system(
     end
 end
 
+"""
+    generate_pras_system(sys_location::String, aggregation; kwargs...)
+
+Generate a PRAS SystemModel from a Sienna/Data PowerSystems System JSON file.
+
+# Arguments
+
+  - `sys_location::String`: Location of the Sienna/Data PowerSystems System JSON file
+  - `aggregation::Type{AT}`: Aggregation topology type
+  - `availability::Bool`: Availability of components in the System
+  - `lump_region_renewable_gens::Bool`: Lumping of region renewable generators
+  - `export_location::Union{Nothing, String}`: Export location of the .pras file
+
+# Returns
+
+  - `PRAS.SystemModel`: PRAS SystemModel
+"""
 function generate_pras_system(
     sys_location::String,
     aggregation::Type{AT};

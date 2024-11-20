@@ -1,6 +1,6 @@
 # Internal API
 
 ```@autodocs
-Modules = [PRASInterface]
+Modules = [PRASInterface, PRAS]
 Public = false
 ```

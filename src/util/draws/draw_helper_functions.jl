@@ -1,7 +1,22 @@
-##############################################
-# Helpful Reference ; https://core.ac.uk/download/pdf/13643059.pdf
-# Converting FOR and MTTR to λ and μ
-##############################################
+"""
+    rate_to_probability(for_gen::Float64, mttr::Int64)
+
+Converts the forced outage rate and mean time to repair to the λ and μ parameters
+
+# Arguments
+
+  - `for_gen::Float64`: Forced outage rate [1/T]
+  - `mttr::Int64`: Mean time to repair [T]
+
+# Returns
+
+  - `λ::Float64`: Transition probability from online to offline [1/T]
+  - `μ::Float64`: Transition rate from offline to online [1/T]
+
+# Reference
+
+https://core.ac.uk/download/pdf/13643059.pdf
+"""
 function rate_to_probability(for_gen::Float64, mttr::Int64)
     if (for_gen > 1.0)
         for_gen = for_gen / 100
@@ -18,9 +33,24 @@ function rate_to_probability(for_gen::Float64, mttr::Int64)
     return (λ=(μ * for_gen) / (1 - for_gen), μ=μ)
 end
 
-##############################################
-# Initializing Availability
-##############################################
+"""
+initialize_availability!(rng, availability, nexttransition, devices, t_last)
+
+# Arguments
+
+  - `rng::Random.AbstractRNG`: Random number generator
+  - `availability::Vector{Bool}`: Vector of availability status
+  - `nexttransition::Vector{Int}`: Vector of next transition time
+  - `devices::Vector{PSY.Generator}`: Vector of devices with outage SupplementalAttributes
+  - `t_last::Int`: Last time step
+
+# Returns
+
+Modifies input arguments and rereturns
+
+  - `availability::Vector{Bool}`: Vector of availability status
+  - `nexttransition::Vector{Int}`: Vector of next transition time
+"""
 function initialize_availability!(
     rng::Random.AbstractRNG,
     availability::Vector{Bool},
@@ -82,10 +112,12 @@ function initialize_availability!(
 
     return availability, nexttransition
 end
-##############################################
-# Update Availability
-##############################################
 
+"""
+    update_availability!(rng, availability, nexttransition, devices, t_now, t_last)
+
+Return availability and next transition with new randomness
+"""
 function update_availability!(
     rng::Random.AbstractRNG,
     availability::Vector{Bool},
@@ -138,6 +170,7 @@ function update_availability!(
     return availability, nexttransition
 end
 
+# TODO: Replace with geometric drawing instead (exponential if continuous)
 function randtransitiontime(
     rng::Random.AbstractRNG,
     p::Matrix{Float64},
@@ -162,7 +195,12 @@ function randtransitiontime(
     return t_last + 1
 end
 
-# Initial time, resolution and length
+"""
+    get_timestamps(initial_time, resolution, steps, horizon)
+
+Return a vector of timestamps starting from `initial_time` with `resolution` and
+`steps` for `horizon` steps
+"""
 function get_timestamps(
     initial_time::Dates.DateTime,
     resolution::TIMEPERIOD,

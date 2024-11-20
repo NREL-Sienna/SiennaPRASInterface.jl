@@ -1,6 +1,34 @@
 # Public API Reference
 
-```@autodocs
-Modules = [PRASInterface]
-Public = true
+```@docs
+PRASInterface
+generate_pras_system
+PRAS
+SystemModel
+assess
+SequentialMonteCarlo
+Shortfall
+Surplus
+Flow
+Utilization
+StorageEnergy
+GeneratorStorageEnergy
+LOLE
+EUE
+val
+stderror
+generate_outage_profile
+generate_csv_outage_profile
+add_csv_time_series!
+add_csv_time_series_single_stage!
+make_generator_outage_draws!
+ShortfallSamples
+SurplusSamples
+FlowSamples
+UtilizationSamples
+StorageEnergySamples
+GeneratorStorageEnergySamples
+GeneratorAvailability
+GeneratorStorageAvailability
+LineAvailability
 ```

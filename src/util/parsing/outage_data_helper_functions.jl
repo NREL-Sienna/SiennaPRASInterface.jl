@@ -1,6 +1,8 @@
-#######################################################
-# Structs to parse and store the outage information
-#######################################################
+"""
+    outage_data
+
+Struct to store the outage information for a component.
+"""
 mutable struct outage_data
     prime_mover::PSY.PrimeMovers
     fuel::Union{PSY.ThermalFuels, Missing}

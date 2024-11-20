@@ -10,7 +10,7 @@ pages = OrderedDict(
 )
 
 makedocs(
-    modules=[PRASInterface],
+    modules=[PRASInterface, PRAS],
     format=Documenter.HTML(prettyurls=haskey(ENV, "GITHUB_ACTIONS")),
     sitename="PRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",

@@ -1,6 +1,12 @@
-#######################################################
-# Function to get available components in AggregationTopology
-#######################################################
+"""
+    get_available_components_in_aggregation_topology(
+        type::Type{<:PSY.StaticInjection},
+        sys::PSY.System,
+        region::PSY.AggregationTopology,
+    )
+
+Get available components in the AggregationTopology region of the given type.
+"""
 function get_available_components_in_aggregation_topology(
     type::Type{<:PSY.StaticInjection},
     sys::PSY.System,
@@ -13,9 +19,23 @@ function get_available_components_in_aggregation_topology(
     return avail_comps
 end
 
-#######################################################
-# get generator category
-#######################################################
+"""
+    get_generator_category(gen::StaticInjection)
+
+Get the category of the generator.
+
+# Arguments
+
+  - `gen::StaticInjection`: Generator
+
+# Returns
+
+  - `String`: Category of the generator
+"""
+function get_generator_category(gen::PSY.StaticInjection)
+    error("get_generator_category isn't defined for $(typeof(gen))")
+end
+
 function get_generator_category(gen::GEN) where {GEN <: PSY.RenewableGen}
     return string(PSY.get_prime_mover_type(gen))
 end
@@ -41,9 +61,24 @@ end
 function get_generator_category(stor::GEN) where {GEN <: PSY.HybridSystem}
     return "Hybrid-System"
 end
-#######################################################
-# Line Rating
-#######################################################
+
+"""
+    line_rating(line::Branch)
+
+Get the line rating.
+
+# Arguments
+
+  - `line::Branch`: Line
+
+# Returns
+
+  - `Tuple{forward_capacity::Float64, backward_capacity::Float64}`: Line rating
+"""
+function line_rating(line::PSY.Branch)
+    error("line_rating isn't defined for $(typeof(line))")
+end
+
 function line_rating(line::Union{PSY.Line, PSY.MonitoredLine})
     rate = PSY.get_rating(line)
     return (forward_capacity=abs(rate), backward_capacity=abs(rate))
@@ -62,9 +97,23 @@ function line_rating(line::DCLine) where {DCLine <: HVDCLineTypes}
     error("line_rating isn't defined for $(typeof(line))")
 end
 
-#######################################################
-# Common function to handle getting time series values
-#######################################################
+"""
+    get_ts_values(ts::PSY.TimeSeriesData)
+
+Get the time series values.
+
+# Arguments
+
+  - `ts::TimeSeries`: Time series
+
+# Returns
+
+  - `Array{Float64}`: Time series values
+"""
+function get_ts_values(ts::PSY.TimeSeriesData)
+    error("get_ts_values isn't defined for $(typeof(ts))")
+end
+
 function get_ts_values(ts::TS) where {TS <: PSY.AbstractDeterministic}
     if (typeof(ts) == PSY.DeterministicSingleTimeSeries)
         forecast_vals = get_ts_values(ts.single_time_series)
@@ -84,10 +133,12 @@ function get_ts_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
     forecast_vals = values(PSY.get_data(ts))
     return forecast_vals
 end
-#######################################################
-# Functions to handle components with no time series
-# usually the ones who's availability is set to false
-#######################################################
+
+"""
+    get_first_ts(ts::TS)
+
+Get time series and handle components with no time series (such as unavailable)
+"""
 function get_first_ts(ts::TS) where {TS <: Channel{Any}}
     if isempty(ts)
         return nothing
