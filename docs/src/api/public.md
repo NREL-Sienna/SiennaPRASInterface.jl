@@ -8,6 +8,11 @@ SystemModel
 assess
 SequentialMonteCarlo
 Shortfall
+Surplus
+Flow
+Utilization
+StorageEnergy
+GeneratorStorageEnergy
 LOLE
 EUE
 val
@@ -17,4 +22,13 @@ generate_csv_outage_profile
 add_csv_time_series!
 add_csv_time_series_single_stage!
 make_generator_outage_draws!
+ShortfallSamples
+SurplusSamples
+FlowSamples
+UtilizationSamples
+StorageEnergySamples
+GeneratorStorageEnergySamples
+GeneratorAvailability
+GeneratorStorageAvailability
+LineAvailability
 ```

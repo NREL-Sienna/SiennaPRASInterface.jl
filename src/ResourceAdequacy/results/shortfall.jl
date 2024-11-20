@@ -3,7 +3,11 @@
     Shortfall
 
 Shortfall metric represents lost load at regions and timesteps
-in ShortfallMatrix with a (regions, timestamps) matrix API.
+in ShortfallResult with a (regions, timestamps) matrix API.
+
+Separate samples are averaged together into mean and std values.
+
+See [`ShortfallSamples`](@ref) for all shortfall samples.
 """
 struct Shortfall <: ResultSpec end
 
@@ -195,8 +199,14 @@ EUE(
     t::ZonedDateTime,
 ) where {N, L, T, E} = EUE{1, L, T, E}(MeanEstimate(x[r, t]..., x.nsamples))
 
-# Full shortfall data 
+"""
+    ShortfallSamples
 
+ShortfallSamples metric represents lost load at regions and timesteps
+in ShortfallSamplesResult with a (regions, timestamps, samples) matrix API.
+
+See [`Shortfall`](@ref) for averaged shortfall samples.
+"""
 struct ShortfallSamples <: ResultSpec end
 
 struct ShortfallSamplesResult{N, L, T <: Period, P <: PowerUnit, E <: EnergyUnit} <:

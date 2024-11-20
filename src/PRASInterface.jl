@@ -23,7 +23,24 @@ export PRAS
 export SystemModel
 export assess
 export SequentialMonteCarlo
+# ResultSpecs
 export Shortfall
+export ShortfallSamples
+export Surplus
+export SurplusSamples
+export Flow
+export FlowSamples
+export Utilization
+export UtilizationSamples
+export StorageEnergy
+export StorageEnergySamples
+export GeneratorStorageEnergy
+export GeneratorStorageEnergySamples
+export GeneratorAvailability
+export StorageAvailability
+export GeneratorStorageAvailability
+export LineAvailability
+
 export LOLE
 export EUE
 export val
@@ -79,7 +96,24 @@ import .PRAS.EUE
 import .PRAS.val
 import .PRAS.stderror
 import .PRAS.SequentialMonteCarlo
+
 import .PRAS.Shortfall
+import .PRAS.ShortfallSamples
+import .PRAS.Surplus
+import .PRAS.SurplusSamples
+import .PRAS.Flow
+import .PRAS.FlowSamples
+import .PRAS.Utilization
+import .PRAS.UtilizationSamples
+import .PRAS.StorageEnergy
+import .PRAS.StorageEnergySamples
+import .PRAS.GeneratorStorageEnergy
+import .PRAS.GeneratorStorageEnergySamples
+import .PRAS.GeneratorAvailability
+import .PRAS.StorageAvailability
+import .PRAS.GeneratorStorageAvailability
+import .PRAS.LineAvailability
+
 import .PRAS.SystemModel
 
 include("util/definitions.jl")
