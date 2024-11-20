@@ -9,7 +9,6 @@ export add_csv_time_series!
 export add_csv_time_series_single_stage!
 export make_generator_outage_draws!
 export PRAS
-export estimate_resource_adequacy
 #################################################################################
 # Imports
 #################################################################################

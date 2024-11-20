@@ -1,4 +1,4 @@
-@testset "estimate_resource_adequacy" begin
+@testset "test assess(::PSY.System, ::Area, ...)" begin
     rts_da_sys = get_rts_gmlc_outage()
 
     sequential_monte_carlo = PRAS.SequentialMonteCarlo(samples=2, seed=1)
