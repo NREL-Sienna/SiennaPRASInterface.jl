@@ -12,7 +12,7 @@ include("utils.jl")
 
 Sequential Monte Carlo simulation parameters for PRAS analysis
 
-It it recommended that you fix the random seed.
+It it recommended that you fix the random seed for reproducibility.
 
 # Arguments
 

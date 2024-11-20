@@ -170,7 +170,7 @@ function update_availability!(
     return availability, nexttransition
 end
 
-# TODO: Replace with exponential drawing instead
+# TODO: Replace with geometric drawing instead (exponential if continuous)
 function randtransitiontime(
     rng::Random.AbstractRNG,
     p::Matrix{Float64},
