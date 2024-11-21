@@ -151,9 +151,9 @@ function get_forecast_values(ts::Nothing)
 end
 
 function get_outage_time_series_data(
-    gen::Union{SI, BR},
+    gen::Union{PSY.StaticInjection, PSY.Branch},
     s2p_meta::S2P_metadata,
-) where {SI <: PSY.StaticInjection, BR <: PSY.Branch}
+)
     # Get GeometricForcedOutage SupplementalAttribute of the generator g
     outage_sup_attrs =
         PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, gen)
