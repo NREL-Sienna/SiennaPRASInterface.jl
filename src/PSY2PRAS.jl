@@ -183,12 +183,6 @@ function generate_pras_system(
     if ~(isempty(dup_uuids))
         s2p_meta.hs_uuids = dup_uuids
     end
-
-    # TODO: Do we still need to do this? From now, PSS/e parser
-    # will return PSY.StandardLoad objects
-    if (length(PSY.get_components(PSY.PowerLoad, sys)) > 0)
-        s2p_meta.load_type = PSY.PowerLoad
-    end
     #######################################################
     # PRAS Regions - Areas in PowerSystems.jl
     #######################################################
@@ -211,10 +205,10 @@ function generate_pras_system(
         reg_load_comps =
             availability ?
             get_available_components_in_aggregation_topology(
-                s2p_meta.load_type,
+                PSY.StaticLoad,
                 sys,
                 region,
-            ) : PSY.get_components_in_aggregation_topology(s2p_meta.load_type, sys, region)
+            ) : PSY.get_components_in_aggregation_topology(PSY.StaticLoad, sys, region)
         if (length(reg_load_comps) > 0)
             region_load[idx, :] =
                 floor.(
