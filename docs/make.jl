@@ -3,7 +3,6 @@ import OrderedCollections: OrderedDict
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
-    "Quick Start Guide" => "quick_start_guide.md",
     "Tutorials" => "tutorials/intro_page.md",
     "Public API Reference" => "api/public.md",
     "Internal API Reference" => "api/internal.md",
