@@ -14,25 +14,27 @@ The Probabilistic Resource Adequacy Suite (PRAS) analyzes the resource adequacy 
 
 To use `PRASInterface.jl`, you first need a `System` from `PowerSystems.jl`
 
- 1. Install
+### 1. Install
 
 ```
 ] add PRASInterface
 ```
 
- 2. Add outage information to generators using the supplemental attribute [`GeometricDistributionForcedOutage`](https://nrel-sienna.github.io/PowerSystems.jl/stable/api/public/#PowerSystems.GeometricDistributionForcedOutage).
+### 2. Add Data
+
+Add outage information to generators using the supplemental attribute [`GeometricDistributionForcedOutage`](https://nrel-sienna.github.io/PowerSystems.jl/stable/api/public/#PowerSystems.GeometricDistributionForcedOutage).
 
 ```julia
 using PowerSystems
 transition_data = GeometricDistributionForcedOutage(;
     mean_time_to_recovery=10,  # Units of hours
-    outage_transition_probability=0.005,  # Probability for outage per hour
+    outage_transition_probability=0.005  # Probability for outage per hour
 )
 component = get_component(Generator, sys, "test_generator")
 add_supplemental_attribute!(sys, component, transition_data)
 ```
 
- 2. Calculate Shortfalls and Expected Unserved Energy on System
+### 3. Calculate Shortfalls and Expected Unserved Energy on System
 
 ```julia
 using PRASInterface
@@ -43,12 +45,13 @@ eue = EUE(shortfalls)
 
 ## Documentation
 
-  - [PRAS Documentation](https://nrel.github.io/PRAS/)
+- [PRAS Documentation](https://nrel.github.io/PRAS/)
 
 ```@contents
 Pages = ["api/public.md", "tutorials"]
 Depth = 2
 ```
+
 
 * * *
 
