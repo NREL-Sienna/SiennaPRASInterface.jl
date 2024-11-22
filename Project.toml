@@ -1,6 +1,6 @@
 name = "PRASInterface"
 uuid = "4b496c86-8d00-441d-b504-079c710e0aa7"
-authors = ["Surya Chandan Dhulipala <suryachandan.dhulipala@nrel.gov>"]
+authors = ["Surya Chandan Dhulipala, Joseph McKinsey, Jose Daniel Lara"]
 version = "0.1.0"
 
 [deps]
