@@ -28,7 +28,7 @@ Add outage information to generators using the supplemental attribute [`Geometri
 using PowerSystems
 transition_data = GeometricDistributionForcedOutage(;
     mean_time_to_recovery=10,  # Units of hours
-    outage_transition_probability=0.005  # Probability for outage per hour
+    outage_transition_probability=0.005,  # Probability for outage per hour
 )
 component = get_component(Generator, sys, "test_generator")
 add_supplemental_attribute!(sys, component, transition_data)
@@ -45,13 +45,12 @@ eue = EUE(shortfalls)
 
 ## Documentation
 
-- [PRAS Documentation](https://nrel.github.io/PRAS/)
+  - [PRAS Documentation](https://nrel.github.io/PRAS/)
 
 ```@contents
 Pages = ["api/public.md", "tutorials"]
 Depth = 2
 ```
-
 
 * * *
 
