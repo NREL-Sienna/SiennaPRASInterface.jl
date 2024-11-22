@@ -1,6 +1,7 @@
 using PRASInterface
 using Test
 
+import Aqua
 import PowerSystems
 import PowerSystemCaseBuilder
 import CSV
@@ -14,6 +15,14 @@ const PSY = PowerSystems
 const PSCB = PowerSystemCaseBuilder
 
 include("rts_gmlc.jl")
+
+@testset "Aqua.jl" begin
+    Aqua.test_unbound_args(PRASInterface)
+    Aqua.test_undefined_exports(PRASInterface)
+    Aqua.test_ambiguities(PRASInterface)
+    Aqua.test_stale_deps(PRASInterface)
+    Aqua.test_deps_compat(PRASInterface)
+end
 
 #=
 Don't add your tests to runtests.jl. Instead, create files named
