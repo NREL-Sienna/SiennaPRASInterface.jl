@@ -1,6 +1,6 @@
 # Internal API
 
 ```@autodocs
-Modules = [PRASInterface, PRAS]
+Modules = [SiennaPRASInterface, PRAS]
 Public = false
 ```

@@ -1,4 +1,4 @@
-using Documenter, PRASInterface
+using Documenter, SiennaPRASInterface
 import OrderedCollections: OrderedDict
 
 pages = OrderedDict(
@@ -9,15 +9,15 @@ pages = OrderedDict(
 )
 
 makedocs(
-    modules=[PRASInterface, PRAS],
+    modules=[SiennaPRASInterface, PRAS],
     format=Documenter.HTML(prettyurls=haskey(ENV, "GITHUB_ACTIONS")),
-    sitename="PRASInterface.jl",
+    sitename="SiennaPRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
     pages=Any[p for p in pages],
 )
 
 deploydocs(
-    repo="github.com/NREL-Sienna/PRASInterface.jl.git",
+    repo="github.com/NREL-Sienna/SiennaPRASInterface.jl.git",
     target="build",
     branch="gh-pages",
     devbranch="main",

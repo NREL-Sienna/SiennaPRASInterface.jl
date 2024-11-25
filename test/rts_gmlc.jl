@@ -13,7 +13,7 @@ function get_rts_gmlc_outage()
     gen_for_data = CSV.read(joinpath(@__DIR__, "descriptors/gen.csv"), DataFrames.DataFrame)
 
     for row in DataFrames.eachrow(gen_for_data)
-        λ, μ = PRASInterface.rate_to_probability(row.FOR, row["MTTR Hr"])
+        λ, μ = SiennaPRASInterface.rate_to_probability(row.FOR, row["MTTR Hr"])
         transition_data = PSY.GeometricDistributionForcedOutage(;
             mean_time_to_recovery=row["MTTR Hr"],
             outage_transition_probability=λ,

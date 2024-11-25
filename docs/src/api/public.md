@@ -1,7 +1,7 @@
 # Public API Reference
 
 ```@docs
-PRASInterface
+SiennaPRASInterface
 generate_pras_system
 PRAS
 SystemModel

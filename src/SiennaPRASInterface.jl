@@ -14,7 +14,7 @@ PowerSystems Interface for Probabilistic Resource Adequacy Studies (PRAS)
   - [`LOLE`](@ref): PRAS metric for loss of load expectation
   - [`EUE`](@ref): PRAS metric for energy unserved expectation
 """
-module PRASInterface
+module SiennaPRASInterface
 #################################################################################
 # Exports
 #################################################################################
@@ -75,7 +75,7 @@ const PSY = PowerSystems
 
 Module for Probabilistic Resource Adequacy Studies (PRAS).
 
-Re-exported in PRASInterface
+Re-exported in SiennaPRASInterface
 
 # Source
 
@@ -130,8 +130,8 @@ include("util/sienna/add_csv_time_series_data.jl")
 include("util/draws/draw_helper_functions.jl")
 include("util/draws/sienna_draws.jl")
 
-include("PSY2PRAS.jl")
-include("PRAS2PSY.jl")
+include("PowerSystems2PRAS.jl")
+include("PRAS2PowerSystems.jl")
 
 """
     assess(
