@@ -17,11 +17,11 @@ const PSCB = PowerSystemCaseBuilder
 include("rts_gmlc.jl")
 
 @testset "Aqua.jl" begin
-    Aqua.test_unbound_args(PRASInterface)
-    Aqua.test_undefined_exports(PRASInterface)
-    Aqua.test_ambiguities(PRASInterface)
-    Aqua.test_stale_deps(PRASInterface)
-    Aqua.test_deps_compat(PRASInterface)
+    Aqua.test_unbound_args(SiennaPRASInterface)
+    Aqua.test_undefined_exports(SiennaPRASInterface)
+    Aqua.test_ambiguities(SiennaPRASInterface)
+    Aqua.test_stale_deps(SiennaPRASInterface)
+    Aqua.test_deps_compat(SiennaPRASInterface)
 end
 
 #=
