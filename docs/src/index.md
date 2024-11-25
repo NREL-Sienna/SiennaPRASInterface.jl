@@ -1,4 +1,4 @@
-# PRASInterface.jl
+# SiennaPRASInterface.jl
 
 ```@meta
 CurrentModule = SiennaPRASInterface
