@@ -1,4 +1,4 @@
-using PRASInterface
+using SiennaPRASInterface
 using Test
 
 import Aqua

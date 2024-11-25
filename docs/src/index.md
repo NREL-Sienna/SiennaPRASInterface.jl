@@ -1,23 +1,23 @@
 # PRASInterface.jl
 
 ```@meta
-CurrentModule = PRASInterface
+CurrentModule = SiennaPRASInterface
 ```
 
 ## About
 
-`PRASInterface.jl` is a [`Julia`](http://www.julialang.org) package that provides an interface to [`PRAS.jl`](https://nrel.github.io/PRAS) from [Sienna](https://www.nrel.gov/analysis/sienna.html)'s [`PowerSystem.jl`](https://github.com/NREL-Sienna/PowerSystems.jl)'s `System` data model.
+`SiennaPRASInterface.jl` is a [`Julia`](http://www.julialang.org) package that provides an interface to [`PRAS.jl`](https://nrel.github.io/PRAS) from [Sienna](https://www.nrel.gov/analysis/sienna.html)'s [`PowerSystem.jl`](https://github.com/NREL-Sienna/PowerSystems.jl)'s `System` data model.
 
 The Probabilistic Resource Adequacy Suite (PRAS) analyzes the resource adequacy of a bulk power system using Monte Carlo methods.
 
 ## Getting Started
 
-To use `PRASInterface.jl`, you first need a `System` from `PowerSystems.jl`
+To use `SiennaPRASInterface.jl`, you first need a `System` from `PowerSystems.jl`
 
 ### 1. Install
 
 ```
-] add PRASInterface
+] add SiennaPRASInterface
 ```
 
 ### 2. Add Data
@@ -37,7 +37,7 @@ add_supplemental_attribute!(sys, component, transition_data)
 ### 3. Calculate Shortfalls and Expected Unserved Energy on System
 
 ```julia
-using PRASInterface
+using SiennaPRASInterface
 method = SequentialMonteCarlo(samples=10_000, seed=1)
 shortfalls, = assess(sys, PowerSystems.Area, sequential_monte_carlo, Shortfall())
 eue = EUE(shortfalls)
@@ -54,5 +54,5 @@ Depth = 2
 
 * * *
 
-PRASInterface has been developed as part of the Transmission Planning Tools Maintenance project at the U.S. Department of Energy's National Renewable Energy
+SiennaPRASInterface has been developed as part of the Transmission Planning Tools Maintenance project at the U.S. Department of Energy's National Renewable Energy
 Laboratory ([NREL](https://www.nrel.gov/)) funded by DOE Grid Deployment Office (GDO).

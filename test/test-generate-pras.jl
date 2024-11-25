@@ -61,14 +61,14 @@ end
         PSY.get_name.(
             PSY.get_components(PSY.Branch, rts_da_sys) do c
                 PSY.get_available(c) &&
-                    !(any(c isa T for T in PRASInterface.TransformerTypes))  # From definitions.jl
+                    !(any(c isa T for T in SiennaPRASInterface.TransformerTypes))  # From definitions.jl
                 PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
             end
         )
 
     # Make a PRAS System from PSY-4.X System
     rts_pras_sys = generate_pras_system(rts_da_sys, PSY.Area)
-    @test rts_pras_sys isa PRASInterface.PRAS.SystemModel
+    @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
 
     @test test_names_equal(rts_pras_sys.regions.names, area_names)
     @test test_names_equal(rts_pras_sys.generators.names, generator_names)
@@ -119,25 +119,29 @@ end
     @test all(rts_pras_sys.regions.load .== Int.(floor.(load_values)))
 
     # Test Assess Run
-    sequential_monte_carlo = PRASInterface.PRAS.SequentialMonteCarlo(samples=2, seed=1)
-    shortfalls, = PRASInterface.PRAS.assess(
+    sequential_monte_carlo =
+        SiennaPRASInterface.PRAS.SequentialMonteCarlo(samples=2, seed=1)
+    shortfalls, = SiennaPRASInterface.PRAS.assess(
         rts_pras_sys,
         sequential_monte_carlo,
-        PRASInterface.PRAS.Shortfall(),
+        SiennaPRASInterface.PRAS.Shortfall(),
     )
-    lole = PRASInterface.PRAS.LOLE(shortfalls)
-    eue = PRASInterface.PRAS.EUE(shortfalls)
-    @test lole isa PRASInterface.PRAS.ReliabilityMetric
-    @test eue isa PRASInterface.PRAS.ReliabilityMetric
-    @test PRASInterface.PRAS.val(lole) >= 0 && PRASInterface.PRAS.val(lole) <= 10
-    @test PRASInterface.PRAS.stderror(lole) >= 0 && PRASInterface.PRAS.stderror(lole) <= 10
-    @test PRASInterface.PRAS.val(eue) >= 0 && PRASInterface.PRAS.val(eue) <= 10
-    @test PRASInterface.PRAS.stderror(eue) >= 0 && PRASInterface.PRAS.stderror(eue) <= 10
+    lole = SiennaPRASInterface.PRAS.LOLE(shortfalls)
+    eue = SiennaPRASInterface.PRAS.EUE(shortfalls)
+    @test lole isa SiennaPRASInterface.PRAS.ReliabilityMetric
+    @test eue isa SiennaPRASInterface.PRAS.ReliabilityMetric
+    @test SiennaPRASInterface.PRAS.val(lole) >= 0 &&
+          SiennaPRASInterface.PRAS.val(lole) <= 10
+    @test SiennaPRASInterface.PRAS.stderror(lole) >= 0 &&
+          SiennaPRASInterface.PRAS.stderror(lole) <= 10
+    @test SiennaPRASInterface.PRAS.val(eue) >= 0 && SiennaPRASInterface.PRAS.val(eue) <= 10
+    @test SiennaPRASInterface.PRAS.stderror(eue) >= 0 &&
+          SiennaPRASInterface.PRAS.stderror(eue) <= 10
 
     @testset "Lumped Renewable Generators" begin
         rts_pras_sys =
             generate_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true)
-        @test rts_pras_sys isa PRASInterface.PRAS.SystemModel
+        @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
 
         rts_pras_sys = generate_pras_system(
@@ -146,7 +150,7 @@ end
             lump_region_renewable_gens=true,
             availability=false,
         )
-        @test rts_pras_sys isa PRASInterface.PRAS.SystemModel
+        @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
 
         rts_pras_sys = generate_pras_system(
@@ -156,10 +160,10 @@ end
             availability=false,
             export_location=joinpath(@__DIR__, "rts.pras"),
         )
-        @test rts_pras_sys isa PRASInterface.PRAS.SystemModel
+        @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
         @test isfile(joinpath(@__DIR__, "rts.pras"))
-        rts_pras_sys2 = PRASInterface.PRAS.SystemModel(joinpath(@__DIR__, "rts.pras"))
+        rts_pras_sys2 = SiennaPRASInterface.PRAS.SystemModel(joinpath(@__DIR__, "rts.pras"))
     end
 end
 
@@ -177,13 +181,13 @@ end
     storage_names = PSY.get_name.(PSY.get_components(PSY.Storage, rts_da_sys))
 
     rts_pras_sys = generate_pras_system(rts_da_sys, PSY.Area)
-    @test rts_pras_sys isa PRASInterface.PRAS.SystemModel
+    @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
     @test test_names_equal(rts_pras_sys.regions.names, area_names)
     @test test_names_equal(rts_pras_sys.generators.names, generator_names)
     @test test_names_equal(rts_pras_sys.storages.names, storage_names)
     # 201_HYDRO_4 should have 5.15 FOR, 11.6 POR, and 22 MTTR
     idx = findfirst(x -> x == "201_HYDRO_4", rts_pras_sys.generators.names)
-    λ, μ = PRASInterface.rate_to_probability(5.15, 22)
+    λ, μ = SiennaPRASInterface.rate_to_probability(5.15, 22)
     @test array_all_equal(rts_pras_sys.generators.λ[idx, :], λ)
     @test array_all_equal(rts_pras_sys.generators.μ[idx, :], μ)
 end
