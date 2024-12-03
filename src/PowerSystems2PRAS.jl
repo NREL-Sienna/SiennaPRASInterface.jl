@@ -160,12 +160,18 @@ function generate_pras_system(
     add_N!(s2p_meta)
 
     # TODO: Is it okay to just get the first elemnt of vector returned by PSY.get_time_series_resolutions?
-    sys_res_in_hour =
+    sys_res =
         round(Dates.Millisecond(first(PSY.get_time_series_resolutions(sys))), Dates.Hour)
+    if iszero(sys_res.value)
+        sys_res =
+        round(Dates.Millisecond(first(PSY.get_time_series_resolutions(sys))), Dates.Minute)
+        s2p_meta.pras_resolution = Dates.Minute
+    end
+    s2p_meta.pras_timestep = sys_res.value
     start_datetime_tz = TimeZones.ZonedDateTime(s2p_meta.first_timestamp, TimeZones.tz"UTC")
-    finish_datetime_tz = start_datetime_tz + Dates.Hour((s2p_meta.N - 1) * sys_res_in_hour)
+    finish_datetime_tz = start_datetime_tz + s2p_meta.pras_resolution((s2p_meta.N - 1) * sys_res)
     my_timestamps =
-        StepRange(start_datetime_tz, Dates.Hour(sys_res_in_hour), finish_datetime_tz)
+        StepRange(start_datetime_tz, s2p_meta.pras_resolution(sys_res), finish_datetime_tz)
 
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
     #######################################################
@@ -474,7 +480,7 @@ function generate_pras_system(
         λ_gen[idx, :], μ_gen[idx, :] = get_outage_time_series_data(g, s2p_meta)
     end
 
-    new_generators = PRAS.Generators{s2p_meta.N, 1, PRAS.Hour, PRAS.MW}(
+    new_generators = PRAS.Generators{s2p_meta.N, s2p_meta.pras_timestep, s2p_meta.pras_resolution, PRAS.MW}(
         gen_names,
         get_generator_category.(gen),
         gen_cap_array,
@@ -543,7 +549,7 @@ function generate_pras_system(
 
     stor_cryovr_eff = ones(n_stor, s2p_meta.N)   # Not currently available/ defined in PowerSystems
 
-    new_storage = PRAS.Storages{s2p_meta.N, 1, PRAS.Hour, PRAS.MW, PRAS.MWh}(
+    new_storage = PRAS.Storages{s2p_meta.N, s2p_meta.pras_timestep, s2p_meta.pras_resolution, PRAS.MW, PRAS.MWh}(
         stor_names,
         get_generator_category.(stor),
         stor_charge_cap_array,
@@ -785,7 +791,7 @@ function generate_pras_system(
     gen_stor_discharge_eff = ones(n_genstors, s2p_meta.N)             # Not currently available/ defined in PowerSystems
     gen_stor_cryovr_eff = ones(n_genstors, s2p_meta.N)                # Not currently available/ defined in PowerSystems
 
-    new_gen_stors = PRAS.GeneratorStorages{s2p_meta.N, 1, PRAS.Hour, PRAS.MW, PRAS.MWh}(
+    new_gen_stors = PRAS.GeneratorStorages{s2p_meta.N, s2p_meta.pras_timestep, s2p_meta.pras_resolution, PRAS.MW, PRAS.MWh}(
         gen_stor_names,
         get_generator_category.(gen_stor),
         gen_stor_charge_cap_array,
