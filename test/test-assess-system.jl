@@ -1,17 +1,22 @@
 @testset "test assess(::PSY.System, ::Area, ...)" begin
     rts_da_sys = get_rts_gmlc_outage()
 
-    sequential_monte_carlo = PRASCore.SequentialMonteCarlo(samples=2, seed=1)
-    shortfalls, =
-        PRASCore.assess(rts_da_sys, PSY.Area, sequential_monte_carlo, PRASCore.Shortfall())
-    @test shortfalls isa PRASCore.ResourceAdequacy.ShortfallResult
+    sequential_monte_carlo = SiennaPRASInterface.SequentialMonteCarlo(samples=2, seed=1)
+    shortfalls, = SiennaPRASInterface.assess(
+        rts_da_sys,
+        PSY.Area,
+        sequential_monte_carlo,
+        SiennaPRASInterface.Shortfall(),
+    )
+    @test shortfalls isa SiennaPRASInterface.PRASCore.Results.ShortfallResult
 
-    lole = PRASCore.LOLE(shortfalls)
-    eue = PRASCore.EUE(shortfalls)
-    @test lole isa PRASCore.ReliabilityMetric
-    @test eue isa PRASCore.ReliabilityMetric
-    @test PRASCore.val(lole) >= 0 && PRASCore.val(lole) <= 10
-    @test PRASCore.stderror(lole) >= 0 && PRASCore.stderror(lole) <= 10
-    @test PRASCore.val(eue) >= 0 && PRASCore.val(eue) <= 10
-    @test PRASCore.stderror(eue) >= 0 && PRASCore.stderror(eue) <= 10
+    lole = SiennaPRASInterface.LOLE(shortfalls)
+    eue = SiennaPRASInterface.EUE(shortfalls)
+    @test lole isa SiennaPRASInterface.PRASCore.ReliabilityMetric
+    @test eue isa SiennaPRASInterface.PRASCore.ReliabilityMetric
+    @test SiennaPRASInterface.val(lole) >= 0 && SiennaPRASInterface.val(lole) <= 10
+    @test SiennaPRASInterface.stderror(lole) >= 0 &&
+          SiennaPRASInterface.stderror(lole) <= 10
+    @test SiennaPRASInterface.val(eue) >= 0 && SiennaPRASInterface.val(eue) <= 10
+    @test SiennaPRASInterface.stderror(eue) >= 0 && SiennaPRASInterface.stderror(eue) <= 10
 end
