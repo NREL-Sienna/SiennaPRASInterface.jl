@@ -65,8 +65,8 @@ Converts PSY branches and interaces indices into PRAS Lines and Interfaces.
 
 # Returns
 
-  - `new_lines::PRAS.Lines`: PRAS Lines
-  - `new_interfaces::PRAS.Interfaces`: PRAS Interfaces
+  - `new_lines::PRASCore.Lines`: PRAS Lines
+  - `new_interfaces::PRASCore.Interfaces`: PRAS Interfaces
 """
 function make_pras_interfaces(
     sorted_lines::Vector{PSY.Branch},
@@ -105,7 +105,7 @@ function make_pras_interfaces(
         line_λ[i, :], line_μ[i, :] = get_outage_time_series_data(sorted_lines[i], s2p_meta)
     end
 
-    new_lines = PRAS.Lines{s2p_meta.N, 1, PRAS.Hour, PRAS.MW}(
+    new_lines = PRASCore.Lines{s2p_meta.N, 1, PRASCore.Hour, PRASCore.MW}(
         line_names,
         line_cats,
         line_forward_cap,
@@ -124,7 +124,7 @@ function make_pras_interfaces(
             sum(line_backward_cap[interface_line_idxs[i], :], dims=1)
     end
 
-    new_interfaces = PRAS.Interfaces{s2p_meta.N, PRAS.MW}(
+    new_interfaces = PRASCore.Interfaces{s2p_meta.N, PRASCore.MW}(
         interface_regions_from,
         interface_regions_to,
         interface_forward_capacity_array,

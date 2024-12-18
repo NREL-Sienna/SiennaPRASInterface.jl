@@ -19,7 +19,6 @@ module SiennaPRASInterface
 # Exports
 #################################################################################
 export generate_pras_system
-export PRAS
 export SystemModel
 export assess
 export SequentialMonteCarlo
@@ -70,51 +69,34 @@ const PSY = PowerSystems
 # Includes
 #################################################################################
 
-"""
-    PRAS
+import PRASCore
 
-Module for Probabilistic Resource Adequacy Studies (PRAS).
+import PRASCore:
+    assess,
+    LOLE,
+    EUE,
+    val,
+    stderror,
+    SequentialMonteCarlo,
+    Shortfall,
+    ShortfallSamples,
+    Surplus,
+    SurplusSamples,
+    Flow,
+    FlowSamples,
+    Utilization,
+    UtilizationSamples,
+    StorageEnergy,
+    StorageEnergySamples,
+    GeneratorStorageEnergy,
+    GeneratorStorageEnergySamples,
+    GeneratorAvailability,
+    StorageAvailability,
+    GeneratorStorageAvailability,
+    LineAvailability,
+    SystemModel
 
-Re-exported in SiennaPRASInterface
-
-# Source
-
-https://github.com/NREL/PRAS.jl
-"""
-module PRAS
-using Reexport
-const PRAS_VERSION = "v0.6.0"
-include("MinCostFlows/MinCostFlows.jl")
-include("PRASBase/PRASBase.jl")
-include("ResourceAdequacy/ResourceAdequacy.jl")
-include("CapacityCredit/CapacityCredit.jl")
-end
-
-import .PRAS.assess
-import .PRAS.LOLE
-import .PRAS.EUE
-import .PRAS.val
-import .PRAS.stderror
-import .PRAS.SequentialMonteCarlo
-
-import .PRAS.Shortfall
-import .PRAS.ShortfallSamples
-import .PRAS.Surplus
-import .PRAS.SurplusSamples
-import .PRAS.Flow
-import .PRAS.FlowSamples
-import .PRAS.Utilization
-import .PRAS.UtilizationSamples
-import .PRAS.StorageEnergy
-import .PRAS.StorageEnergySamples
-import .PRAS.GeneratorStorageEnergy
-import .PRAS.GeneratorStorageEnergySamples
-import .PRAS.GeneratorAvailability
-import .PRAS.StorageAvailability
-import .PRAS.GeneratorStorageAvailability
-import .PRAS.LineAvailability
-
-import .PRAS.SystemModel
+import PRASFiles
 
 include("util/definitions.jl")
 include("util/runchecks.jl")
@@ -137,8 +119,8 @@ include("PRAS2PowerSystems.jl")
     assess(
         sys::PSY.System,
         aggregation::Type{AT},
-        method::PRAS.SimulationSpec,
-        resultsspecs::PRAS.ResourceAdequacy.ResultSpec...,
+        method::PRASCore.SequentialMonteCarlo,
+        resultsspecs::PRASCore.Results.ResultSpec...,
     ) where {AT <: PSY.AggregationTopology}
 
 Estimate resource adequacy using Monte Carlo simulation.
@@ -147,21 +129,21 @@ Estimate resource adequacy using Monte Carlo simulation.
 
   - `sys::PSY.System`: PowerSystems.jl system model
   - `aggregation::Type{AT}`: Aggregation topology to use in translating to PRAS
-  - `method::PRAS.SimulationSpec`: Simulation method to use
-  - `resultsspec::PRAS.ResourceAdequacy.ResultSpec...`: Results to compute
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
 
 # Returns
 
   - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
 """
-function PRAS.assess(
+function PRASCore.assess(
     sys::PSY.System,
     aggregation::Type{AT},
-    method::PRAS.ResourceAdequacy.SimulationSpec,
-    resultsspecs::PRAS.ResourceAdequacy.ResultSpec...,
+    method::PRASCore.SequentialMonteCarlo,
+    resultsspecs::PRASCore.Results.ResultSpec...,
 ) where {AT <: PSY.AggregationTopology}
     pras_system = generate_pras_system(sys, aggregation)
-    return PRAS.assess(pras_system, method, resultsspecs...)
+    return PRASCore.assess(pras_system, method, resultsspecs...)
 end
 
 end
