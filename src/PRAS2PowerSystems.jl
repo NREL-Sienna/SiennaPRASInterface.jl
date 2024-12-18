@@ -9,7 +9,7 @@ using to_json method (serializing the PSY System).
 
 # Arguments
 
-  - `pras_system::PRAS.SystemModel`: PRAS System
+  - `pras_system::PRASCore.SystemModel`: PRAS System
   - `num_runs::Int64`: Number of PRAS runs
   - `psy_sys::PSY.System`: PSY System
   - `num_scenarios::Int64`: Number of scenarios of user interest.
@@ -24,7 +24,7 @@ PSY System exported using to_json method in InfrastructureSystems
 ```
 """
 function generate_outage_profile(
-    pras_system::PRAS.SystemModel,
+    pras_system::PRASCore.SystemModel,
     psy_sys::PSY.System;
     location::Union{Nothing, String}=nothing,
     num_runs::Union{Nothing, Int}=nothing,
@@ -49,15 +49,16 @@ function generate_outage_profile(
 
     # Run PRAS Analysis
     @info "Running PRAS SequentialMonteCarlo Resource Adequacy analysis for $(num_runs) runs ..."
-    shortfall_samples, gens_avail, stors_avail, gen_stors_avail, lines_avail = PRAS.assess(
-        pras_system,
-        PRAS.SequentialMonteCarlo(samples=num_runs, threaded=true, verbose=false),
-        PRAS.ShortfallSamples(),
-        PRAS.GeneratorAvailability(),
-        PRAS.StorageAvailability(),
-        PRAS.GeneratorStorageAvailability(),
-        PRAS.LineAvailability(),
-    )
+    shortfall_samples, gens_avail, stors_avail, gen_stors_avail, lines_avail =
+        PRASCore.assess(
+            pras_system,
+            PRASCore.SequentialMonteCarlo(samples=num_runs, threaded=true, verbose=false),
+            PRASCore.ShortfallSamples(),
+            PRASCore.GeneratorAvailability(),
+            PRASCore.StorageAvailability(),
+            PRASCore.GeneratorStorageAvailability(),
+            PRASCore.LineAvailability(),
+        )
     @info "Successfully completed PRAS Runs. Exporting outage profiles now..."
     # Setup to save the new PSY System with scenario timeseries data
     #working_dir = pwd();
@@ -136,7 +137,7 @@ using to_json method (serializing the PSY System).
 
 # Arguments
 
-  - `pras_system::PRAS.SystemModel`: PRAS System
+  - `pras_system::PRASCore.SystemModel`: PRAS System
   - `num_runs::Int64`: Number of PRAS runs
   - `psy_sys::PSY.System`: PSY System
   - `num_scenarios::Int64`: Number of scenarios of user interest.
@@ -151,7 +152,7 @@ PSY System exported using to_json method in InfrastructureSystems
 ```
 """
 function generate_csv_outage_profile(
-    pras_system::PRAS.SystemModel;
+    pras_system::PRASCore.SystemModel;
     location::Union{Nothing, String}=nothing,
     num_runs::Union{Nothing, Int}=nothing,
     num_scenarios::Union{Nothing, Int}=nothing,
@@ -175,15 +176,16 @@ function generate_csv_outage_profile(
 
     # Run PRAS Analysis
     @info "Running PRAS SequentialMonteCarlo Resource Adequacy analysis for $(num_runs) runs..."
-    shortfall_samples, gens_avail, stors_avail, gen_stors_avail, lines_avail = PRAS.assess(
-        pras_system,
-        PRAS.SequentialMonteCarlo(samples=num_runs, threaded=true, verbose=false),
-        PRAS.ShortfallSamples(),
-        PRAS.GeneratorAvailability(),
-        PRAS.StorageAvailability(),
-        PRAS.GeneratorStorageAvailability(),
-        PRAS.LineAvailability(),
-    )
+    shortfall_samples, gens_avail, stors_avail, gen_stors_avail, lines_avail =
+        PRASCore.assess(
+            pras_system,
+            PRASCore.SequentialMonteCarlo(samples=num_runs, threaded=true, verbose=false),
+            PRASCore.ShortfallSamples(),
+            PRASCore.GeneratorAvailability(),
+            PRASCore.StorageAvailability(),
+            PRASCore.GeneratorStorageAvailability(),
+            PRASCore.LineAvailability(),
+        )
     @info "Successfully completed PRAS Runs. Exporting outage profiles now..."
     # Setup to save the new PSY System with scenario timeseries data
     #working_dir = pwd();

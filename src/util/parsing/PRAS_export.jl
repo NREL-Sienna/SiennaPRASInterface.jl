@@ -1,5 +1,5 @@
 function export_pras_system(
-    pras_sys::PRAS.SystemModel,
+    pras_sys::PRASCore.SystemModel,
     export_location::Union{Nothing, String},
 )
     if (export_location !== nothing)
@@ -8,7 +8,7 @@ function export_pras_system(
                 "PRAS System export location should be a .pras file. $(export_location) is not a valid location.",
             )
         else
-            PRAS.savemodel(
+            PRASFiles.savemodel(
                 pras_sys,
                 export_location,
                 string_length=100,

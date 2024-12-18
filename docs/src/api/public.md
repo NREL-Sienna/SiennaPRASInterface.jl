@@ -3,7 +3,6 @@
 ```@docs
 SiennaPRASInterface
 generate_pras_system
-PRAS
 SystemModel
 assess
 SequentialMonteCarlo

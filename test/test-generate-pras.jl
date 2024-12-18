@@ -68,7 +68,7 @@ end
 
     # Make a PRAS System from PSY-4.X System
     rts_pras_sys = generate_pras_system(rts_da_sys, PSY.Area)
-    @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
+    @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
 
     @test test_names_equal(rts_pras_sys.regions.names, area_names)
     @test test_names_equal(rts_pras_sys.generators.names, generator_names)
@@ -120,28 +120,29 @@ end
 
     # Test Assess Run
     sequential_monte_carlo =
-        SiennaPRASInterface.PRAS.SequentialMonteCarlo(samples=2, seed=1)
-    shortfalls, = SiennaPRASInterface.PRAS.assess(
+        SiennaPRASInterface.PRASCore.SequentialMonteCarlo(samples=2, seed=1)
+    shortfalls, = SiennaPRASInterface.PRASCore.assess(
         rts_pras_sys,
         sequential_monte_carlo,
-        SiennaPRASInterface.PRAS.Shortfall(),
+        SiennaPRASInterface.PRASCore.Shortfall(),
     )
-    lole = SiennaPRASInterface.PRAS.LOLE(shortfalls)
-    eue = SiennaPRASInterface.PRAS.EUE(shortfalls)
-    @test lole isa SiennaPRASInterface.PRAS.ReliabilityMetric
-    @test eue isa SiennaPRASInterface.PRAS.ReliabilityMetric
-    @test SiennaPRASInterface.PRAS.val(lole) >= 0 &&
-          SiennaPRASInterface.PRAS.val(lole) <= 10
-    @test SiennaPRASInterface.PRAS.stderror(lole) >= 0 &&
-          SiennaPRASInterface.PRAS.stderror(lole) <= 10
-    @test SiennaPRASInterface.PRAS.val(eue) >= 0 && SiennaPRASInterface.PRAS.val(eue) <= 10
-    @test SiennaPRASInterface.PRAS.stderror(eue) >= 0 &&
-          SiennaPRASInterface.PRAS.stderror(eue) <= 10
+    lole = SiennaPRASInterface.PRASCore.LOLE(shortfalls)
+    eue = SiennaPRASInterface.PRASCore.EUE(shortfalls)
+    @test lole isa SiennaPRASInterface.PRASCore.ReliabilityMetric
+    @test eue isa SiennaPRASInterface.PRASCore.ReliabilityMetric
+    @test SiennaPRASInterface.PRASCore.val(lole) >= 0 &&
+          SiennaPRASInterface.PRASCore.val(lole) <= 10
+    @test SiennaPRASInterface.PRASCore.stderror(lole) >= 0 &&
+          SiennaPRASInterface.PRASCore.stderror(lole) <= 10
+    @test SiennaPRASInterface.PRASCore.val(eue) >= 0 &&
+          SiennaPRASInterface.PRASCore.val(eue) <= 10
+    @test SiennaPRASInterface.PRASCore.stderror(eue) >= 0 &&
+          SiennaPRASInterface.PRASCore.stderror(eue) <= 10
 
     @testset "Lumped Renewable Generators" begin
         rts_pras_sys =
             generate_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true)
-        @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
+        @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
 
         rts_pras_sys = generate_pras_system(
@@ -150,7 +151,7 @@ end
             lump_region_renewable_gens=true,
             availability=false,
         )
-        @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
+        @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
 
         rts_pras_sys = generate_pras_system(
@@ -160,10 +161,11 @@ end
             availability=false,
             export_location=joinpath(@__DIR__, "rts.pras"),
         )
-        @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
+        @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
         @test isfile(joinpath(@__DIR__, "rts.pras"))
-        rts_pras_sys2 = SiennaPRASInterface.PRAS.SystemModel(joinpath(@__DIR__, "rts.pras"))
+        rts_pras_sys2 =
+            SiennaPRASInterface.PRASCore.SystemModel(joinpath(@__DIR__, "rts.pras"))
     end
 end
 
@@ -181,7 +183,7 @@ end
     storage_names = PSY.get_name.(PSY.get_components(PSY.Storage, rts_da_sys))
 
     rts_pras_sys = generate_pras_system(rts_da_sys, PSY.Area)
-    @test rts_pras_sys isa SiennaPRASInterface.PRAS.SystemModel
+    @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
     @test test_names_equal(rts_pras_sys.regions.names, area_names)
     @test test_names_equal(rts_pras_sys.generators.names, generator_names)
     @test test_names_equal(rts_pras_sys.storages.names, storage_names)

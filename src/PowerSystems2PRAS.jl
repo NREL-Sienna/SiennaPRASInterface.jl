@@ -15,7 +15,7 @@ Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemMode
 
 # Returns
 
-    - `PRAS.SystemModel`: PRAS SystemModel object
+    - `PRASCore.SystemModel`: PRAS SystemModel object
 
 # Examples
 
@@ -30,7 +30,7 @@ function generate_pras_system(
     availability=true,
     lump_region_renewable_gens=false,
     export_location::Union{Nothing, String}=nothing,
-)::PRAS.SystemModel where {AT <: PSY.AggregationTopology}
+)::PRASCore.SystemModel where {AT <: PSY.AggregationTopology}
 
     # PRAS needs Sienna\Data PowerSystems.jl System to be in NATURAL_UNITS
     PSY.set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
@@ -236,7 +236,7 @@ function generate_pras_system(
         end
     end
 
-    new_regions = PRAS.Regions{s2p_meta.N, PRAS.MW}(region_names, region_load)
+    new_regions = PRASCore.Regions{s2p_meta.N, PRASCore.MW}(region_names, region_load)
     #######################################################
     # Generator Region Indices
     #######################################################
@@ -480,7 +480,7 @@ function generate_pras_system(
         λ_gen[idx, :], μ_gen[idx, :] = get_outage_time_series_data(g, s2p_meta)
     end
 
-    new_generators = PRAS.Generators{s2p_meta.N, 1, PRAS.Hour, PRAS.MW}(
+    new_generators = PRASCore.Generators{s2p_meta.N, 1, PRASCore.Hour, PRASCore.MW}(
         gen_names,
         get_generator_category.(gen),
         gen_cap_array,
@@ -549,18 +549,19 @@ function generate_pras_system(
 
     stor_cryovr_eff = ones(n_stor, s2p_meta.N)   # Not currently available/ defined in PowerSystems
 
-    new_storage = PRAS.Storages{s2p_meta.N, 1, PRAS.Hour, PRAS.MW, PRAS.MWh}(
-        stor_names,
-        get_generator_category.(stor),
-        stor_charge_cap_array,
-        stor_discharge_cap_array,
-        stor_energy_cap_array,
-        stor_chrg_eff_array,
-        stor_dischrg_eff_array,
-        stor_cryovr_eff,
-        λ_stor,
-        μ_stor,
-    )
+    new_storage =
+        PRASCore.Storages{s2p_meta.N, 1, PRASCore.Hour, PRASCore.MW, PRASCore.MWh}(
+            stor_names,
+            get_generator_category.(stor),
+            stor_charge_cap_array,
+            stor_discharge_cap_array,
+            stor_energy_cap_array,
+            stor_chrg_eff_array,
+            stor_dischrg_eff_array,
+            stor_cryovr_eff,
+            λ_stor,
+            μ_stor,
+        )
 
     #######################################################
     # PRAS Generator Storages
@@ -791,21 +792,22 @@ function generate_pras_system(
     gen_stor_discharge_eff = ones(n_genstors, s2p_meta.N)             # Not currently available/ defined in PowerSystems
     gen_stor_cryovr_eff = ones(n_genstors, s2p_meta.N)                # Not currently available/ defined in PowerSystems
 
-    new_gen_stors = PRAS.GeneratorStorages{s2p_meta.N, 1, PRAS.Hour, PRAS.MW, PRAS.MWh}(
-        gen_stor_names,
-        get_generator_category.(gen_stor),
-        gen_stor_charge_cap_array,
-        gen_stor_discharge_cap_array,
-        gen_stor_enrgy_cap_array,
-        gen_stor_charge_eff,
-        gen_stor_discharge_eff,
-        gen_stor_cryovr_eff,
-        gen_stor_inflow_array,
-        gen_stor_gridwdr_cap_array,
-        gen_stor_gridinj_cap_array,
-        λ_genstors,
-        μ_genstors,
-    )
+    new_gen_stors =
+        PRASCore.GeneratorStorages{s2p_meta.N, 1, PRASCore.Hour, PRASCore.MW, PRASCore.MWh}(
+            gen_stor_names,
+            get_generator_category.(gen_stor),
+            gen_stor_charge_cap_array,
+            gen_stor_discharge_cap_array,
+            gen_stor_enrgy_cap_array,
+            gen_stor_charge_eff,
+            gen_stor_discharge_eff,
+            gen_stor_cryovr_eff,
+            gen_stor_inflow_array,
+            gen_stor_gridwdr_cap_array,
+            gen_stor_gridinj_cap_array,
+            λ_genstors,
+            μ_genstors,
+        )
     #######################################################
     # Network
     #######################################################
@@ -841,7 +843,7 @@ function generate_pras_system(
             s2p_meta,
         )
 
-        pras_system = PRAS.SystemModel(
+        pras_system = PRASCore.SystemModel(
             new_regions,
             new_interfaces,
             new_generators,
@@ -863,7 +865,7 @@ function generate_pras_system(
 
     else
         load_vector = vec(sum(region_load, dims=1))
-        pras_system = PRAS.SystemModel(
+        pras_system = PRASCore.SystemModel(
             new_generators,
             new_storage,
             new_gen_stors,
@@ -894,7 +896,7 @@ Generate a PRAS SystemModel from a Sienna/Data PowerSystems System JSON file.
 
 # Returns
 
-  - `PRAS.SystemModel`: PRAS SystemModel
+  - `PRASCore.SystemModel`: PRAS SystemModel
 """
 function generate_pras_system(
     sys_location::String,
