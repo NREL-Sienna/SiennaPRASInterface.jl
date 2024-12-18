@@ -1,4 +1,5 @@
 using Documenter, SiennaPRASInterface
+import SiennaPRASInterface: PRASCore
 import OrderedCollections: OrderedDict
 
 pages = OrderedDict(
@@ -9,7 +10,7 @@ pages = OrderedDict(
 )
 
 makedocs(
-    modules=[SiennaPRASInterface, PRAS],
+    modules=[SiennaPRASInterface, PRASCore],
     format=Documenter.HTML(prettyurls=haskey(ENV, "GITHUB_ACTIONS")),
     sitename="SiennaPRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
