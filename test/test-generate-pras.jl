@@ -145,12 +145,8 @@ end
         @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
 
-        rts_pras_sys = generate_pras_system(
-            rts_da_sys,
-            PSY.Area,
-            lump_region_renewable_gens=true,
-            availability=false,
-        )
+        rts_pras_sys =
+            generate_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true)
         @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
 
@@ -158,7 +154,6 @@ end
             rts_da_sys,
             PSY.Area,
             lump_region_renewable_gens=true,
-            availability=false,
             export_location=joinpath(@__DIR__, "rts.pras"),
         )
         @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel

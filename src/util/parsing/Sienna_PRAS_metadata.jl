@@ -11,7 +11,7 @@ mutable struct S2P_metadata
     first_timestamp::Union{Nothing, Dates.DateTime}
     first_timeseries::Union{Nothing, Union{<:PSY.Forecast, <:PSY.StaticTimeSeries}}
     hs_uuids::Vector{Base.UUID}
-    pras_resolution::Type{T} where T<:Dates.Period
+    pras_resolution::Type{T} where {T <: Dates.Period}
     pras_timestep::Int64
 
     S2P_metadata(
@@ -22,8 +22,8 @@ mutable struct S2P_metadata
         first_timestamp=nothing,
         first_ts=nothing,
         hs_uuids=Vector{Base.UUID}[],
-        pras_res = Dates.Hour,
-        pras_ts = 1
+        pras_res=Dates.Hour,
+        pras_ts=1,
     ) = new(
         has_st_timeseries,
         has_forecasts,
@@ -33,7 +33,7 @@ mutable struct S2P_metadata
         first_ts,
         hs_uuids,
         pras_res,
-        pras_ts
+        pras_ts,
     )
 end
 
