@@ -2,8 +2,9 @@
 Use PSCB to build RTS-GMLC System and add outage data
 as a Supplmental Attribute
 """
-function get_rts_gmlc_outage()
-    rts_da_sys = PSCB.build_system(PSCB.PSISystems, "RTS_GMLC_DA_sys")
+function get_rts_gmlc_outage(sys_type::String)
+    sys_name = "RTS_GMLC_$(sys_type)_sys"
+    rts_sys = PSCB.build_system(PSCB.PSISystems, sys_name)
 
     ###########################################
     # Parse the gen.csv and add OutageData
@@ -18,14 +19,14 @@ function get_rts_gmlc_outage()
             mean_time_to_recovery=row["MTTR Hr"],
             outage_transition_probability=λ,
         )
-        comp = PSY.get_component(PSY.Generator, rts_da_sys, row["GEN UID"])
+        comp = PSY.get_component(PSY.Generator, rts_sys, row["GEN UID"])
 
         if ~(isnothing(comp))
-            PSY.add_supplemental_attribute!(rts_da_sys, comp, transition_data)
+            PSY.add_supplemental_attribute!(rts_sys, comp, transition_data)
             @info "Added outage data supplemental attribute to $(row["GEN UID"]) generator"
         else
             @warn "$(row["GEN UID"]) generator doesn't exist in the System."
         end
     end
-    return rts_da_sys
+    return rts_sys
 end

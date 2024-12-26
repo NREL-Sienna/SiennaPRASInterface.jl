@@ -105,7 +105,12 @@ function make_pras_interfaces(
         line_λ[i, :], line_μ[i, :] = get_outage_time_series_data(sorted_lines[i], s2p_meta)
     end
 
-    new_lines = PRASCore.Lines{s2p_meta.N, 1, PRASCore.Hour, PRASCore.MW}(
+    new_lines = PRASCore.Lines{
+        s2p_meta.N,
+        s2p_meta.pras_timestep,
+        s2p_meta.pras_resolution,
+        PRASCore.MW,
+    }(
         line_names,
         line_cats,
         line_forward_cap,
@@ -113,7 +118,6 @@ function make_pras_interfaces(
         line_λ,
         line_μ,
     )
-
     interface_forward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
     interface_backward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
 

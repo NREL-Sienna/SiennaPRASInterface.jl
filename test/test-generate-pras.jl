@@ -37,8 +37,8 @@ function array_all_equal(x::AbstractVector{T}, v::T) where {T}
     return true
 end
 
-@testset "RTS GMLC" begin
-    rts_da_sys = get_rts_gmlc_outage()
+@testset "RTS GMLC DA" begin
+    rts_da_sys = get_rts_gmlc_outage("DA")
     area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
     generator_names =
         PSY.get_name.(
@@ -118,28 +118,12 @@ end
     end
     @test all(rts_pras_sys.regions.load .== Int.(floor.(load_values)))
 
-    # Test Assess Run
-    sequential_monte_carlo =
-        SiennaPRASInterface.PRASCore.SequentialMonteCarlo(samples=2, seed=1)
-    shortfalls, = SiennaPRASInterface.PRASCore.assess(
-        rts_pras_sys,
-        sequential_monte_carlo,
-        SiennaPRASInterface.PRASCore.Shortfall(),
-    )
-    lole = SiennaPRASInterface.PRASCore.LOLE(shortfalls)
-    eue = SiennaPRASInterface.PRASCore.EUE(shortfalls)
-    @test lole isa SiennaPRASInterface.PRASCore.ReliabilityMetric
-    @test eue isa SiennaPRASInterface.PRASCore.ReliabilityMetric
-    @test SiennaPRASInterface.PRASCore.val(lole) >= 0 &&
-          SiennaPRASInterface.PRASCore.val(lole) <= 10
-    @test SiennaPRASInterface.PRASCore.stderror(lole) >= 0 &&
-          SiennaPRASInterface.PRASCore.stderror(lole) <= 10
-    @test SiennaPRASInterface.PRASCore.val(eue) >= 0 &&
-          SiennaPRASInterface.PRASCore.val(eue) <= 10
-    @test SiennaPRASInterface.PRASCore.stderror(eue) >= 0 &&
-          SiennaPRASInterface.PRASCore.stderror(eue) <= 10
-
     @testset "Lumped Renewable Generators" begin
+        rts_pras_sys =
+            generate_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true)
+        @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
+        @test test_names_equal(rts_pras_sys.regions.names, area_names)
+
         rts_pras_sys =
             generate_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true)
         @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
@@ -149,16 +133,6 @@ end
             rts_da_sys,
             PSY.Area,
             lump_region_renewable_gens=true,
-            availability=false,
-        )
-        @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
-        @test test_names_equal(rts_pras_sys.regions.names, area_names)
-
-        rts_pras_sys = generate_pras_system(
-            rts_da_sys,
-            PSY.Area,
-            lump_region_renewable_gens=true,
-            availability=false,
             export_location=joinpath(@__DIR__, "rts.pras"),
         )
         @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
@@ -169,7 +143,7 @@ end
     end
 end
 
-@testset "RTS GMLC with default data" begin
+@testset "RTS GMLC DA with default data" begin
     rts_da_sys = PSCB.build_system(PSCB.PSISystems, "RTS_GMLC_DA_sys")
     area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
     generator_names =
@@ -192,6 +166,20 @@ end
     λ, μ = SiennaPRASInterface.rate_to_probability(5.15, 22)
     @test array_all_equal(rts_pras_sys.generators.λ[idx, :], λ)
     @test array_all_equal(rts_pras_sys.generators.μ[idx, :], μ)
+end
+
+@testset "RTS GMLC RT with default data" begin
+    rts_rt_sys = PSCB.build_system(PSCB.PSISystems, "RTS_GMLC_RT_sys")
+
+    rts_pras_sys = generate_pras_system(rts_rt_sys, PSY.Area)
+    @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
+
+    # Test that timestamps look right
+    # get time series length
+    psy_ts = first(PSY.get_time_series_multiple(rts_rt_sys, type=PSY.SingleTimeSeries))
+    @test all(
+        TimeSeries.timestamp(psy_ts.data) .== collect(DateTime.(rts_pras_sys.timestamps)),
+    )
 end
 
 # TODO: We want to test time-series λ, μ

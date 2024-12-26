@@ -8,7 +8,6 @@ Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemMode
 
   - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
   - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional}
-  - `availability::Bool`: Takes into account avaialability of StaticInjection components when building the PRAS System {Optional}
   - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional}
   - `export_location::String`: Export location of the .pras file
     ...
@@ -27,7 +26,6 @@ PRAS SystemModel
 function generate_pras_system(
     sys::PSY.System,
     aggregation::Type{AT};
-    availability=true,
     lump_region_renewable_gens=false,
     export_location::Union{Nothing, String}=nothing,
 )::PRASCore.SystemModel where {AT <: PSY.AggregationTopology}
@@ -160,12 +158,21 @@ function generate_pras_system(
     add_N!(s2p_meta)
 
     # TODO: Is it okay to just get the first elemnt of vector returned by PSY.get_time_series_resolutions?
-    sys_res_in_hour =
+    sys_res =
         round(Dates.Millisecond(first(PSY.get_time_series_resolutions(sys))), Dates.Hour)
+    if iszero(sys_res.value)
+        sys_res = round(
+            Dates.Millisecond(first(PSY.get_time_series_resolutions(sys))),
+            Dates.Minute,
+        )
+        s2p_meta.pras_resolution = Dates.Minute
+    end
+    s2p_meta.pras_timestep = sys_res.value
     start_datetime_tz = TimeZones.ZonedDateTime(s2p_meta.first_timestamp, TimeZones.tz"UTC")
-    finish_datetime_tz = start_datetime_tz + Dates.Hour((s2p_meta.N - 1) * sys_res_in_hour)
+    finish_datetime_tz =
+        start_datetime_tz + s2p_meta.pras_resolution((s2p_meta.N - 1) * sys_res)
     my_timestamps =
-        StepRange(start_datetime_tz, Dates.Hour(sys_res_in_hour), finish_datetime_tz)
+        StepRange(start_datetime_tz, s2p_meta.pras_resolution(sys_res), finish_datetime_tz)
 
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
     #######################################################
@@ -173,21 +180,13 @@ function generate_pras_system(
     # TODO: Not sure if we need this anymore.
     #######################################################
     dup_uuids = Base.UUID[]
-    h_s_comps =
-        availability ? PSY.get_components(PSY.get_available, PSY.HybridSystem, sys) :
-        PSY.get_components(PSY.HybridSystem, sys)
+    h_s_comps = PSY.get_available_components(PSY.HybridSystem, sys)
     for h_s in h_s_comps
         push!(dup_uuids, PSY.IS.get_uuid.(PSY._get_components(h_s))...)
     end
     # Add HybridSystem sub component UUIDs to s2p_meta
     if ~(isempty(dup_uuids))
         s2p_meta.hs_uuids = dup_uuids
-    end
-
-    # TODO: Do we still need to do this? From now, PSS/e parser
-    # will return PSY.StandardLoad objects
-    if (length(PSY.get_components(PSY.PowerLoad, sys)) > 0)
-        s2p_meta.load_type = PSY.PowerLoad
     end
     #######################################################
     # PRAS Regions - Areas in PowerSystems.jl
@@ -209,12 +208,7 @@ function generate_pras_system(
 
     for (idx, region) in enumerate(regions)
         reg_load_comps =
-            availability ?
-            get_available_components_in_aggregation_topology(
-                s2p_meta.load_type,
-                sys,
-                region,
-            ) : PSY.get_components_in_aggregation_topology(s2p_meta.load_type, sys, region)
+            get_available_components_in_aggregation_topology(PSY.StaticLoad, sys, region)
         if (length(reg_load_comps) > 0)
             region_load[idx, :] =
                 floor.(
@@ -248,14 +242,11 @@ function generate_pras_system(
 
     if (lump_region_renewable_gens)
         for (idx, region) in enumerate(regions)
-            reg_ren_comps =
-                availability ?
-                get_available_components_in_aggregation_topology(
-                    PSY.RenewableGen,
-                    sys,
-                    region,
-                ) :
-                PSY.get_components_in_aggregation_topology(PSY.RenewableGen, sys, region)
+            reg_ren_comps = get_available_components_in_aggregation_topology(
+                PSY.RenewableGen,
+                sys,
+                region,
+            )
             wind_gs = filter(
                 x -> (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.WT),
                 reg_ren_comps,
@@ -265,12 +256,7 @@ function generate_pras_system(
                 reg_ren_comps,
             )
             reg_gen_comps =
-                availability ?
-                get_available_components_in_aggregation_topology(
-                    PSY.Generator,
-                    sys,
-                    region,
-                ) : PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
+                get_available_components_in_aggregation_topology(PSY.Generator, sys, region)
             gs = filter(
                 x -> (
                     ~(typeof(x) == PSY.HydroEnergyReservoir) &&
@@ -312,12 +298,7 @@ function generate_pras_system(
     else
         for (idx, region) in enumerate(regions)
             reg_gen_comps =
-                availability ?
-                get_available_components_in_aggregation_topology(
-                    PSY.Generator,
-                    sys,
-                    region,
-                ) : PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
+                get_available_components_in_aggregation_topology(PSY.Generator, sys, region)
             gs = filter(
                 x -> (
                     ~(typeof(x) == PSY.HydroEnergyReservoir) &&
@@ -341,9 +322,7 @@ function generate_pras_system(
 
     for (idx, region) in enumerate(regions)
         reg_stor_comps =
-            availability ?
-            get_available_components_in_aggregation_topology(PSY.Storage, sys, region) :
-            PSY.get_components_in_aggregation_topology(PSY.Storage, sys, region)
+            get_available_components_in_aggregation_topology(PSY.Storage, sys, region)
         push!(stors, filter(x -> (PSY.IS.get_uuid(x) ∉ dup_uuids), reg_stor_comps))
         idx == 1 ? start_id[idx] = 1 :
         start_id[idx] = start_id[idx - 1] + length(stors[idx - 1])
@@ -358,9 +337,7 @@ function generate_pras_system(
 
     for (idx, region) in enumerate(regions)
         reg_gen_stor_comps =
-            availability ?
-            get_available_components_in_aggregation_topology(PSY.Generator, sys, region) :
-            PSY.get_components_in_aggregation_topology(PSY.Generator, sys, region)
+            get_available_components_in_aggregation_topology(PSY.Generator, sys, region)
         gs = filter(
             x -> (typeof(x) == PSY.HydroEnergyReservoir || typeof(x) == PSY.HybridSystem),
             reg_gen_stor_comps,
@@ -480,7 +457,12 @@ function generate_pras_system(
         λ_gen[idx, :], μ_gen[idx, :] = get_outage_time_series_data(g, s2p_meta)
     end
 
-    new_generators = PRASCore.Generators{s2p_meta.N, 1, PRASCore.Hour, PRASCore.MW}(
+    new_generators = PRASCore.Generators{
+        s2p_meta.N,
+        s2p_meta.pras_timestep,
+        s2p_meta.pras_resolution,
+        PRASCore.MW,
+    }(
         gen_names,
         get_generator_category.(gen),
         gen_cap_array,
@@ -549,19 +531,24 @@ function generate_pras_system(
 
     stor_cryovr_eff = ones(n_stor, s2p_meta.N)   # Not currently available/ defined in PowerSystems
 
-    new_storage =
-        PRASCore.Storages{s2p_meta.N, 1, PRASCore.Hour, PRASCore.MW, PRASCore.MWh}(
-            stor_names,
-            get_generator_category.(stor),
-            stor_charge_cap_array,
-            stor_discharge_cap_array,
-            stor_energy_cap_array,
-            stor_chrg_eff_array,
-            stor_dischrg_eff_array,
-            stor_cryovr_eff,
-            λ_stor,
-            μ_stor,
-        )
+    new_storage = PRASCore.Storages{
+        s2p_meta.N,
+        s2p_meta.pras_timestep,
+        s2p_meta.pras_resolution,
+        PRASCore.MW,
+        PRASCore.MWh,
+    }(
+        stor_names,
+        get_generator_category.(stor),
+        stor_charge_cap_array,
+        stor_discharge_cap_array,
+        stor_energy_cap_array,
+        stor_chrg_eff_array,
+        stor_dischrg_eff_array,
+        stor_cryovr_eff,
+        λ_stor,
+        μ_stor,
+    )
 
     #######################################################
     # PRAS Generator Storages
@@ -792,22 +779,27 @@ function generate_pras_system(
     gen_stor_discharge_eff = ones(n_genstors, s2p_meta.N)             # Not currently available/ defined in PowerSystems
     gen_stor_cryovr_eff = ones(n_genstors, s2p_meta.N)                # Not currently available/ defined in PowerSystems
 
-    new_gen_stors =
-        PRASCore.GeneratorStorages{s2p_meta.N, 1, PRASCore.Hour, PRASCore.MW, PRASCore.MWh}(
-            gen_stor_names,
-            get_generator_category.(gen_stor),
-            gen_stor_charge_cap_array,
-            gen_stor_discharge_cap_array,
-            gen_stor_enrgy_cap_array,
-            gen_stor_charge_eff,
-            gen_stor_discharge_eff,
-            gen_stor_cryovr_eff,
-            gen_stor_inflow_array,
-            gen_stor_gridwdr_cap_array,
-            gen_stor_gridinj_cap_array,
-            λ_genstors,
-            μ_genstors,
-        )
+    new_gen_stors = PRASCore.GeneratorStorages{
+        s2p_meta.N,
+        s2p_meta.pras_timestep,
+        s2p_meta.pras_resolution,
+        PRASCore.MW,
+        PRASCore.MWh,
+    }(
+        gen_stor_names,
+        get_generator_category.(gen_stor),
+        gen_stor_charge_cap_array,
+        gen_stor_discharge_cap_array,
+        gen_stor_enrgy_cap_array,
+        gen_stor_charge_eff,
+        gen_stor_discharge_eff,
+        gen_stor_cryovr_eff,
+        gen_stor_inflow_array,
+        gen_stor_gridwdr_cap_array,
+        gen_stor_gridinj_cap_array,
+        λ_genstors,
+        μ_genstors,
+    )
     #######################################################
     # Network
     #######################################################
@@ -817,19 +809,13 @@ function generate_pras_system(
         #######################################################
         @info "Collecting all inter regional lines in Sienna/Data PowerSystems System..."
 
-        lines =
-            availability ?
-            collect(
-                PSY.get_components(
-                    x -> (typeof(x) ∉ TransformerTypes && PSY.get_available(x)),
-                    PSY.Branch,
-                    sys,
-                ),
-            ) :
-            collect(
-                PSY.get_components(x -> (typeof(x) ∉ TransformerTypes), PSY.Branch, sys),
-            )
-
+        lines = collect(
+            PSY.get_components(
+                x -> (typeof(x) ∉ TransformerTypes && PSY.get_available(x)),
+                PSY.Branch,
+                sys,
+            ),
+        )
         #######################################################
         # Inter-Regional Line Processing
         #######################################################
@@ -890,7 +876,6 @@ Generate a PRAS SystemModel from a Sienna/Data PowerSystems System JSON file.
 
   - `sys_location::String`: Location of the Sienna/Data PowerSystems System JSON file
   - `aggregation::Type{AT}`: Aggregation topology type
-  - `availability::Bool`: Availability of components in the System
   - `lump_region_renewable_gens::Bool`: Lumping of region renewable generators
   - `export_location::Union{Nothing, String}`: Export location of the .pras file
 
@@ -901,7 +886,6 @@ Generate a PRAS SystemModel from a Sienna/Data PowerSystems System JSON file.
 function generate_pras_system(
     sys_location::String,
     aggregation::Type{AT};
-    availability=true,
     lump_region_renewable_gens=false,
     export_location::Union{Nothing, String}=nothing,
 ) where {AT <: PSY.AggregationTopology}
@@ -920,7 +904,6 @@ function generate_pras_system(
     generate_pras_system(
         sys,
         aggregation,
-        availability=availability,
         lump_region_renewable_gens=lump_region_renewable_gens,
         export_location=export_location,
     )
