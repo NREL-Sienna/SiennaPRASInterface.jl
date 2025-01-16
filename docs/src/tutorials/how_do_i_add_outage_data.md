@@ -44,18 +44,13 @@ recovery_probability = [0.1, 0.1, 0.2, 0.3, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0
 
 # Your resolution and length must match the other SingleTimeSeries in your System.
 resolution = Dates.Minute(5)
-timestamps = range(DateTime("2020-01-01T08:00:00"); step = resolution, length = 24)
+timestamps = range(DateTime("2020-01-01T08:00:00"); step=resolution, length=24)
 outage_timearray = TimeArray(timestamps, outage_probability)
-outage_time_series = SingleTimeSeries(;
-    name = "outage_probability",
-    data = outage_timearray,
-)
+outage_time_series = SingleTimeSeries(; name="outage_probability", data=outage_timearray)
 
 recovery_timearray = TimeArray(timestamps, recovery_probability)
-recovery_time_series = SingleTimeSeries(;
-    name = "recovery_probability",
-    data = recovery_timearray,
-)
+recovery_time_series =
+    SingleTimeSeries(; name="recovery_probability", data=recovery_timearray)
 
 # Here we assume you have a system named sys
 PSY.add_time_series!(sys, transition_data, outage_time_series)
