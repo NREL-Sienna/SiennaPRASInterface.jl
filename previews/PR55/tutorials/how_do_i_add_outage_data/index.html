@@ -17,18 +17,13 @@ recovery_probability = [0.1, 0.1, 0.2, 0.3, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0
 
 # Your resolution and length must match the other SingleTimeSeries in your System.
 resolution = Dates.Minute(5)
-timestamps = range(DateTime(&quot;2020-01-01T08:00:00&quot;); step = resolution, length = 24)
+timestamps = range(DateTime(&quot;2020-01-01T08:00:00&quot;); step=resolution, length=24)
 outage_timearray = TimeArray(timestamps, outage_probability)
-outage_time_series = SingleTimeSeries(;
-    name = &quot;outage_probability&quot;,
-    data = outage_timearray,
-)
+outage_time_series = SingleTimeSeries(; name=&quot;outage_probability&quot;, data=outage_timearray)
 
 recovery_timearray = TimeArray(timestamps, recovery_probability)
-recovery_time_series = SingleTimeSeries(;
-    name = &quot;recovery_probability&quot;,
-    data = recovery_timearray,
-)
+recovery_time_series =
+    SingleTimeSeries(; name=&quot;recovery_probability&quot;, data=recovery_timearray)
 
 # Here we assume you have a system named sys
 PSY.add_time_series!(sys, transition_data, outage_time_series)
@@ -36,4 +31,4 @@ PSY.add_time_series!(sys, transition_data, recovery_time_series)</code></pre><h2
 add_supplemental_attribute!(sys, component, transition_data)</code></pre><h2 id="Step-3-:-Run-simulations-and-verify-result"><a class="docs-heading-anchor" href="#Step-3-:-Run-simulations-and-verify-result">Step 3 : Run simulations and verify result</a><a id="Step-3-:-Run-simulations-and-verify-result-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3-:-Run-simulations-and-verify-result" title="Permalink"></a></h2><pre><code class="language-julia hljs">using SiennaPRASInterface
 method = SequentialMonteCarlo(samples=10_000, seed=1)
 shortfalls, = assess(sys, PowerSystems.Area, sequential_monte_carlo, Shortfall())
-eue = EUE(shortfalls)</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Thursday 16 January 2025 19:43">Thursday 16 January 2025</span>. Using Julia version 1.11.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+eue = EUE(shortfalls)</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Thursday 16 January 2025 19:49">Thursday 16 January 2025</span>. Using Julia version 1.11.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
