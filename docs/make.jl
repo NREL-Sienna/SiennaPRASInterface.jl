@@ -4,7 +4,8 @@ import OrderedCollections: OrderedDict
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
-     "Tutorials" => Any["How do I add outage data?" => "tutorials/how_do_i_add_outage_data.md"],
+    "Tutorials" =>
+        Any["How do I add outage data?" => "tutorials/how_do_i_add_outage_data.md"],
     "Public API Reference" => "api/public.md",
     "Internal API Reference" => "api/internal.md",
 )
