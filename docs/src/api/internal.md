@@ -1,6 +1,11 @@
 # Internal API
 
+```@docs
+Simulations.DispatchProblem
+Results.StorageAvailability
+```
+
 ```@autodocs
-Modules = [SiennaPRASInterface, PRAS]
+Modules = [SiennaPRASInterface, SiennaPRASInterface.PRASCore]
 Public = false
 ```
