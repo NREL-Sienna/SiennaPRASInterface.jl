@@ -23,7 +23,6 @@ makedocs(
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
     pages=Any[p for p in pages],
     warnonly=true,
-    #draft=false,
 )
 
 deploydocs(
