@@ -10,7 +10,7 @@ PowerSystems Interface for Probabilistic Resource Adequacy Studies (PRAS)
 
   - [`SystemModel`](@ref): PRAS data structure
   - [`SequentialMonteCarlo`](@ref): method for PRAS analysis
-  - `Shortfall`: PRAS metric for missing generation
+  - [`Shortfall`](@ref): PRAS metric for missing generation
   - [`LOLE`](@ref): PRAS metric for loss of load expectation
   - [`EUE`](@ref): PRAS metric for energy unserved expectation
 """
@@ -134,7 +134,7 @@ Estimate resource adequacy using Monte Carlo simulation.
 
 # Returns
 
-  - Tuple of results from `resultsspec`: default is (`ShortfallResult`,)
+  - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
 """
 function PRASCore.assess(
     sys::PSY.System,

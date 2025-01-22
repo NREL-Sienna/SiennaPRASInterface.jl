@@ -1,13 +1,11 @@
 # Internal API
 
 ```@docs
-PRASCore.Simulations.DispatchProblem
-PRASCore.Results.StorageAvailability
+Simulations.DispatchProblem
+Results.StorageAvailability
 ```
 
 ```@autodocs
-Modules = [SiennaPRASInterface, PRASCore]
+Modules = [SiennaPRASInterface, SiennaPRASInterface.PRASCore]
 Public = false
 ```
-
-

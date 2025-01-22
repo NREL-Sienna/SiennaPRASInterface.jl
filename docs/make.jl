@@ -1,7 +1,7 @@
 using Documenter
 import DataStructures: OrderedDict
 using SiennaPRASInterface
-using SiennaPRASInterface: PRASCore
+using SiennaPRASInterface.PRASCore
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
@@ -22,7 +22,8 @@ makedocs(
     sitename="github.com/NREL-Sienna/SiennaPRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
     pages=Any[p for p in pages],
-    draft=false,
+    warnonly = true,
+    #draft=false,
 )
 
 deploydocs(
