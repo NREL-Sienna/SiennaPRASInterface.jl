@@ -22,7 +22,7 @@ makedocs(
     sitename="github.com/NREL-Sienna/SiennaPRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
     pages=Any[p for p in pages],
-    warnonly = true,
+    warnonly=true,
     #draft=false,
 )
 

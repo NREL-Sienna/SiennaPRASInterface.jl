@@ -59,7 +59,8 @@ timestamps = range(DateTime("2020-01-01T08:00:00"); step=resolution, length=8784
 outage_timearray = TimeArray(timestamps, repeat(outage_probability, inner=div(8784, 12)))
 outage_time_series = SingleTimeSeries(; name="outage_probability", data=outage_timearray)
 
-recovery_timearray = TimeArray(timestamps, repeat(recovery_probability, inner=div(8784, 12)))
+recovery_timearray =
+    TimeArray(timestamps, repeat(recovery_probability, inner=div(8784, 12)))
 recovery_time_series =
     SingleTimeSeries(; name="recovery_probability", data=recovery_timearray)
 
