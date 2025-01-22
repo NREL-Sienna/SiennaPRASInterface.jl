@@ -1,21 +1,28 @@
-using Documenter, SiennaPRASInterface
-import SiennaPRASInterface: PRASCore
-import OrderedCollections: OrderedDict
+using Documenter
+import DataStructures: OrderedDict
+using SiennaPRASInterface
+using SiennaPRASInterface: PRASCore
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
-    "Tutorials" =>
-        Any["How do I add outage data?" => "tutorials/how_do_i_add_outage_data.md"],
-    "Public API Reference" => "api/public.md",
-    "Internal API Reference" => "api/internal.md",
+    "How to..." =>
+        Any["How do I add outage data?" => "how_to_guides/how_do_i_add_outage_data.md"],
+    "Reference" => Any[
+        "Public API Reference" => "api/public.md",
+        "Internal API Reference" => "api/internal.md",
+    ],
 )
 
 makedocs(
     modules=[SiennaPRASInterface, PRASCore],
-    format=Documenter.HTML(prettyurls=haskey(ENV, "GITHUB_ACTIONS")),
-    sitename="SiennaPRASInterface.jl",
+    format=Documenter.HTML(
+        prettyurls=haskey(ENV, "GITHUB_ACTIONS"),
+        size_threshold=nothing,
+    ),
+    sitename="github.com/NREL-Sienna/SiennaPRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
     pages=Any[p for p in pages],
+    draft=false,
 )
 
 deploydocs(

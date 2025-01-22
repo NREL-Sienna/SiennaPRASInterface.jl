@@ -14,8 +14,6 @@ StorageEnergy
 GeneratorStorageEnergy
 LOLE
 EUE
-val
-stderror
 generate_outage_profile
 generate_csv_outage_profile
 add_csv_time_series!
