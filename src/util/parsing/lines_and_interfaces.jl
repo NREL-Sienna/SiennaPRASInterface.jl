@@ -76,9 +76,6 @@ function make_pras_interfaces(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
 )
-    # PRAS needs Sienna\Data PowerSystems.jl System to be in NATURAL_UNITS
-    PSY.set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
-
     num_interfaces = length(interface_reg_idxs)
     interface_regions_from = first.(interface_reg_idxs)
     interface_regions_to = last.(interface_reg_idxs)
@@ -127,44 +124,34 @@ function make_pras_interfaces(
     interface_backward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
 
     area_interchanges = collect(PSY.get_components(PSY.AreaInterchange, sys))
+    area_interchange_data = make_area_interchange_dict(area_interchanges)
     if (length(area_interchanges) > 0)
         for i in 1:num_interfaces
             from_area_name = region_names[interface_regions_from[i]]
             to_area_name = region_names[interface_regions_to[i]]
-            a_i = filter(
-                x -> (
-                    PSY.get_name(PSY.get_from_area(x)) == from_area_name &&
-                    PSY.get_name(PSY.get_to_area(x)) == to_area_name
-                ),
-                area_interchanges,
-            )
-            if !(length(a_i) == 0)
+            a_i_data_key = from_area_name * "=>" * to_area_name
+
+            if (haskey(area_interchange_data, a_i_data_key))
                 interface_forward_capacity_array[i, :] = fill(
-                    floor(Int, getfield(PSY.get_flow_limits(first(a_i)), :from_to)),
+                    floor(Int, area_interchange_data[a_i_data_key].from_to),
                     1,
                     s2p_meta.N,
                 )
                 interface_backward_capacity_array[i, :] = fill(
-                    floor(Int, getfield(PSY.get_flow_limits(first(a_i)), :to_from)),
+                    floor(Int, area_interchange_data[a_i_data_key].to_from),
                     1,
                     s2p_meta.N,
                 )
             else
-                a_i = filter(
-                    x -> (
-                        PSY.get_name(PSY.get_from_area(x)) == to_area_name &&
-                        PSY.get_name(PSY.get_to_area(x)) == from_area_name
-                    ),
-                    area_interchanges,
-                )
-                if !(length(a_i) == 0)
+                a_i_data_key = to_area_name * "=>" * from_area_name
+                if (haskey(area_interchange_data, a_i_data_key))
                     interface_forward_capacity_array[i, :] = fill(
-                        floor(Int, getfield(PSY.get_flow_limits(first(a_i)), :to_from)),
+                        floor(Int, area_interchange_data[a_i_data_key].to_from),
                         1,
                         s2p_meta.N,
                     )
                     interface_backward_capacity_array[i, :] = fill(
-                        floor(Int, getfield(PSY.get_flow_limits(first(a_i)), :from_to)),
+                        floor(Int, area_interchange_data[a_i_data_key].from_to),
                         1,
                         s2p_meta.N,
                     )

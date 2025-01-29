@@ -224,3 +224,18 @@ function get_outage_time_series_data(
 
     return λ_gen, μ_gen
 end
+
+function make_area_interchange_dict(area_interchanges::Vector{PSY.AreaInterchange})
+    area_interchange_data = Dict{String, PSY.FromTo_ToFrom}()
+    for a_i in area_interchanges
+        f_l = PSY.get_flow_limits(a_i)
+        push!(
+            area_interchange_data,
+            PSY.get_name(PSY.get_from_area(a_i)) *
+            "=>" *
+            PSY.get_name(PSY.get_to_area(a_i)) =>
+                (from_to=f_l.from_to, to_from=f_l.to_from),
+        )
+    end
+    return area_interchange_data
+end
