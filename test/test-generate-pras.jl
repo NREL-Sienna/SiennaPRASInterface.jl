@@ -182,6 +182,26 @@ end
     )
 end
 
+@testset "Two Area PJM with default data AreaInterchange" begin
+    pjm_sys = PSCB.build_system(PSCB.PSISystems, "two_area_pjm_DA")
+    PSY.set_units_base_system!(pjm_sys, PSY.UnitSystem.NATURAL_UNITS)
+
+    pjm_pras_sys = generate_pras_system(pjm_sys, PSY.Area)
+    @test pjm_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
+
+    # Test that PRAS Interfaces limit_forward and limit_backward look right
+    area_interchange = first(PSY.get_components(PSY.AreaInterchange, pjm_sys))
+
+    @test all(
+        pjm_pras_sys.interfaces.limit_forward .==
+        Int(floor(getfield(PSY.get_flow_limits(area_interchange), :to_from))),
+    )
+    @test all(
+        pjm_pras_sys.interfaces.limit_backward .==
+        Int(floor(getfield(PSY.get_flow_limits(area_interchange), :from_to))),
+    )
+end
+
 # TODO: We want to test time-series λ, μ
 # TODO: test HybridSystems
 # TODO: Unit test line_and_interfaces.jl
