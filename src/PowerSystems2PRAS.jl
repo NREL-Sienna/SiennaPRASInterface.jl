@@ -811,7 +811,11 @@ function generate_pras_system(
 
         lines = collect(
             PSY.get_components(
-                x -> (typeof(x) ∉ TransformerTypes && PSY.get_available(x)),
+                x -> (
+                    PSY.get_available(x) &&
+                    typeof(x) ∉ TransformerTypes &&
+                    typeof(x) != PSY.AreaInterchange
+                ),
                 PSY.Branch,
                 sys,
             ),
@@ -819,13 +823,16 @@ function generate_pras_system(
         #######################################################
         # Inter-Regional Line Processing
         #######################################################
-        regional_lines = filter(x -> ~(x.arc.from.area.name == x.arc.to.area.name), lines)
+        inter_regional_lines =
+            filter(x -> ~(x.arc.from.area.name == x.arc.to.area.name), lines)
         sorted_lines, interface_reg_idxs, interface_line_idxs =
-            get_sorted_lines(regional_lines, region_names)
+            get_sorted_lines(inter_regional_lines, region_names)
         new_lines, new_interfaces = make_pras_interfaces(
             sorted_lines,
             interface_reg_idxs,
             interface_line_idxs,
+            region_names,
+            sys,
             s2p_meta,
         )
 

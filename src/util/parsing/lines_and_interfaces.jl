@@ -72,8 +72,13 @@ function make_pras_interfaces(
     sorted_lines::Vector{PSY.Branch},
     interface_reg_idxs::Vector{Tuple{Int64, Int64}},
     interface_line_idxs::Vector{UnitRange{Int64}},
+    region_names::Vector{String},
+    sys::PSY.System,
     s2p_meta::S2P_metadata,
 )
+    # PRAS needs Sienna\Data PowerSystems.jl System to be in NATURAL_UNITS
+    PSY.set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
+
     num_interfaces = length(interface_reg_idxs)
     interface_regions_from = first.(interface_reg_idxs)
     interface_regions_to = last.(interface_reg_idxs)
@@ -81,7 +86,7 @@ function make_pras_interfaces(
 
     # Lines
     line_names = PSY.get_name.(sorted_lines)
-    line_cats = string.(typeof.(sorted_lines))
+    line_cats = line_type.(sorted_lines)
 
     line_forward_cap = Matrix{Int64}(undef, num_lines, s2p_meta.N)
     line_backward_cap = Matrix{Int64}(undef, num_lines, s2p_meta.N)
@@ -121,11 +126,63 @@ function make_pras_interfaces(
     interface_forward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
     interface_backward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
 
-    for i in 1:num_interfaces
-        interface_forward_capacity_array[i, :] =
-            sum(line_forward_cap[interface_line_idxs[i], :], dims=1)
-        interface_backward_capacity_array[i, :] =
-            sum(line_backward_cap[interface_line_idxs[i], :], dims=1)
+    area_interchanges = collect(PSY.get_components(PSY.AreaInterchange, sys))
+    if (length(area_interchanges) > 0)
+        for i in 1:num_interfaces
+            from_area_name = region_names[interface_regions_from[i]]
+            to_area_name = region_names[interface_regions_to[i]]
+            a_i = filter(
+                x -> (
+                    PSY.get_name(PSY.get_from_area(x)) == from_area_name &&
+                    PSY.get_name(PSY.get_to_area(x)) == to_area_name
+                ),
+                area_interchanges,
+            )
+            if !(length(a_i) == 0)
+                interface_forward_capacity_array[i, :] = fill(
+                    floor(Int, getfield(PSY.get_flow_limits(first(a_i)), :from_to)),
+                    1,
+                    s2p_meta.N,
+                )
+                interface_backward_capacity_array[i, :] = fill(
+                    floor(Int, getfield(PSY.get_flow_limits(first(a_i)), :to_from)),
+                    1,
+                    s2p_meta.N,
+                )
+            else
+                a_i = filter(
+                    x -> (
+                        PSY.get_name(PSY.get_from_area(x)) == to_area_name &&
+                        PSY.get_name(PSY.get_to_area(x)) == from_area_name
+                    ),
+                    area_interchanges,
+                )
+                if !(length(a_i) == 0)
+                    interface_forward_capacity_array[i, :] = fill(
+                        floor(Int, getfield(PSY.get_flow_limits(first(a_i)), :to_from)),
+                        1,
+                        s2p_meta.N,
+                    )
+                    interface_backward_capacity_array[i, :] = fill(
+                        floor(Int, getfield(PSY.get_flow_limits(first(a_i)), :from_to)),
+                        1,
+                        s2p_meta.N,
+                    )
+                else
+                    interface_forward_capacity_array[i, :] =
+                        sum(line_forward_cap[interface_line_idxs[i], :], dims=1)
+                    interface_backward_capacity_array[i, :] =
+                        sum(line_backward_cap[interface_line_idxs[i], :], dims=1)
+                end
+            end
+        end
+    else
+        for i in 1:num_interfaces
+            interface_forward_capacity_array[i, :] =
+                sum(line_forward_cap[interface_line_idxs[i], :], dims=1)
+            interface_backward_capacity_array[i, :] =
+                sum(line_backward_cap[interface_line_idxs[i], :], dims=1)
+        end
     end
 
     new_interfaces = PRASCore.Interfaces{s2p_meta.N, PRASCore.MW}(

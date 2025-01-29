@@ -79,9 +79,17 @@ function line_rating(line::PSY.Branch)
     error("line_rating isn't defined for $(typeof(line))")
 end
 
-function line_rating(line::Union{PSY.Line, PSY.MonitoredLine})
+function line_rating(line::PSY.Line)
     rate = PSY.get_rating(line)
     return (forward_capacity=abs(rate), backward_capacity=abs(rate))
+end
+
+function line_rating(line::PSY.MonitoredLine)
+    rate = PSY.get_flow_limits(line)
+    return (
+        forward_capacity=abs(getfield(rate, :from_to)),
+        backward_capacity=abs(getfield(rate, :to_from)),
+    )
 end
 
 function line_rating(line::PSY.TwoTerminalHVDCLine)
@@ -95,6 +103,35 @@ end
 
 function line_rating(line::DCLine) where {DCLine <: HVDCLineTypes}
     error("line_rating isn't defined for $(typeof(line))")
+end
+
+"""
+    line_type(line::Branch)
+
+Get the line type.
+
+# Arguments
+
+  - `line::Branch`: Line
+
+# Returns
+
+  - `String`: Line type
+"""
+function line_type(line::PSY.Branch)
+    error("line_type isn't defined for $(typeof(line))")
+end
+
+function line_type(line::Union{PSY.Line, PSY.MonitoredLine})
+    return "ACLine"
+end
+
+function line_type(line::PSY.TwoTerminalHVDCLine)
+    return "HVDCLine"
+end
+
+function line_type(line::DCLine) where {DCLine <: HVDCLineTypes}
+    error("line_type isn't defined for $(typeof(line))")
 end
 
 """
