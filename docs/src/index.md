@@ -38,7 +38,7 @@ add_supplemental_attribute!(sys, component, transition_data)
 
 ```julia
 using SiennaPRASInterface
-method = SequentialMonteCarlo(samples=10_000, seed=1)
+sequential_monte_carlo = SequentialMonteCarlo(samples=10_000, seed=1)
 shortfalls, = assess(sys, PowerSystems.Area, sequential_monte_carlo, Shortfall())
 eue = EUE(shortfalls)
 ```
