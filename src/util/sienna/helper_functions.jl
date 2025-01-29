@@ -86,15 +86,12 @@ end
 
 function line_rating(line::PSY.MonitoredLine)
     rate = PSY.get_flow_limits(line)
-    return (
-        forward_capacity=abs(getfield(rate, :from_to)),
-        backward_capacity=abs(getfield(rate, :to_from)),
-    )
+    return (forward_capacity=rate.from_to, backward_capacity=rate.to_from)
 end
 
 function line_rating(line::PSY.TwoTerminalHVDCLine)
-    forward_capacity = getfield(PSY.get_active_power_limits_from(line), :max)
-    backward_capacity = getfield(PSY.get_active_power_limits_to(line), :max)
+    forward_capacity = PSY.get_active_power_limits_from(line).max
+    backward_capacity = PSY.get_active_power_limits_to(line).max
     return (
         forward_capacity=abs(forward_capacity),
         backward_capacity=abs(backward_capacity),

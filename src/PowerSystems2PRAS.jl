@@ -502,29 +502,17 @@ function generate_pras_system(
     μ_stor = Matrix{Float64}(undef, n_stor, s2p_meta.N)
 
     for (idx, s) in enumerate(stor)
-        stor_charge_cap_array[idx, :] = fill(
-            floor(Int, getfield(PSY.get_input_active_power_limits(s), :max)),
-            1,
-            s2p_meta.N,
-        )
-        stor_discharge_cap_array[idx, :] = fill(
-            floor(Int, getfield(PSY.get_output_active_power_limits(s), :max)),
-            1,
-            s2p_meta.N,
-        )
+        stor_charge_cap_array[idx, :] =
+            fill(floor(Int, PSY.get_input_active_power_limits(s).max), 1, s2p_meta.N)
+        stor_discharge_cap_array[idx, :] =
+            fill(floor(Int, PSY.get_output_active_power_limits(s).max), 1, s2p_meta.N)
         stor_energy_cap_array[idx, :] = fill(
-            floor(
-                Int,
-                getfield(PSY.get_storage_level_limits(s), :max) *
-                PSY.get_storage_capacity(s),
-            ),
+            floor(Int, PSY.get_storage_level_limits(s).max * PSY.get_storage_capacity(s)),
             1,
             s2p_meta.N,
         )
-        stor_chrg_eff_array[idx, :] =
-            fill(getfield(PSY.get_efficiency(s), :in), 1, s2p_meta.N)
-        stor_dischrg_eff_array[idx, :] =
-            fill.(getfield(PSY.get_efficiency(s), :out), 1, s2p_meta.N)
+        stor_chrg_eff_array[idx, :] = fill(PSY.get_efficiency(s).in, 1, s2p_meta.N)
+        stor_dischrg_eff_array[idx, :] = fill.(PSY.get_efficiency(s).out, 1, s2p_meta.N)
 
         λ_stor[idx, :], μ_stor[idx, :] = get_outage_time_series_data(s, s2p_meta)
     end

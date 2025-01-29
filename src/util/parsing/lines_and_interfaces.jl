@@ -92,14 +92,10 @@ function make_pras_interfaces(
 
     for i in 1:num_lines
         line_forward_cap[i, :] =
-            fill.(
-                floor.(Int, getfield(line_rating(sorted_lines[i]), :forward_capacity)),
-                1,
-                s2p_meta.N,
-            )
+            fill.(floor.(Int, line_rating(sorted_lines[i]).forward_capacity), 1, s2p_meta.N)
         line_backward_cap[i, :] =
             fill.(
-                floor.(Int, getfield(line_rating(sorted_lines[i]), :backward_capacity)),
+                floor.(Int, line_rating(sorted_lines[i]).backward_capacity),
                 1,
                 s2p_meta.N,
             )
