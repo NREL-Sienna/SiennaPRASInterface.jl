@@ -125,7 +125,7 @@ function make_pras_interfaces(
         for i in 1:num_interfaces
             from_area_name = region_names[interface_regions_from[i]]
             to_area_name = region_names[interface_regions_to[i]]
-            a_i_data_key = from_area_name * "=>" * to_area_name
+            a_i_data_key = (from_area_name, to_area_name)
 
             if (haskey(area_interchange_data, a_i_data_key))
                 interface_forward_capacity_array[i, :] = fill(
@@ -139,7 +139,7 @@ function make_pras_interfaces(
                     s2p_meta.N,
                 )
             else
-                a_i_data_key = to_area_name * "=>" * from_area_name
+                a_i_data_key = (to_area_name, from_area_name)
                 if (haskey(area_interchange_data, a_i_data_key))
                     interface_forward_capacity_array[i, :] = fill(
                         floor(Int, area_interchange_data[a_i_data_key].to_from),

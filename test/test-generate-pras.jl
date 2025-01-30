@@ -184,8 +184,6 @@ end
 
 @testset "Two Area PJM with default data AreaInterchange" begin
     pjm_sys = PSCB.build_system(PSCB.PSISystems, "two_area_pjm_DA")
-    PSY.set_units_base_system!(pjm_sys, PSY.UnitSystem.NATURAL_UNITS)
-
     pjm_pras_sys = generate_pras_system(pjm_sys, PSY.Area)
     @test pjm_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
 
