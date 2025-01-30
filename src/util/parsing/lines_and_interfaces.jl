@@ -72,6 +72,8 @@ function make_pras_interfaces(
     sorted_lines::Vector{PSY.Branch},
     interface_reg_idxs::Vector{Tuple{Int64, Int64}},
     interface_line_idxs::Vector{UnitRange{Int64}},
+    region_names::Vector{String},
+    sys::PSY.System,
     s2p_meta::S2P_metadata,
 )
     num_interfaces = length(interface_reg_idxs)
@@ -81,7 +83,7 @@ function make_pras_interfaces(
 
     # Lines
     line_names = PSY.get_name.(sorted_lines)
-    line_cats = string.(typeof.(sorted_lines))
+    line_cats = line_type.(sorted_lines)
 
     line_forward_cap = Matrix{Int64}(undef, num_lines, s2p_meta.N)
     line_backward_cap = Matrix{Int64}(undef, num_lines, s2p_meta.N)
@@ -90,14 +92,10 @@ function make_pras_interfaces(
 
     for i in 1:num_lines
         line_forward_cap[i, :] =
-            fill.(
-                floor.(Int, getfield(line_rating(sorted_lines[i]), :forward_capacity)),
-                1,
-                s2p_meta.N,
-            )
+            fill.(floor.(Int, line_rating(sorted_lines[i]).forward_capacity), 1, s2p_meta.N)
         line_backward_cap[i, :] =
             fill.(
-                floor.(Int, getfield(line_rating(sorted_lines[i]), :backward_capacity)),
+                floor.(Int, line_rating(sorted_lines[i]).backward_capacity),
                 1,
                 s2p_meta.N,
             )
@@ -121,11 +119,53 @@ function make_pras_interfaces(
     interface_forward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
     interface_backward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
 
-    for i in 1:num_interfaces
-        interface_forward_capacity_array[i, :] =
-            sum(line_forward_cap[interface_line_idxs[i], :], dims=1)
-        interface_backward_capacity_array[i, :] =
-            sum(line_backward_cap[interface_line_idxs[i], :], dims=1)
+    area_interchanges = collect(PSY.get_components(PSY.AreaInterchange, sys))
+    area_interchange_data = make_area_interchange_dict(area_interchanges)
+    if (length(area_interchanges) > 0)
+        for i in 1:num_interfaces
+            from_area_name = region_names[interface_regions_from[i]]
+            to_area_name = region_names[interface_regions_to[i]]
+            a_i_data_key = (from_area_name, to_area_name)
+
+            if (haskey(area_interchange_data, a_i_data_key))
+                interface_forward_capacity_array[i, :] = fill(
+                    floor(Int, area_interchange_data[a_i_data_key].from_to),
+                    1,
+                    s2p_meta.N,
+                )
+                interface_backward_capacity_array[i, :] = fill(
+                    floor(Int, area_interchange_data[a_i_data_key].to_from),
+                    1,
+                    s2p_meta.N,
+                )
+            else
+                a_i_data_key = (to_area_name, from_area_name)
+                if (haskey(area_interchange_data, a_i_data_key))
+                    interface_forward_capacity_array[i, :] = fill(
+                        floor(Int, area_interchange_data[a_i_data_key].to_from),
+                        1,
+                        s2p_meta.N,
+                    )
+                    interface_backward_capacity_array[i, :] = fill(
+                        floor(Int, area_interchange_data[a_i_data_key].from_to),
+                        1,
+                        s2p_meta.N,
+                    )
+                else
+                    interface_forward_capacity_array[i, :] =
+                        sum(line_forward_cap[interface_line_idxs[i], :], dims=1)
+                    interface_backward_capacity_array[i, :] =
+                        sum(line_backward_cap[interface_line_idxs[i], :], dims=1)
+                end
+            end
+        end
+    else
+        for i in 1:num_interfaces
+            interface_forward_capacity_array[i, :] =
+                sum(line_forward_cap[interface_line_idxs[i], :], dims=1)
+            interface_backward_capacity_array[i, :] =
+                sum(line_backward_cap[interface_line_idxs[i], :], dims=1)
+        end
     end
 
     new_interfaces = PRASCore.Interfaces{s2p_meta.N, PRASCore.MW}(

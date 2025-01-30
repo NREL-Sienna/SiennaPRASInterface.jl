@@ -79,14 +79,19 @@ function line_rating(line::PSY.Branch)
     error("line_rating isn't defined for $(typeof(line))")
 end
 
-function line_rating(line::Union{PSY.Line, PSY.MonitoredLine})
+function line_rating(line::PSY.Line)
     rate = PSY.get_rating(line)
     return (forward_capacity=abs(rate), backward_capacity=abs(rate))
 end
 
+function line_rating(line::PSY.MonitoredLine)
+    rate = PSY.get_flow_limits(line)
+    return (forward_capacity=rate.from_to, backward_capacity=rate.to_from)
+end
+
 function line_rating(line::PSY.TwoTerminalHVDCLine)
-    forward_capacity = getfield(PSY.get_active_power_limits_from(line), :max)
-    backward_capacity = getfield(PSY.get_active_power_limits_to(line), :max)
+    forward_capacity = PSY.get_active_power_limits_from(line).max
+    backward_capacity = PSY.get_active_power_limits_to(line).max
     return (
         forward_capacity=abs(forward_capacity),
         backward_capacity=abs(backward_capacity),
@@ -95,6 +100,35 @@ end
 
 function line_rating(line::DCLine) where {DCLine <: HVDCLineTypes}
     error("line_rating isn't defined for $(typeof(line))")
+end
+
+"""
+    line_type(line::Branch)
+
+Get the line type.
+
+# Arguments
+
+  - `line::Branch`: Line
+
+# Returns
+
+  - `String`: Line type
+"""
+function line_type(line::PSY.Branch)
+    error("line_type isn't defined for $(typeof(line))")
+end
+
+function line_type(line::Union{PSY.Line, PSY.MonitoredLine})
+    return "ACLine"
+end
+
+function line_type(line::PSY.TwoTerminalHVDCLine)
+    return "HVDCLine"
+end
+
+function line_type(line::DCLine) where {DCLine <: HVDCLineTypes}
+    error("line_type isn't defined for $(typeof(line))")
 end
 
 """
@@ -186,4 +220,17 @@ function get_outage_time_series_data(
     end
 
     return λ_gen, μ_gen
+end
+
+function make_area_interchange_dict(area_interchanges::Vector{PSY.AreaInterchange})
+    area_interchange_data = Dict{Tuple{String, String}, PSY.FromTo_ToFrom}()
+    for a_i in area_interchanges
+        f_l = PSY.get_flow_limits(a_i)
+        push!(
+            area_interchange_data,
+            (PSY.get_name(PSY.get_from_area(a_i)), PSY.get_name(PSY.get_to_area(a_i))) =>
+                (from_to=f_l.from_to, to_from=f_l.to_from),
+        )
+    end
+    return area_interchange_data
 end
