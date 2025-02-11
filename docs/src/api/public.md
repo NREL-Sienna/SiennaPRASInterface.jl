@@ -1,8 +1,13 @@
 # Public API Reference
 
+```@autodocs
+Modules = [SiennaPRASInterface]
+Public = true
+```
+
+## PRAS Documentation
+
 ```@docs
-SiennaPRASInterface
-generate_pras_system
 SystemModel
 assess
 SequentialMonteCarlo
@@ -14,11 +19,6 @@ StorageEnergy
 GeneratorStorageEnergy
 LOLE
 EUE
-generate_outage_profile
-generate_csv_outage_profile
-add_csv_time_series!
-add_csv_time_series_single_stage!
-make_generator_outage_draws!
 ShortfallSamples
 SurplusSamples
 FlowSamples
