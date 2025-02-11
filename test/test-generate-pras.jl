@@ -119,22 +119,16 @@ end
     @test all(rts_pras_sys.regions.load .== Int.(floor.(load_values)))
 
     @testset "Lumped Renewable Generators" begin
-        rts_pras_sys =
-            generate_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true)
+        rts_pras_sys = generate_pras_system(rts_da_sys, PSY.Area, true)
+        @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
+        @test test_names_equal(rts_pras_sys.regions.names, area_names)
+
+        rts_pras_sys = generate_pras_system(rts_da_sys, PSY.Area, true)
         @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
 
         rts_pras_sys =
-            generate_pras_system(rts_da_sys, PSY.Area, lump_region_renewable_gens=true)
-        @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
-        @test test_names_equal(rts_pras_sys.regions.names, area_names)
-
-        rts_pras_sys = generate_pras_system(
-            rts_da_sys,
-            PSY.Area,
-            lump_region_renewable_gens=true,
-            export_location=joinpath(@__DIR__, "rts.pras"),
-        )
+            generate_pras_system(rts_da_sys, PSY.Area, true, joinpath(@__DIR__, "rts.pras"))
         @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
         @test test_names_equal(rts_pras_sys.regions.names, area_names)
         @test isfile(joinpath(@__DIR__, "rts.pras"))

@@ -106,165 +106,147 @@ function get_region_loads(sys::PSY.System, s2p_meta::S2P_metadata, regions)
     return region_load
 end
 
+# Generator must not have HydroEenergyReservoir or have 0 max active power or be a hybrid system
 function get_generator_region_indices(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
     regions,
-    lump_region_renewable_gens::Bool,
+    component_to_formulation::Dict{PSY.Device, GeneratorFormulation},
 )
-    gens = Array{PSY.Generator}[]
+    gens = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
     region_gen_idxs = Array{UnitRange{Int64}, 1}(undef, length(regions))
+
     reg_wind_gens = []
     reg_pv_gens = []
+    for (idx, region) in enumerate(regions)
+        reg_ren_comps = filter(
+            x -> haskey(component_to_formulation, x),
+            get_available_components_in_aggregation_topology(PSY.RenewableGen, sys, region),
+        )
+        wind_gs = filter(
+            x -> (
+                (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.WT) &&
+                component_to_formulation[x].lump_renewable_generation
+            ),
+            reg_ren_comps,
+        )
+        pv_gs = filter(
+            x -> (
+                (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe) &&
+                component_to_formulation[x].lump_renewable_generation
+            ),
+            reg_ren_comps,
+        )
+        gs = filter(
+            x -> (
+                haskey(component_to_formulation, x) &&
+                !component_to_formulation[x].lump_renewable_generation &&
+                !(iszero(PSY.get_max_active_power(x))) &&
+                PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids
+            ),
+            get_available_components_in_aggregation_topology(PSY.Generator, sys, region),
+        )
+        push!(gens, gs)
+        push!(reg_wind_gens, wind_gs)
+        push!(reg_pv_gens, pv_gs)
 
-    if (lump_region_renewable_gens)
-        for (idx, region) in enumerate(regions)
-            reg_ren_comps = get_available_components_in_aggregation_topology(
-                PSY.RenewableGen,
-                sys,
-                region,
-            )
-            wind_gs = filter(
-                x -> (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.WT),
-                reg_ren_comps,
-            )
-            pv_gs = filter(
-                x -> (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe),
-                reg_ren_comps,
-            )
-            reg_gen_comps =
-                get_available_components_in_aggregation_topology(PSY.Generator, sys, region)
-            gs = filter(
-                x -> (
-                    ~(typeof(x) == PSY.HydroEnergyReservoir) &&
-                    ~(iszero(PSY.get_max_active_power(x))) &&
-                    PSY.IS.get_uuid(x) ∉ union(
-                        s2p_meta.hs_uuids,
-                        PSY.IS.get_uuid.(wind_gs),
-                        PSY.IS.get_uuid.(pv_gs),
-                    )
-                ),
-                reg_gen_comps,
-            )
-            push!(gens, gs)
-            push!(reg_wind_gens, wind_gs)
-            push!(reg_pv_gens, pv_gs)
-
-            if (idx == 1)
-                start_id[idx] = 1
+        if (idx == 1)
+            start_id[idx] = 1
+        else
+            if (length(reg_wind_gens[idx - 1]) > 0 && length(reg_pv_gens[idx - 1]) > 0)
+                start_id[idx] = start_id[idx - 1] + length(gens[idx - 1]) + 2
+            elseif (length(reg_wind_gens[idx - 1]) > 0 || length(reg_pv_gens[idx - 1]) > 0)
+                start_id[idx] = start_id[idx - 1] + length(gens[idx - 1]) + 1
             else
-                if (length(reg_wind_gens[idx - 1]) > 0 && length(reg_pv_gens[idx - 1]) > 0)
-                    start_id[idx] = start_id[idx - 1] + length(gens[idx - 1]) + 2
-                elseif (
-                    length(reg_wind_gens[idx - 1]) > 0 || length(reg_pv_gens[idx - 1]) > 0
-                )
-                    start_id[idx] = start_id[idx - 1] + length(gens[idx - 1]) + 1
-                else
-                    start_id[idx] = start_id[idx - 1] + length(gens[idx - 1])
-                end
-            end
-
-            if (length(reg_wind_gens[idx]) > 0 && length(reg_pv_gens[idx]) > 0)
-                region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]) + 2)
-            elseif (length(reg_wind_gens[idx]) > 0 || length(reg_pv_gens[idx]) > 0)
-                region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]) + 1)
-            else
-                region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
+                start_id[idx] = start_id[idx - 1] + length(gens[idx - 1])
             end
         end
-    else
-        for (idx, region) in enumerate(regions)
-            reg_gen_comps =
-                get_available_components_in_aggregation_topology(PSY.Generator, sys, region)
-            gs = filter(
-                x -> (
-                    ~(typeof(x) == PSY.HydroEnergyReservoir) &&
-                    ~(iszero(PSY.get_max_active_power(x))) &&
-                    PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids
-                ),
-                reg_gen_comps,
-            )
-            push!(gens, gs)
-            idx == 1 ? start_id[idx] = 1 :
-            start_id[idx] = start_id[idx - 1] + length(gens[idx - 1])
+
+        if (length(reg_wind_gens[idx]) > 0 && length(reg_pv_gens[idx]) > 0)
+            region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]) + 2)
+        elseif (length(reg_wind_gens[idx]) > 0 || length(reg_pv_gens[idx]) > 0)
+            region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]) + 1)
+        else
             region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
         end
     end
-    return gens, region_gen_idxs, reg_wind_gens, reg_pv_gens
+    for (gen, region, reg_wind_gen, reg_pv_gen) in
+        zip(gens, regions, reg_wind_gens, reg_pv_gens)
+        if (length(reg_wind_gen) > 0)
+            # Wind
+            temp_lumped_wind_gen = PSY.RenewableDispatch(nothing)
+            PSY.set_name!(temp_lumped_wind_gen, "Lumped_Wind_" * PSY.get_name(region))
+            PSY.set_prime_mover_type!(temp_lumped_wind_gen, PSY.PrimeMovers.WT)
+            ext = PSY.get_ext(temp_lumped_wind_gen)
+            ext["region_gens"] = reg_wind_gen
+            push!(gen, temp_lumped_wind_gen)
+        end
+        if (length(reg_pv_gen) > 0)
+            # PV
+            temp_lumped_pv_gen = PSY.RenewableDispatch(nothing)
+            PSY.set_name!(temp_lumped_pv_gen, "Lumped_PV_" * PSY.get_name(region))
+            PSY.set_prime_mover_type!(temp_lumped_pv_gen, PSY.PrimeMovers.PVe)
+            ext = PSY.get_ext(temp_lumped_pv_gen)
+            ext["region_gens"] = reg_pv_gen
+            push!(gen, temp_lumped_pv_gen)
+        end
+    end
+    gen = reduce(vcat, gens)
+    return gen, region_gen_idxs
 end
 
-function get_storage_region_indices(sys::PSY.System, s2p_meta::S2P_metadata, regions)
-    stors = []
+function get_storage_region_indices(
+    sys::PSY.System,
+    s2p_meta::S2P_metadata,
+    regions,
+    component_to_formulation,
+)
+    stors = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
     region_stor_idxs = Array{UnitRange{Int64}, 1}(undef, length(regions))
 
     for (idx, region) in enumerate(regions)
         reg_stor_comps =
             get_available_components_in_aggregation_topology(PSY.Storage, sys, region)
-        push!(stors, filter(x -> (PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids), reg_stor_comps))
+        push!(
+            stors,
+            filter(
+                x ->
+                    haskey(component_to_formulation, x) &&
+                        PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids,
+                reg_stor_comps,
+            ),
+        )
         idx == 1 ? start_id[idx] = 1 :
         start_id[idx] = start_id[idx - 1] + length(stors[idx - 1])
         region_stor_idxs[idx] = range(start_id[idx], length=length(stors[idx]))
     end
-    return stors, region_stor_idxs
+    return reduce(vcat, stors), region_stor_idxs
 end
 
-function get_gen_storage_region_indices(sys::PSY.System, regions)
-    gen_stors = []
+function get_gen_storage_region_indices(sys::PSY.System, regions, component_to_formulation)
+    gen_stors = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
     region_genstor_idxs = Array{UnitRange{Int64}, 1}(undef, length(regions))
 
     for (idx, region) in enumerate(regions)
         reg_gen_stor_comps =
             get_available_components_in_aggregation_topology(PSY.Generator, sys, region)
-        gs = filter(
-            x -> (typeof(x) == PSY.HydroEnergyReservoir || typeof(x) == PSY.HybridSystem),
-            reg_gen_stor_comps,
-        )
+        gs = filter(x -> haskey(component_to_formulation, x), reg_gen_stor_comps)
         push!(gen_stors, gs)
         idx == 1 ? start_id[idx] = 1 :
         start_id[idx] = start_id[idx - 1] + length(gen_stors[idx - 1])
         region_genstor_idxs[idx] = range(start_id[idx], length=length(gen_stors[idx]))
     end
-    return gen_stors, region_genstor_idxs
+    return reduce(vcat, gen_stors), region_genstor_idxs
 end
 
 function process_generators(
-    gens,
-    s2p_meta,
-    regions,
-    reg_wind_gens,
-    reg_pv_gens,
-    lump_region_renewable_gens,
+    gen::Array{PSY.Device},
+    s2p_meta::S2P_metadata,
+    component_to_formulation::Dict{PSY.Device, GeneratorFormulation},
 )
-    # Lumping Wind and PV Generators per Region
-    if (lump_region_renewable_gens)
-        for (gen, region, reg_wind_gen, reg_pv_gen) in
-            zip(gens, regions, reg_wind_gens, reg_pv_gens)
-            if (length(reg_wind_gen) > 0)
-                # Wind
-                temp_lumped_wind_gen = PSY.RenewableDispatch(nothing)
-                PSY.set_name!(temp_lumped_wind_gen, "Lumped_Wind_" * PSY.get_name(region))
-                PSY.set_prime_mover_type!(temp_lumped_wind_gen, PSY.PrimeMovers.WT)
-                ext = PSY.get_ext(temp_lumped_wind_gen)
-                ext["region_gens"] = reg_wind_gen
-                push!(gen, temp_lumped_wind_gen)
-            end
-            if (length(reg_pv_gen) > 0)
-                # PV
-                temp_lumped_pv_gen = PSY.RenewableDispatch(nothing)
-                PSY.set_name!(temp_lumped_pv_gen, "Lumped_PV_" * PSY.get_name(region))
-                PSY.set_prime_mover_type!(temp_lumped_pv_gen, PSY.PrimeMovers.PVe)
-                ext = PSY.get_ext(temp_lumped_pv_gen)
-                ext["region_gens"] = reg_pv_gen
-                push!(gen, temp_lumped_pv_gen)
-            end
-        end
-    end
-
-    gen = reduce(vcat, gens)
-
     if (length(gen) == 0)
         gen_names = String[]
     else
@@ -280,32 +262,27 @@ function process_generators(
 
     #FIXME
     for (idx, g) in enumerate(gen)
-        if (
-            lump_region_renewable_gens && (
-                PSY.get_prime_mover_type(g) == PSY.PrimeMovers.WT ||
-                PSY.get_prime_mover_type(g) == PSY.PrimeMovers.PVe
-            )
-        )
+        if haskey(PSY.get_ext(g), "region_gens")
             reg_gens_DA = PSY.get_ext(g)["region_gens"]
             gen_cap_array[idx, :] =
                 round.(
                     Int,
-                    sum(
-                        get_ts_values.(
-                            get_first_ts.(
-                                PSY.get_time_series_multiple.(
-                                    reg_gens_DA,
+                    sum([
+                        get_ts_values(
+                            get_first_ts(
+                                PSY.get_time_series_multiple(
+                                    reg_gen,
                                     s2p_meta.filter_func,
-                                    name="max_active_power",
-                                )
-                            )
-                        ) .* PSY.get_max_active_power.(reg_gens_DA),
-                    ),
+                                    name=component_to_formulation[reg_gen].max_active_power,
+                                ),
+                            ),
+                        ) * PSY.get_max_active_power(reg_gen) for reg_gen in reg_gens_DA
+                    ]),
                 )
         else
             if (
                 PSY.has_time_series(g) && (
-                    "max_active_power" in
+                    component_to_formulation[g].max_active_power in
                     PSY.get_name.(PSY.get_time_series_multiple(g, s2p_meta.filter_func))
                 )
             )
@@ -317,12 +294,12 @@ function process_generators(
                                 PSY.get_time_series_multiple(
                                     g,
                                     s2p_meta.filter_func,
-                                    name="max_active_power",
+                                    name=component_to_formulation[g].max_active_power,
                                 ),
                             ),
                         ) * PSY.get_max_active_power(g),
                     )
-                if ~(all(gen_cap_array[idx, :] .>= 0))
+                if !(all(gen_cap_array[idx, :] .>= 0))
                     @warn "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data."
                     gen_cap_array[idx, :] = zeros(Int, s2p_meta.N)
                 end
@@ -354,16 +331,16 @@ function process_generators(
     )
 end
 
-function process_storage(stors, s2p_meta)
-    stor = reduce(vcat, stors)
-
+function process_storage(
+    stor::Array{PSY.Device},
+    s2p_meta::S2P_metadata,
+    ::Dict{PSY.Device, StorageFormulation},
+)
     if (length(stor) == 0)
         stor_names = String[]
     else
         stor_names = PSY.get_name.(stor)
     end
-
-    stor_categories = get_generator_category.(stor)
 
     n_stor = length(stor_names)
 
@@ -413,16 +390,156 @@ function process_storage(stors, s2p_meta)
     )
 end
 
-function process_genstorage(gen_stors, s2p_meta)
-    gen_stor = reduce(vcat, gen_stors)
+function assign_to_gen_stor_matrices!(
+    formulation::HybridSystemFormulation,
+    g_s::PSY.Device,
+    s2p_meta::S2P_metadata,
+    charge_cap_array,
+    discharge_cap_array,
+    inflow_array,
+    energy_cap_array,
+    gridinj_cap_array,
+)
+    fill!(
+        charge_cap_array,
+        floor(Int, PSY.get_input_active_power_limits(PSY.get_storage(g_s)).max),
+    )
+    fill!(
+        discharge_cap_array,
+        floor(Int, PSY.get_output_active_power_limits(PSY.get_storage(g_s)).max),
+    )
+    fill!(
+        energy_cap_array,
+        floor(Int, PSY.get_state_of_charge_limits(PSY.get_storage(g_s)).max),
+    )
+    fill!(gridinj_cap_array, floor(Int, PSY.get_output_active_power_limits(g_s).max))
 
+    if (
+        PSY.has_time_series(PSY.get_renewable_unit(g_s)) && (
+            formulation.max_active_power in
+            PSY.get_name.(
+                PSY.get_time_series_multiple(
+                    PSY.get_renewable_unit(g_s),
+                    s2p_meta.filter_func,
+                )
+            )
+        )
+    )
+        inflow_array .=
+            floor.(
+                Int,
+                get_ts_values(
+                    get_first_ts(
+                        PSY.get_time_series_multiple(
+                            PSY.get_renewable_unit(g_s),
+                            s2p_meta.filter_func,
+                            name=formulation.max_active_power,
+                        ),
+                    ),
+                ) * PSY.get_max_active_power(PSY.get_renewable_unit(g_s)),
+            )
+    else
+        fill!(
+            inflow_array,
+            floor(Int, PSY.get_max_active_power(PSY.get_renewable_unit(g_s))),
+        )
+    end
+end
+
+function assign_to_gen_stor_matrices!(
+    formulation::HydroEnergyReservoirFormulation,
+    g_s::PSY.Device,
+    s2p_meta::S2P_metadata,
+    charge_cap_array,
+    discharge_cap_array,
+    inflow_array,
+    energy_cap_array,
+    gridinj_cap_array,
+)
+    if (PSY.has_time_series(g_s))
+        if (
+            formulation.inflow in
+            PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
+        )
+            charge_cap_array .=
+                floor.(
+                    Int,
+                    get_ts_values(
+                        get_first_ts(
+                            PSY.get_time_series_multiple(
+                                g_s,
+                                s2p_meta.filter_func,
+                                name=formulation.inflow,
+                            ),
+                        ),
+                    ) * PSY.get_inflow(g_s),
+                )
+            discharge_cap_array .= charge_cap_array
+            inflow_array .= charge_cap_array
+        else
+            fill!(charge_cap_array, floor(Int, PSY.get_inflow(g_s)))
+            fill!(discharge_cap_array, floor(Int, PSY.get_inflow(g_s)))
+            fill!(inflow_array, floor(Int, PSY.get_inflow(g_s)))
+        end
+        if (
+            formulation.storage_capacity in
+            PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
+        )
+            energy_cap_array .=
+                floor.(
+                    Int,
+                    get_ts_values(
+                        get_first_ts(
+                            PSY.get_time_series_multiple(
+                                g_s,
+                                s2p_meta.filter_func,
+                                name=formulation.storage_capacity,
+                            ),
+                        ),
+                    ) * PSY.get_storage_capacity(g_s),
+                )
+        else
+            fill!(energy_cap_array, floor(Int, PSY.get_storage_capacity(g_s)))
+        end
+        if (
+            formulation.max_active_power in
+            PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
+        )
+            gridinj_cap_array .=
+                floor.(
+                    Int,
+                    get_ts_values(
+                        get_first_ts(
+                            PSY.get_time_series_multiple(
+                                g_s,
+                                s2p_meta.filter_func,
+                                name=formulation.max_active_power,
+                            ),
+                        ),
+                    ) * PSY.get_max_active_power(g_s),
+                )
+        else
+            fill!(gridinj_cap_array, floor(Int, PSY.get_max_active_power(g_s)))
+        end
+    else
+        fill!(charge_cap_array, floor(Int, PSY.get_inflow(g_s)))
+        fill!(discharge_cap_array, floor(Int, PSY.get_inflow(g_s)))
+        fill!(energy_cap_array, floor(Int, PSY.get_storage_capacity(g_s)))
+        fill!(inflow_array, floor(Int, PSY.get_inflow(g_s)))
+        fill!(gridinj_cap_array, floor(Int, PSY.get_max_active_power(g_s)))
+    end
+end
+
+function process_genstorage(
+    gen_stor::Array{PSY.Device},
+    s2p_meta::S2P_metadata,
+    component_to_formulation::Dict{PSY.Device, GeneratorStorageFormulation},
+)
     if (length(gen_stor) == 0)
         gen_stor_names = String[]
     else
         gen_stor_names = PSY.get_name.(gen_stor)
     end
-
-    gen_stor_categories = string.(typeof.(gen_stor))
 
     n_genstors = length(gen_stor_names)
 
@@ -437,193 +554,16 @@ function process_genstorage(gen_stors, s2p_meta)
 
     # FIXME
     for (idx, g_s) in enumerate(gen_stor)
-        if (typeof(g_s) == PSY.HydroEnergyReservoir)
-            if (PSY.has_time_series(g_s))
-                if (
-                    "inflow" in
-                    PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
-                )
-                    gen_stor_charge_cap_array[idx, :] =
-                        floor.(
-                            Int,
-                            get_ts_values(
-                                get_first_ts(
-                                    PSY.get_time_series_multiple(
-                                        g_s,
-                                        s2p_meta.filter_func,
-                                        name="inflow",
-                                    ),
-                                ),
-                            ) * PSY.get_inflow(g_s),
-                        )
-                    gen_stor_discharge_cap_array[idx, :] =
-                        floor.(
-                            Int,
-                            get_ts_values(
-                                get_first_ts(
-                                    PSY.get_time_series_multiple(
-                                        g_s,
-                                        s2p_meta.filter_func,
-                                        name="inflow",
-                                    ),
-                                ),
-                            ) * PSY.get_inflow(g_s),
-                        )
-                    gen_stor_inflow_array[idx, :] =
-                        floor.(
-                            Int,
-                            get_ts_values(
-                                get_first_ts(
-                                    PSY.get_time_series_multiple(
-                                        g_s,
-                                        s2p_meta.filter_func,
-                                        name="inflow",
-                                    ),
-                                ),
-                            ) * PSY.get_inflow(g_s),
-                        )
-                else
-                    gen_stor_charge_cap_array[idx, :] =
-                        fill.(floor.(Int, PSY.get_inflow(g_s)), 1, s2p_meta.N)
-                    gen_stor_discharge_cap_array[idx, :] =
-                        fill.(floor.(Int, PSY.get_inflow(g_s)), 1, s2p_meta.N)
-                    gen_stor_inflow_array[idx, :] =
-                        fill.(floor.(Int, PSY.get_inflow(g_s)), 1, s2p_meta.N)
-                end
-                if (
-                    "storage_capacity" in
-                    PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
-                )
-                    gen_stor_enrgy_cap_array[idx, :] =
-                        floor.(
-                            Int,
-                            get_ts_values(
-                                get_first_ts(
-                                    PSY.get_time_series_multiple(
-                                        g_s,
-                                        s2p_meta.filter_func,
-                                        name="storage_capacity",
-                                    ),
-                                ),
-                            ) * PSY.get_storage_capacity(g_s),
-                        )
-                else
-                    gen_stor_enrgy_cap_array[idx, :] =
-                        fill.(floor.(Int, PSY.get_storage_capacity(g_s)), 1, s2p_meta.N)
-                end
-                if (
-                    "max_active_power" in
-                    PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
-                )
-                    gen_stor_gridinj_cap_array[idx, :] =
-                        floor.(
-                            Int,
-                            get_ts_values(
-                                get_first_ts(
-                                    PSY.get_time_series_multiple(
-                                        g_s,
-                                        s2p_meta.filter_func,
-                                        name="max_active_power",
-                                    ),
-                                ),
-                            ) * PSY.get_max_active_power(g_s),
-                        )
-                else
-                    gen_stor_gridinj_cap_array[idx, :] =
-                        fill.(floor.(Int, PSY.get_max_active_power(g_s)), 1, s2p_meta.N)
-                end
-            else
-                gen_stor_charge_cap_array[idx, :] =
-                    fill.(floor.(Int, PSY.get_inflow(g_s)), 1, s2p_meta.N)
-                gen_stor_discharge_cap_array[idx, :] =
-                    fill.(floor.(Int, PSY.get_inflow(g_s)), 1, s2p_meta.N)
-                gen_stor_enrgy_cap_array[idx, :] =
-                    fill.(floor.(Int, PSY.get_storage_capacity(g_s)), 1, s2p_meta.N)
-                gen_stor_inflow_array[idx, :] =
-                    fill.(floor.(Int, PSY.get_inflow(g_s)), 1, N)
-                gen_stor_gridinj_cap_array[idx, :] =
-                    fill.(floor.(Int, PSY.get_max_active_power(g_s)), 1, s2p_meta.N)
-            end
-        else
-            gen_stor_charge_cap_array[idx, :] =
-                fill.(
-                    floor.(
-                        Int,
-                        getfield(
-                            PSY.get_input_active_power_limits(PSY.get_storage(g_s)),
-                            :max,
-                        ),
-                    ),
-                    1,
-                    s2p_meta.N,
-                )
-            gen_stor_discharge_cap_array[idx, :] =
-                fill.(
-                    floor.(
-                        Int,
-                        getfield(
-                            PSY.get_output_active_power_limits(PSY.get_storage(g_s)),
-                            :max,
-                        ),
-                    ),
-                    1,
-                    s2p_meta.N,
-                )
-            gen_stor_enrgy_cap_array[idx, :] =
-                fill.(
-                    floor.(
-                        Int,
-                        getfield(
-                            PSY.get_state_of_charge_limits(PSY.get_storage(g_s)),
-                            :max,
-                        ),
-                    ),
-                    1,
-                    s2p_meta.N,
-                )
-            gen_stor_gridinj_cap_array[idx, :] =
-                fill.(
-                    floor.(
-                        Int,
-                        PSY.getfield(PSY.get_output_active_power_limits(g_s), :max),
-                    ),
-                    1,
-                    s2p_meta.N,
-                )
-
-            if (
-                PSY.has_time_series(PSY.get_renewable_unit(g_s)) && (
-                    "max_active_power" in
-                    PSY.get_name.(
-                        PSY.get_time_series_multiple(
-                            PSY.get_renewable_unit(g_s),
-                            s2p_meta.filter_func,
-                        )
-                    )
-                )
-            )
-                gen_stor_inflow_array[idx, :] =
-                    floor.(
-                        Int,
-                        get_ts_values(
-                            get_first_ts(
-                                PSY.get_time_series_multiple(
-                                    PSY.get_renewable_unit(g_s),
-                                    s2p_meta.filter_func,
-                                    name="max_active_power",
-                                ),
-                            ),
-                        ) * PSY.get_max_active_power(PSY.get_renewable_unit(g_s)),
-                    )
-            else
-                gen_stor_inflow_array[idx, :] =
-                    fill.(
-                        floor.(Int, PSY.get_max_active_power(PSY.get_renewable_unit(g_s))),
-                        1,
-                        s2p_meta.N,
-                    )
-            end
-        end
+        assign_to_gen_stor_matrices!(
+            component_to_formulation[g_s],
+            g_s,
+            s2p_meta,
+            view(gen_stor_charge_cap_array, idx, :),
+            view(gen_stor_discharge_cap_array, idx, :),
+            view(gen_stor_inflow_array, idx, :),
+            view(gen_stor_enrgy_cap_array, idx, :),
+            view(gen_stor_gridinj_cap_array, idx, :),
+        )
 
         λ_genstors[idx, :], μ_genstors[idx, :] = get_outage_time_series_data(g_s, s2p_meta)
     end
@@ -656,37 +596,11 @@ function process_genstorage(gen_stors, s2p_meta)
     )
 end
 
-"""
-    generate_pras_system(sys::PSY.System, aggregation; kwargs...)
-
-Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemModel is returned.
-...
-
-# Arguments
-
-  - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
-  - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional}
-  - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional}
-  - `export_location::String`: Export location of the .pras file
-    ...
-
-# Returns
-
-    - `PRASCore.SystemModel`: PRAS SystemModel object
-
-# Examples
-
-```julia-repl
-julia> generate_pras_system(psy_sys)
-PRAS SystemModel
-```
-"""
 function generate_pras_system(
     sys::PSY.System,
-    aggregation::Type{AT};
-    lump_region_renewable_gens=false,
+    template::PRASProblemTemplate,
     export_location::Union{Nothing, String}=nothing,
-)::PRASCore.SystemModel where {AT <: PSY.AggregationTopology}
+)::PRASCore.SystemModel
 
     # PRAS needs Sienna\Data PowerSystems.jl System to be in NATURAL_UNITS
     PSY.set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
@@ -708,7 +622,7 @@ function generate_pras_system(
     s2p_meta = S2P_metadata()
 
     ts_counts = PSY.get_time_series_counts(sys)
-    if (~iszero(ts_counts.static_time_series_count))
+    if (!iszero(ts_counts.static_time_series_count))
         s2p_meta.has_static_timeseries = true
         filter_func = x -> (typeof(x) <: PSY.StaticTimeSeries)
         s2p_meta.filter_func = filter_func
@@ -717,7 +631,7 @@ function generate_pras_system(
         s2p_meta.first_timestamp = start_datetime
         s2p_meta.first_timeseries = first(all_ts)
     else
-        if (~iszero(ts_counts.forecast_count))
+        if (!iszero(ts_counts.forecast_count))
             s2p_meta.has_forecasts = true
             filter_func = x -> (typeof(x) <: PSY.Forecast)
             s2p_meta.filter_func = filter_func
@@ -729,7 +643,7 @@ function generate_pras_system(
     end
 
     # Ensure Sienna/Data System has either static time series or forecasts
-    if ~(s2p_meta.has_static_timeseries) && ~(s2p_meta.has_forecasts)
+    if !(s2p_meta.has_static_timeseries) && !(s2p_meta.has_forecasts)
         error(
             "Sienna/Data PowerSystems System has no time series data (static time series data and/or forecasts)",
         )
@@ -765,16 +679,16 @@ function generate_pras_system(
         push!(dup_uuids, PSY.IS.get_uuid.(PSY._get_components(h_s))...)
     end
     # Add HybridSystem sub component UUIDs to s2p_meta
-    if ~(isempty(dup_uuids))
+    if !(isempty(dup_uuids))
         s2p_meta.hs_uuids = dup_uuids
     end
     #######################################################
     # PRAS Regions - Areas in PowerSystems.jl
     #######################################################
-    @info "Processing $(aggregation) objects in Sienna/Data PowerSystems System... "
-    regions = collect(PSY.get_components(aggregation, sys))
-    if ~(length(regions) == 0)
-        @info "The Sienna/Data PowerSystems System has $(length(regions)) regions based on PSY AggregationTopology : $(aggregation)."
+    @info "Processing $(template.aggregation) objects in Sienna/Data PowerSystems System... "
+    regions = collect(PSY.get_components(template.aggregation, sys))
+    if !(length(regions) == 0)
+        @info "The Sienna/Data PowerSystems System has $(length(regions)) regions based on PSY AggregationTopology : $(template.aggregation)."
     else
         error(
             "No regions in the Sienna/Data PowerSystems System. Cannot proceed with the process of making a PRAS SystemModel.",
@@ -786,26 +700,30 @@ function generate_pras_system(
         PRASCore.Regions{s2p_meta.N, PRASCore.MW}(PSY.get_name.(regions), region_load)
 
     @info "Processing Generators in PSY System... "
-    gens, region_gen_idxs, reg_wind_gens, reg_pv_gens =
-        get_generator_region_indices(sys, s2p_meta, regions, lump_region_renewable_gens)
-    new_generators = process_generators(
-        gens,
-        s2p_meta,
-        regions,
-        reg_wind_gens,
-        reg_pv_gens,
-        lump_region_renewable_gens,
-    )
+    gens_to_formula =
+        build_component_to_formulation(GeneratorFormulation, sys, template.device_models)
+    gens, region_gen_idxs =
+        get_generator_region_indices(sys, s2p_meta, regions, gens_to_formula)
+    new_generators = process_generators(gens, s2p_meta, gens_to_formula)
 
     # **TODO Future : time series for storage devices
     @info "Processing Storages in PSY System... "
-    stors, region_stor_idxs = get_storage_region_indices(sys, s2p_meta, regions)
-    new_storage = process_storage(stors, s2p_meta)
+    stors_to_formula =
+        build_component_to_formulation(StorageFormulation, sys, template.device_models)
+    stors, region_stor_idxs =
+        get_storage_region_indices(sys, s2p_meta, regions, stors_to_formula)
+    new_storage = process_storage(stors, s2p_meta, stors_to_formula)
 
     # **TODO Consider all combinations of HybridSystem (Currently only works for DER+ESS)
     @info "Processing GeneratorStorages in PSY System... "
-    gen_stors, region_genstor_idxs = get_gen_storage_region_indices(sys, regions)
-    new_gen_stors = process_genstorage(gen_stors, s2p_meta)
+    gen_stors_to_formula = build_component_to_formulation(
+        GeneratorStorageFormulation,
+        sys,
+        template.device_models,
+    )
+    gen_stors, region_genstor_idxs =
+        get_gen_storage_region_indices(sys, regions, gen_stors_to_formula)
+    new_gen_stors = process_genstorage(gen_stors, s2p_meta, gen_stors_to_formula)
 
     #######################################################
     # Network
@@ -831,7 +749,7 @@ function generate_pras_system(
         # Inter-Regional Line Processing
         #######################################################
         inter_regional_lines =
-            filter(x -> ~(x.arc.from.area.name == x.arc.to.area.name), lines)
+            filter(x -> !(x.arc.from.area.name == x.arc.to.area.name), lines)
         sorted_lines, interface_reg_idxs, interface_line_idxs =
             get_sorted_lines(inter_regional_lines, PSY.get_name.(regions))
         new_lines, new_interfaces = make_pras_interfaces(
@@ -881,6 +799,71 @@ function generate_pras_system(
     end
 end
 
+default_device_models = [
+    DevicePRASModel(PSY.ThermalGen, GeneratorFormulation),
+    DevicePRASModel(PSY.RenewableGen, GeneratorFormulation),
+    DevicePRASModel(PSY.HydroDispatch, GeneratorFormulation),
+    DevicePRASModel(PSY.Storage, StorageFormulation),
+    DevicePRASModel(PSY.HybridSystem, HybridSystemFormulation),
+    DevicePRASModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirFormulation),
+]
+
+_lumped_renewable_device_models = [
+    DevicePRASModel(PSY.ThermalGen, GeneratorFormulation),
+    DevicePRASModel(PSY.RenewableGen, GeneratorFormulation, lump_renewable_generation=true),
+    DevicePRASModel(PSY.HydroDispatch, GeneratorFormulation),
+    DevicePRASModel(PSY.Storage, StorageFormulation),
+    DevicePRASModel(PSY.HybridSystem, HybridSystemFormulation),
+    DevicePRASModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirFormulation),
+]
+
+default_template = PRASProblemTemplate(PSY.Area, default_device_models)
+
+"""
+    generate_pras_system(
+    sys::PSY.System,
+    aggregation::Type{AT},
+    lump_region_renewable_gens=false,
+    export_location::Union{Nothing, String}=nothing,
+
+)::PRASCore.SystemModel where {AT <: PSY.AggregationTopology}
+
+Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemModel is returned.
+...
+
+# Arguments
+
+  - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
+  - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional}
+  - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional}
+  - `export_location::String`: Export location of the .pras file
+    ...
+
+# Returns
+
+    - `PRASCore.SystemModel`: PRAS SystemModel object
+
+# Examples
+
+```julia-repl
+julia> generate_pras_system(psy_sys)
+PRAS SystemModel
+```
+"""
+function generate_pras_system(
+    sys::PSY.System,
+    aggregation::Type{AT},
+    lump_region_renewable_gens::Bool=false,
+    export_location::Union{Nothing, String}=nothing,
+)::PRASCore.SystemModel where {AT <: PSY.AggregationTopology}
+    if lump_region_renewable_gens
+        template = PRASProblemTemplate(aggregation, _lumped_renewable_device_models)
+    else
+        template = PRASProblemTemplate(aggregation, default_device_models)
+    end
+    generate_pras_system(sys, template, export_location)
+end
+
 """
     generate_pras_system(sys_location::String, aggregation; kwargs...)
 
@@ -899,7 +882,7 @@ Generate a PRAS SystemModel from a Sienna/Data PowerSystems System JSON file.
 """
 function generate_pras_system(
     sys_location::String,
-    aggregation::Type{AT};
+    aggregation::Type{AT},
     lump_region_renewable_gens=false,
     export_location::Union{Nothing, String}=nothing,
 ) where {AT <: PSY.AggregationTopology}
@@ -915,10 +898,5 @@ function generate_pras_system(
         )
     end
 
-    generate_pras_system(
-        sys,
-        aggregation,
-        lump_region_renewable_gens=lump_region_renewable_gens,
-        export_location=export_location,
-    )
+    generate_pras_system(sys, aggregation, lump_region_renewable_gens, export_location)
 end
