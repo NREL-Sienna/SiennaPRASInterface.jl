@@ -2,7 +2,7 @@
 
 ```@autodocs
 Modules = [SiennaPRASInterface]
-Public = true
+Private = false
 ```
 
 ## PRAS Documentation
