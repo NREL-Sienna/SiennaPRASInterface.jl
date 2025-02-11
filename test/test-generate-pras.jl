@@ -137,6 +137,124 @@ end
     end
 end
 
+@testset "RTS GMLC DA with PRASProblemTemplate" begin
+    rts_da_sys = get_rts_gmlc_outage("RT")
+    area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
+    generator_names =
+        PSY.get_name.(
+            PSY.get_components(
+                x -> PSY.get_available(x) && PSY.get_rating(x) > 0,
+                Union{PSY.HydroDispatch, PSY.RenewableGen, PSY.ThermalGen},
+                rts_da_sys,
+            )
+        )
+    storage_names = PSY.get_name.(PSY.get_components(PSY.Storage, rts_da_sys))
+    generatorstorage_names =
+        PSY.get_name.(
+            PSY.get_components(
+                x -> PSY.get_available(x) && PSY.get_rating(x) > 0,
+                Union{PSY.HydroEnergyReservoir, PSY.HybridSystem},
+                rts_da_sys,
+            )
+        )
+    line_names =
+        PSY.get_name.(
+            PSY.get_components(PSY.Branch, rts_da_sys) do c
+                PSY.get_available(c) &&
+                    !(any(c isa T for T in SiennaPRASInterface.TransformerTypes))  # From definitions.jl
+                PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
+            end
+        )
+    for name in vcat(generator_names, storage_names, generatorstorage_names)
+        comp = PSY.get_component(PSY.Component, rts_da_sys, name)
+        if PSY.has_time_series(PSY.SingleTimeSeries, comp, "max_active_power")
+            sts = PSY.get_time_series(PSY.SingleTimeSeries, comp, "max_active_power")
+            PSY.remove_time_series!(
+                rts_da_sys,
+                PSY.SingleTimeSeries,
+                comp,
+                "max_active_power",
+            )
+            sts.name = "max_active_POWER"
+            PSY.add_time_series!(rts_da_sys, comp, sts)
+        end
+    end
+
+    problem_template = SiennaPRASInterface.PRASProblemTemplate(
+        PSY.Area,
+        [
+            SiennaPRASInterface.DevicePRASModel(
+                PSY.ThermalGen,
+                SiennaPRASInterface.GeneratorFormulation(
+                    max_active_power="max_active_POWER",
+                ),
+            ),
+            SiennaPRASInterface.DevicePRASModel(
+                PSY.HydroDispatch,
+                SiennaPRASInterface.GeneratorFormulation(
+                    max_active_power="max_active_POWER",
+                ),
+            ),
+            SiennaPRASInterface.DevicePRASModel(
+                PSY.RenewableGen,
+                SiennaPRASInterface.GeneratorFormulation(
+                    max_active_power="max_active_POWER",
+                ),
+            ),
+            SiennaPRASInterface.DevicePRASModel(
+                PSY.Storage,
+                SiennaPRASInterface.StorageFormulation(),
+            ),
+            SiennaPRASInterface.DevicePRASModel(
+                PSY.HydroEnergyReservoir,
+                SiennaPRASInterface.HydroEnergyReservoirFormulation(
+                    max_active_power="max_active_POWER",
+                ),
+            ),
+        ],
+    )
+    # Make a PRAS System from PSY-4.X System
+    rts_pras_sys = generate_pras_system(rts_da_sys, problem_template)
+    @test rts_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
+
+    @test test_names_equal(rts_pras_sys.regions.names, area_names)
+    @test test_names_equal(rts_pras_sys.generators.names, generator_names)
+    @test test_names_equal(rts_pras_sys.storages.names, storage_names)
+    @test test_names_equal(rts_pras_sys.generatorstorages.names, generatorstorage_names)
+    @test test_names_equal(rts_pras_sys.lines.names, line_names)
+
+    # Test that timestamps look right
+    # get time series length
+    psy_ts = first(PSY.get_time_series_multiple(rts_da_sys, type=PSY.SingleTimeSeries))
+    @test all(
+        TimeSeries.timestamp(psy_ts.data) .== collect(DateTime.(rts_pras_sys.timestamps)),
+    )
+
+    # Test capacities
+    # 201_HYDRO_4 should have max active power from time series
+    idx = findfirst(x -> x == "201_HYDRO_4", rts_pras_sys.generators.names)
+    hydro_component = PSY.get_component(PSY.HydroDispatch, rts_da_sys, "201_HYDRO_4")
+    max_power_ts =
+        floor.(
+            PSY.get_time_series_values(
+                PSY.SingleTimeSeries,
+                hydro_component,
+                "max_active_POWER",
+            )
+        )
+    @test rts_pras_sys.generators.capacity[idx, 1] == max_power_ts[1]
+    @test all(rts_pras_sys.generators.capacity[idx, :] .== max_power_ts)
+
+    thermal_component = PSY.get_component(PSY.ThermalStandard, rts_da_sys, "322_CT_6")
+    @test array_all_equal(
+        rts_pras_sys.generators.capacity[
+            findfirst(x -> x == "322_CT_6", rts_pras_sys.generators.names),
+            :,
+        ],
+        Int(floor(PSY.get_max_active_power(thermal_component))),
+    )
+end
+
 @testset "RTS GMLC DA with default data" begin
     rts_da_sys = PSCB.build_system(PSCB.PSISystems, "RTS_GMLC_DA_sys")
     area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
