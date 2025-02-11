@@ -1,3 +1,6 @@
+"""
+Add default data to a system from `OUTAGE_INFO_FILE` (ERCOT data).
+"""
 function add_default_data!(sys::PSY.System)
     @warn "No forced outage data available in the Sienna/Data PowerSystems System. Using generic outage data ..."
     df_outage = DataFrames.DataFrame(
@@ -76,6 +79,15 @@ function add_default_data!(sys::PSY.System)
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Extract region load as a matrix of Int64 values.
+
+Uses to all StaticLoad objects.
+
+Note that behavior is not controlled by a formulation.
+"""
 function get_region_loads(sys::PSY.System, s2p_meta::S2P_metadata, regions)
     region_load = Array{Int64, 2}(undef, length(regions), s2p_meta.N)
 
@@ -107,6 +119,12 @@ function get_region_loads(sys::PSY.System, s2p_meta::S2P_metadata, regions)
 end
 
 # Generator must not have HydroEenergyReservoir or have 0 max active power or be a hybrid system
+"""
+    $(TYPEDSIGNATURES)
+
+Extraction of generators using formulation dictionary to create a list of generators
+and appropriate indices for PRAS. Note that objects with 0 max active power are excluded.
+"""
 function get_generator_region_indices(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
@@ -196,11 +214,17 @@ function get_generator_region_indices(
     return gen, region_gen_idxs
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Extraction of storage devices using formulation dictionary to create a list of storage
+devices and appropriate indices for PRAS.
+"""
 function get_storage_region_indices(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
     regions,
-    component_to_formulation,
+    component_to_formulation::Dict{PSY.Device, StorageFormulation},
 )
     stors = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
@@ -225,7 +249,16 @@ function get_storage_region_indices(
     return reduce(vcat, stors), region_stor_idxs
 end
 
-function get_gen_storage_region_indices(sys::PSY.System, regions, component_to_formulation)
+"""
+    $(TYPEDSIGNATURES)
+
+Extract components with a generator storage formulation.
+"""
+function get_gen_storage_region_indices(
+    sys::PSY.System,
+    regions,
+    component_to_formulation::Dict{PSY.Device, GeneratorStorageFormulation},
+)
     gen_stors = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
     region_genstor_idxs = Array{UnitRange{Int64}, 1}(undef, length(regions))
@@ -242,6 +275,15 @@ function get_gen_storage_region_indices(sys::PSY.System, regions, component_to_f
     return reduce(vcat, gen_stors), region_genstor_idxs
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Apply GeneratorFormulation to process all generators objects
+into rows in PRAS matrices:
+- Capacity, λ, μ
+
+Negative max active power will translate into zeros for time series data.
+"""
 function process_generators(
     gen::Array{PSY.Device},
     s2p_meta::S2P_metadata,
@@ -331,6 +373,11 @@ function process_generators(
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Apply StorageFormulation to process all storage objects
+"""
 function process_storage(
     stor::Array{PSY.Device},
     s2p_meta::S2P_metadata,
@@ -390,6 +437,12 @@ function process_storage(
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Apply HybridSystem Formulation to fill in a row of a PRAS Matrix.
+Views should be passed in for all arrays.
+"""
 function assign_to_gen_stor_matrices!(
     formulation::HybridSystemFormulation,
     g_s::PSY.Device,
@@ -446,6 +499,12 @@ function assign_to_gen_stor_matrices!(
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Apply HydroEnergyReservoir Formulation to fill in a row of a PRAS Matrix.
+Views should be passed in for all arrays.
+"""
 function assign_to_gen_stor_matrices!(
     formulation::HydroEnergyReservoirFormulation,
     g_s::PSY.Device,
@@ -530,6 +589,11 @@ function assign_to_gen_stor_matrices!(
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Apply GeneratorStorageFormulation to create PRAS matrices for generator storage
+"""
 function process_genstorage(
     gen_stor::Array{PSY.Device},
     s2p_meta::S2P_metadata,
@@ -596,6 +660,29 @@ function process_genstorage(
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Use a PRASProblemTemplate to create a PRAS system from a Sienna system.
+
+# Arguments
+
+- `sys::PSY.System`: Sienna PowerSystems System
+- `template::PRASProblemTemplate`: PRASProblemTemplate
+- `export_location::Union{Nothing, String}`: Export location for PRAS SystemModel
+
+# Returns
+
+- `PRASCore.SystemModel`: PRAS SystemModel
+
+# Examples
+
+```julia
+generate_pras_system(sys, template)
+```
+
+Note that the original system will only be set to NATURAL_UNITS.
+"""
 function generate_pras_system(
     sys::PSY.System,
     template::PRASProblemTemplate,
@@ -799,7 +886,7 @@ function generate_pras_system(
     end
 end
 
-default_device_models = [
+const DEFAULT_DEVICE_MODELS = [
     DevicePRASModel(PSY.ThermalGen, GeneratorFormulation),
     DevicePRASModel(PSY.RenewableGen, GeneratorFormulation),
     DevicePRASModel(PSY.HydroDispatch, GeneratorFormulation),
@@ -808,7 +895,7 @@ default_device_models = [
     DevicePRASModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirFormulation),
 ]
 
-_lumped_renewable_device_models = [
+const _LUMPED_RENEWABLE_DEVICE_MODELS = [
     DevicePRASModel(PSY.ThermalGen, GeneratorFormulation),
     DevicePRASModel(PSY.RenewableGen, GeneratorFormulation, lump_renewable_generation=true),
     DevicePRASModel(PSY.HydroDispatch, GeneratorFormulation),
@@ -817,16 +904,10 @@ _lumped_renewable_device_models = [
     DevicePRASModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirFormulation),
 ]
 
-default_template = PRASProblemTemplate(PSY.Area, default_device_models)
+const DEFAULT_TEMPLATE = PRASProblemTemplate(PSY.Area, DEFAULT_DEVICE_MODELS)
 
 """
-    generate_pras_system(
-    sys::PSY.System,
-    aggregation::Type{AT},
-    lump_region_renewable_gens=false,
-    export_location::Union{Nothing, String}=nothing,
-
-)::PRASCore.SystemModel where {AT <: PSY.AggregationTopology}
+    $(TYPEDSIGNATURES)
 
 Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemModel is returned.
 ...
@@ -846,7 +927,7 @@ Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemMode
 # Examples
 
 ```julia-repl
-julia> generate_pras_system(psy_sys)
+julia> generate_pras_system(psy_sys, PSY.Area)
 PRAS SystemModel
 ```
 """
@@ -857,9 +938,9 @@ function generate_pras_system(
     export_location::Union{Nothing, String}=nothing,
 )::PRASCore.SystemModel where {AT <: PSY.AggregationTopology}
     if lump_region_renewable_gens
-        template = PRASProblemTemplate(aggregation, _lumped_renewable_device_models)
+        template = PRASProblemTemplate(aggregation, _LUMPED_RENEWABLE_DEVICE_MODELS)
     else
-        template = PRASProblemTemplate(aggregation, default_device_models)
+        template = PRASProblemTemplate(aggregation, DEFAULT_DEVICE_MODELS)
     end
     generate_pras_system(sys, template, export_location)
 end

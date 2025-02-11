@@ -72,6 +72,7 @@ import UUIDs
 import TimeSeries
 import Random123
 import Random
+using DocStringExtensions
 
 const PSY = PowerSystems
 #################################################################################
@@ -153,6 +154,58 @@ function PRASCore.assess(
     resultsspecs::PRASCore.Results.ResultSpec...,
 ) where {AT <: PSY.AggregationTopology}
     pras_system = generate_pras_system(sys, aggregation)
+    return PRASCore.assess(pras_system, method, resultsspecs...)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Estimate resource adequacy using Monte Carlo simulation.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `template::PRASProblemTemplate`: PRAS problem template
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
+
+# Returns
+
+  - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
+"""
+function PRASCore.assess(
+    sys::PSY.System,
+    template::PRASProblemTemplate,
+    method::PRASCore.SequentialMonteCarlo,
+    resultsspecs::PRASCore.Results.ResultSpec...,
+)
+    pras_system = generate_pras_system(sys, template)
+    return PRASCore.assess(pras_system, method, resultsspecs...)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Estimate resource adequacy using Monte Carlo simulation.
+
+Uses default template with Area level aggregation.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
+
+# Returns
+
+  - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
+"""
+function PRASCore.assess(
+    sys::PSY.System,
+    method::PRASCore.SequentialMonteCarlo,
+    resultsspecs::PRASCore.Results.ResultSpec...,
+)
+    pras_system = generate_pras_system(sys, DEFAULT_TEMPLATE)
     return PRASCore.assess(pras_system, method, resultsspecs...)
 end
 
