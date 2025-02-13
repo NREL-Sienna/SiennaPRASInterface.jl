@@ -276,6 +276,18 @@ function get_gen_storage_region_indices(
 end
 
 """
+Turn a time series into an Array of floored ints
+"""
+function get_pras_array_from_timseries(device::PSY.Device, filter_func, name, multiplier)
+    return floor.(
+        Int,
+        get_ts_values(
+            get_first_ts(PSY.get_time_series_multiple(device, filter_func, name=name)),
+        ) * multiplier,
+    )
+end
+
+"""
     $(TYPEDSIGNATURES)
 
 Apply GeneratorFormulation to process all generators objects
@@ -330,19 +342,12 @@ function process_generators(
                     PSY.get_name.(PSY.get_time_series_multiple(g, s2p_meta.filter_func))
                 )
             )
-                gen_cap_array[idx, :] =
-                    floor.(
-                        Int,
-                        get_ts_values(
-                            get_first_ts(
-                                PSY.get_time_series_multiple(
-                                    g,
-                                    s2p_meta.filter_func,
-                                    name=get_max_active_power(component_to_formulation[g]),
-                                ),
-                            ),
-                        ) * PSY.get_max_active_power(g),
-                    )
+                gen_cap_array[idx, :] = get_pras_array_from_timseries(
+                    g,
+                    s2p_meta.filter_func,
+                    get_max_active_power(component_to_formulation[g]),
+                    PSY.get_max_active_power(g),
+                )
                 if !(all(gen_cap_array[idx, :] .>= 0))
                     @warn "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data."
                     gen_cap_array[idx, :] = zeros(Int, s2p_meta.N)
@@ -480,19 +485,12 @@ function assign_to_gen_stor_matrices!(
             )
         )
     )
-        inflow_array .=
-            floor.(
-                Int,
-                get_ts_values(
-                    get_first_ts(
-                        PSY.get_time_series_multiple(
-                            PSY.get_renewable_unit(g_s),
-                            s2p_meta.filter_func,
-                            name=get_max_active_power(formulation),
-                        ),
-                    ),
-                ) * PSY.get_max_active_power(PSY.get_renewable_unit(g_s)),
-            )
+        inflow_array .= get_pras_array_from_timseries(
+            PSY.get_renewable_unit(g_s),
+            s2p_meta.filter_func,
+            get_max_active_power(formulation),
+            PSY.get_max_active_power(PSY.get_renewable_unit(g_s)),
+        )
     else
         fill!(
             inflow_array,
@@ -522,19 +520,12 @@ function assign_to_gen_stor_matrices!(
             get_inflow(formulation) in
             PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
         )
-            charge_cap_array .=
-                floor.(
-                    Int,
-                    get_ts_values(
-                        get_first_ts(
-                            PSY.get_time_series_multiple(
-                                g_s,
-                                s2p_meta.filter_func,
-                                name=get_inflow(formulation),
-                            ),
-                        ),
-                    ) * PSY.get_inflow(g_s),
-                )
+            charge_cap_array .= get_pras_array_from_timseries(
+                g_s,
+                s2p_meta.filter_func,
+                get_inflow(formulation),
+                PSY.get_inflow(g_s),
+            )
             discharge_cap_array .= charge_cap_array
             inflow_array .= charge_cap_array
         else
@@ -546,19 +537,12 @@ function assign_to_gen_stor_matrices!(
             get_storage_capacity(storage_capacity) in
             PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
         )
-            energy_cap_array .=
-                floor.(
-                    Int,
-                    get_ts_values(
-                        get_first_ts(
-                            PSY.get_time_series_multiple(
-                                g_s,
-                                s2p_meta.filter_func,
-                                name=get_storage_capacity(formulation),
-                            ),
-                        ),
-                    ) * PSY.get_storage_capacity(g_s),
-                )
+            energy_cap_array .= get_pras_array_from_timseries(
+                g_s,
+                s2p_meta.filter_func,
+                get_storage_capacity(formulation),
+                PSY.get_storage_capacity(g_s),
+            )
         else
             fill!(energy_cap_array, floor(Int, PSY.get_storage_capacity(g_s)))
         end
@@ -566,19 +550,12 @@ function assign_to_gen_stor_matrices!(
             get_max_active_power(formulation) in
             PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
         )
-            gridinj_cap_array .=
-                floor.(
-                    Int,
-                    get_ts_values(
-                        get_first_ts(
-                            PSY.get_time_series_multiple(
-                                g_s,
-                                s2p_meta.filter_func,
-                                name=get_max_active_power(formulation),
-                            ),
-                        ),
-                    ) * PSY.get_max_active_power(g_s),
-                )
+            gridinj_cap_array .= get_pras_array_from_timseries(
+                g_s,
+                s2p_meta.filter_func,
+                get_max_active_power(formulation),
+                PSY.get_max_active_power(g_s),
+            )
         else
             fill!(gridinj_cap_array, floor(Int, PSY.get_max_active_power(g_s)))
         end
