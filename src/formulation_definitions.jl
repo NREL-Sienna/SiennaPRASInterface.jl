@@ -214,7 +214,10 @@ end
 """
 Uses a PRAS device model to find all components matching it in a system.
 """
-function get_available_components(::DevicePRASModel{D}, sys::PSY.System) where {D}
+function get_available_components(
+    ::DevicePRASModel{D},
+    sys::PSY.System,
+) where {D <: PSY.Device}
     return PSY.get_available_components(D, sys)
 end
 
