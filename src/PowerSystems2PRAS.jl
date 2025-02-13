@@ -1,11 +1,11 @@
 """
 Add default data to a system from `OUTAGE_INFO_FILE` (ERCOT data).
 """
-function add_default_data!(sys::PSY.System)
+function add_default_data!(sys::PSY.System, outage_info_file=OUTAGE_INFO_FILE)
     @warn "No forced outage data available in the Sienna/Data PowerSystems System. Using generic outage data ..."
     df_outage = DataFrames.DataFrame(
         CSV.File(
-            OUTAGE_INFO_FILE,
+            outage_info_file,
             types=Dict(:tech => String, :PrimeMovers => String, :ThermalFuels => String),
             missingstring="NA",
         ),
@@ -13,7 +13,7 @@ function add_default_data!(sys::PSY.System)
 
     outage_values = outage_data[]
     for row in eachrow(df_outage)
-        if (ismissing(row.ThermalFuels))
+        if ismissing(row.ThermalFuels)
             push!(
                 outage_values,
                 outage_data(
