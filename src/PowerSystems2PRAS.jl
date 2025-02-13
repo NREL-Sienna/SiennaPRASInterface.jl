@@ -380,6 +380,26 @@ function process_generators(
     )
 end
 
+function assign_to_stor_matrices!(
+    ::EnergyReservoirLossless,
+    s::PSY.Device,
+    s2p_meta::S2P_metadata,
+    charge_cap_array,
+    discharge_cap_array,
+    energy_cap_array,
+    chrg_eff_array,
+    dischrg_eff_array,
+)
+    fill!(charge_cap_array, floor(Int, PSY.get_input_active_power_limits(s).max))
+    fill!(discharge_cap_array, floor(Int, PSY.get_output_active_power_limits(s).max))
+    fill!(
+        energy_cap_array,
+        floor(Int, PSY.get_storage_level_limits(s).max * PSY.get_storage_capacity(s)),
+    )
+    fill!(chrg_eff_array, PSY.get_efficiency(s).in)
+    fill!(dischrg_eff_array, PSY.get_efficiency(s).out)
+end
+
 """
     $(TYPEDSIGNATURES)
 
@@ -388,7 +408,7 @@ Apply StorageFormulation to process all storage objects
 function process_storage(
     stor::Array{PSY.Device},
     s2p_meta::S2P_metadata,
-    ::Dict{PSY.Device, StorageFormulation},
+    component_to_formulation::Dict{PSY.Device, StorageFormulation},
 )
     if (length(stor) == 0)
         stor_names = String[]
@@ -407,17 +427,16 @@ function process_storage(
     μ_stor = Matrix{Float64}(undef, n_stor, s2p_meta.N)
 
     for (idx, s) in enumerate(stor)
-        stor_charge_cap_array[idx, :] =
-            fill(floor(Int, PSY.get_input_active_power_limits(s).max), 1, s2p_meta.N)
-        stor_discharge_cap_array[idx, :] =
-            fill(floor(Int, PSY.get_output_active_power_limits(s).max), 1, s2p_meta.N)
-        stor_energy_cap_array[idx, :] = fill(
-            floor(Int, PSY.get_storage_level_limits(s).max * PSY.get_storage_capacity(s)),
-            1,
-            s2p_meta.N,
+        assign_to_stor_matrices!(
+            component_to_formulation[g],
+            s,
+            s2p_meta,
+            view(stor_charge_cap_array, idx, :),
+            view(stor_discharge_cap_array, idx, :),
+            view(Array{Int64}(undef, s2p_meta.N), :),  # Empty inflow array since Storage has no inflow
+            view(stor_energy_cap_array, idx, :),
+            view(Array{Int64}(undef, s2p_meta.N), :),  # Empty gridinj array since Storage has no grid injection
         )
-        stor_chrg_eff_array[idx, :] = fill(PSY.get_efficiency(s).in, 1, s2p_meta.N)
-        stor_dischrg_eff_array[idx, :] = fill.(PSY.get_efficiency(s).out, 1, s2p_meta.N)
 
         λ_stor[idx, :], μ_stor[idx, :] = get_outage_time_series_data(s, s2p_meta)
     end
@@ -868,7 +887,7 @@ const DEFAULT_DEVICE_MODELS = [
     DevicePRASModel(PSY.ThermalGen, GeneratorFormulation),
     DevicePRASModel(PSY.RenewableGen, GeneratorFormulation),
     DevicePRASModel(PSY.HydroDispatch, GeneratorFormulation),
-    DevicePRASModel(PSY.Storage, StorageFormulation),
+    DevicePRASModel(PSY.EnergyReservoirStorage, EnergyReservoirLossless),
     DevicePRASModel(PSY.HybridSystem, HybridSystemFormulation),
     DevicePRASModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirFormulation),
 ]
@@ -877,7 +896,7 @@ const _LUMPED_RENEWABLE_DEVICE_MODELS = [
     DevicePRASModel(PSY.ThermalGen, GeneratorFormulation),
     DevicePRASModel(PSY.RenewableGen, GeneratorFormulation, lump_renewable_generation=true),
     DevicePRASModel(PSY.HydroDispatch, GeneratorFormulation),
-    DevicePRASModel(PSY.Storage, StorageFormulation),
+    DevicePRASModel(PSY.EnergyReservoirStorage, EnergyReservoirLossless),
     DevicePRASModel(PSY.HybridSystem, HybridSystemFormulation),
     DevicePRASModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirFormulation),
 ]

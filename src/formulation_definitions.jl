@@ -130,6 +130,13 @@ Objects in Sienna that behave like storage are mapped to storage in PRAS.
 struct StorageFormulation <: AbstractPRASFormulation end
 
 """
+    EnergyReservoirLossless <: StorageFormulation
+
+EnergyReservoirLossless is a storage formulation that does not lose energy.
+"""
+struct EnergyReservoirLossless <: StorageFormulation end
+
+"""
     DevicePRASModel{D <: PSY.Device, B <: AbstractPRASFormulation}
 
 # Arguments
