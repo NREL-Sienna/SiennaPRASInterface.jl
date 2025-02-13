@@ -134,7 +134,7 @@ include("PRAS2PowerSystems.jl")
         resultsspecs::PRASCore.Results.ResultSpec...,
     ) where {AT <: PSY.AggregationTopology}
 
-Estimate resource adequacy using Monte Carlo simulation.
+Analyze resource adequacy using Monte Carlo simulation.
 
 # Arguments
 
@@ -160,7 +160,7 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Estimate resource adequacy using Monte Carlo simulation.
+Analyze resource adequacy using Monte Carlo simulation.
 
 # Arguments
 
@@ -186,7 +186,7 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Estimate resource adequacy using Monte Carlo simulation.
+Analyze resource adequacy using Monte Carlo simulation.
 
 Uses default template with Area level aggregation.
 
