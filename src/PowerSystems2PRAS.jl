@@ -91,7 +91,7 @@ Note that behavior is not controlled by a formulation.
 function get_region_loads(sys::PSY.System, s2p_meta::S2P_metadata, regions)
     region_load = Array{Int64, 2}(undef, length(regions), s2p_meta.N)
 
-    # FIXME
+    # FIXME We should make this work for all ElectricLoads
     for (idx, region) in enumerate(regions)
         reg_load_comps =
             get_available_components_in_aggregation_topology(PSY.StaticLoad, sys, region)
@@ -302,7 +302,7 @@ function process_generators(
     λ_gen = Matrix{Float64}(undef, n_gen, s2p_meta.N)
     μ_gen = Matrix{Float64}(undef, n_gen, s2p_meta.N)
 
-    #FIXME
+    #FIXME This should use a component map instead.
     for (idx, g) in enumerate(gen)
         if haskey(PSY.get_ext(g), "region_gens")
             reg_gens_DA = PSY.get_ext(g)["region_gens"]
