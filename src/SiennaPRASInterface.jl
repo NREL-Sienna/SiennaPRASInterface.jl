@@ -50,11 +50,12 @@ export add_csv_time_series!
 export add_csv_time_series_single_stage!
 export make_generator_outage_draws!
 
-export PRASGenerator
+export GeneratorPRAS
 export HybridSystemPRAS
 export HydroEnergyReservoirPRAS
 export DeviceRAModel
-export PRASGeneratorStorage
+export GeneratorStoragePRAS
+export EnergyReservoirLossless
 export StoragePRAS
 export set_device_model!
 export RATemplate

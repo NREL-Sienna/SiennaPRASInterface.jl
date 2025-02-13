@@ -43,7 +43,7 @@ end
             template,
             DeviceRAModel(
                 PSY.RenewableDispatch,
-                PRASGenerator,
+                GeneratorPRAS,
                 lump_renewable_generation=true,
             ),
         )

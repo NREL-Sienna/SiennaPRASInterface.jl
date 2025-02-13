@@ -185,19 +185,19 @@ end
         [
             SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
-                SiennaPRASInterface.PRASGenerator(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroDispatch,
-                SiennaPRASInterface.PRASGenerator(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.RenewableGen,
-                SiennaPRASInterface.PRASGenerator(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
-                PSY.Storage,
-                SiennaPRASInterface.StoragePRAS(),
+                PSY.EnergyReservoirStorage,
+                SiennaPRASInterface.EnergyReservoirLossless(),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroEnergyReservoir,

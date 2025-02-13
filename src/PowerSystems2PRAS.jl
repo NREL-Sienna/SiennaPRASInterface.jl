@@ -129,7 +129,7 @@ function get_generator_region_indices(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
     regions,
-    component_to_formulation::Dict{PSY.Device, PRASGenerator},
+    component_to_formulation::Dict{PSY.Device, GeneratorPRAS},
 )
     gens = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
@@ -257,7 +257,7 @@ Extract components with a generator storage formulation.
 function get_gen_storage_region_indices(
     sys::PSY.System,
     regions,
-    component_to_formulation::Dict{PSY.Device, PRASGeneratorStorage},
+    component_to_formulation::Dict{PSY.Device, GeneratorStoragePRAS},
 )
     gen_stors = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
@@ -290,7 +290,7 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Apply PRASGenerator to process all generators objects
+Apply GeneratorPRAS to process all generators objects
 into rows in PRAS matrices:
 - Capacity, λ, μ
 
@@ -299,7 +299,7 @@ Negative max active power will translate into zeros for time series data.
 function process_generators(
     gen::Array{PSY.Device},
     s2p_meta::S2P_metadata,
-    component_to_formulation::Dict{PSY.Device, PRASGenerator},
+    component_to_formulation::Dict{PSY.Device, GeneratorPRAS},
 )
     if (length(gen) == 0)
         gen_names = String[]
@@ -428,14 +428,14 @@ function process_storage(
 
     for (idx, s) in enumerate(stor)
         assign_to_stor_matrices!(
-            component_to_formulation[g],
+            component_to_formulation[s],
             s,
             s2p_meta,
             view(stor_charge_cap_array, idx, :),
             view(stor_discharge_cap_array, idx, :),
-            view(Array{Int64}(undef, s2p_meta.N), :),  # Empty inflow array since Storage has no inflow
             view(stor_energy_cap_array, idx, :),
-            view(Array{Int64}(undef, s2p_meta.N), :),  # Empty gridinj array since Storage has no grid injection
+            view(stor_chrg_eff_array, idx, :),
+            view(stor_dischrg_eff_array, idx, :),
         )
 
         λ_stor[idx, :], μ_stor[idx, :] = get_outage_time_series_data(s, s2p_meta)
@@ -553,7 +553,7 @@ function assign_to_gen_stor_matrices!(
             fill!(inflow_array, floor(Int, PSY.get_inflow(g_s)))
         end
         if (
-            get_storage_capacity(storage_capacity) in
+            get_storage_capacity(formulation) in
             PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
         )
             energy_cap_array .= get_pras_array_from_timseries(
@@ -590,12 +590,12 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Apply PRASGeneratorStorage to create PRAS matrices for generator storage
+Apply GeneratorStoragePRAS to create PRAS matrices for generator storage
 """
 function process_genstorage(
     gen_stor::Array{PSY.Device},
     s2p_meta::S2P_metadata,
-    component_to_formulation::Dict{PSY.Device, PRASGeneratorStorage},
+    component_to_formulation::Dict{PSY.Device, GeneratorStoragePRAS},
 )
     if (length(gen_stor) == 0)
         gen_stor_names = String[]
@@ -785,7 +785,7 @@ function generate_pras_system(
 
     @info "Processing Generators in PSY System... "
     gens_to_formula =
-        build_component_to_formulation(PRASGenerator, sys, template.device_models)
+        build_component_to_formulation(GeneratorPRAS, sys, template.device_models)
     gens, region_gen_idxs =
         get_generator_region_indices(sys, s2p_meta, regions, gens_to_formula)
     new_generators = process_generators(gens, s2p_meta, gens_to_formula)
@@ -801,7 +801,7 @@ function generate_pras_system(
     # **TODO Consider all combinations of HybridSystem (Currently only works for DER+ESS)
     @info "Processing GeneratorStorages in PSY System... "
     gen_stors_to_formula =
-        build_component_to_formulation(PRASGeneratorStorage, sys, template.device_models)
+        build_component_to_formulation(GeneratorStoragePRAS, sys, template.device_models)
     gen_stors, region_genstor_idxs =
         get_gen_storage_region_indices(sys, regions, gen_stors_to_formula)
     new_gen_stors = process_genstorage(gen_stors, s2p_meta, gen_stors_to_formula)
@@ -881,18 +881,18 @@ function generate_pras_system(
 end
 
 const DEFAULT_DEVICE_MODELS = [
-    DeviceRAModel(PSY.ThermalGen, PRASGenerator),
-    DeviceRAModel(PSY.RenewableGen, PRASGenerator),
-    DeviceRAModel(PSY.HydroDispatch, PRASGenerator),
+    DeviceRAModel(PSY.ThermalGen, GeneratorPRAS),
+    DeviceRAModel(PSY.RenewableGen, GeneratorPRAS),
+    DeviceRAModel(PSY.HydroDispatch, GeneratorPRAS),
     DeviceRAModel(PSY.EnergyReservoirStorage, EnergyReservoirLossless),
     DeviceRAModel(PSY.HybridSystem, HybridSystemPRAS),
     DeviceRAModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirPRAS),
 ]
 
 const _LUMPED_RENEWABLE_DEVICE_MODELS = [
-    DeviceRAModel(PSY.ThermalGen, PRASGenerator),
-    DeviceRAModel(PSY.RenewableGen, PRASGenerator, lump_renewable_generation=true),
-    DeviceRAModel(PSY.HydroDispatch, PRASGenerator),
+    DeviceRAModel(PSY.ThermalGen, GeneratorPRAS),
+    DeviceRAModel(PSY.RenewableGen, GeneratorPRAS, lump_renewable_generation=true),
+    DeviceRAModel(PSY.HydroDispatch, GeneratorPRAS),
     DeviceRAModel(PSY.EnergyReservoirStorage, EnergyReservoirLossless),
     DeviceRAModel(PSY.HybridSystem, HybridSystemPRAS),
     DeviceRAModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirPRAS),
