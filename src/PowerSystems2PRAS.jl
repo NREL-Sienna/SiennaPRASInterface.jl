@@ -145,21 +145,21 @@ function get_generator_region_indices(
         wind_gs = filter(
             x -> (
                 (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.WT) &&
-                component_to_formulation[x].lump_renewable_generation
+                get_lump_renewable_generation(component_to_formulation[x])
             ),
             reg_ren_comps,
         )
         pv_gs = filter(
             x -> (
                 (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe) &&
-                component_to_formulation[x].lump_renewable_generation
+                get_lump_renewable_generation(component_to_formulation[x])
             ),
             reg_ren_comps,
         )
         gs = filter(
             x -> (
                 haskey(component_to_formulation, x) &&
-                !component_to_formulation[x].lump_renewable_generation &&
+                !get_lump_renewable_generation(component_to_formulation[x]) &&
                 !(iszero(PSY.get_max_active_power(x))) &&
                 PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids
             ),
@@ -315,7 +315,9 @@ function process_generators(
                                 PSY.get_time_series_multiple(
                                     reg_gen,
                                     s2p_meta.filter_func,
-                                    name=component_to_formulation[reg_gen].max_active_power,
+                                    name=get_max_active_power(
+                                        component_to_formulation[reg_gen],
+                                    ),
                                 ),
                             ),
                         ) * PSY.get_max_active_power(reg_gen) for reg_gen in reg_gens_DA
@@ -324,7 +326,7 @@ function process_generators(
         else
             if (
                 PSY.has_time_series(g) && (
-                    component_to_formulation[g].max_active_power in
+                    get_max_active_power(component_to_formulation[g]) in
                     PSY.get_name.(PSY.get_time_series_multiple(g, s2p_meta.filter_func))
                 )
             )
@@ -336,7 +338,7 @@ function process_generators(
                                 PSY.get_time_series_multiple(
                                     g,
                                     s2p_meta.filter_func,
-                                    name=component_to_formulation[g].max_active_power,
+                                    name=get_max_active_power(component_to_formulation[g]),
                                 ),
                             ),
                         ) * PSY.get_max_active_power(g),
@@ -469,7 +471,7 @@ function assign_to_gen_stor_matrices!(
 
     if (
         PSY.has_time_series(PSY.get_renewable_unit(g_s)) && (
-            formulation.max_active_power in
+            get_max_active_power(formulation) in
             PSY.get_name.(
                 PSY.get_time_series_multiple(
                     PSY.get_renewable_unit(g_s),
@@ -486,7 +488,7 @@ function assign_to_gen_stor_matrices!(
                         PSY.get_time_series_multiple(
                             PSY.get_renewable_unit(g_s),
                             s2p_meta.filter_func,
-                            name=formulation.max_active_power,
+                            name=get_max_active_power(formulation),
                         ),
                     ),
                 ) * PSY.get_max_active_power(PSY.get_renewable_unit(g_s)),
@@ -517,7 +519,7 @@ function assign_to_gen_stor_matrices!(
 )
     if (PSY.has_time_series(g_s))
         if (
-            formulation.inflow in
+            get_inflow(formulation) in
             PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
         )
             charge_cap_array .=
@@ -528,7 +530,7 @@ function assign_to_gen_stor_matrices!(
                             PSY.get_time_series_multiple(
                                 g_s,
                                 s2p_meta.filter_func,
-                                name=formulation.inflow,
+                                name=get_inflow(formulation),
                             ),
                         ),
                     ) * PSY.get_inflow(g_s),
@@ -541,7 +543,7 @@ function assign_to_gen_stor_matrices!(
             fill!(inflow_array, floor(Int, PSY.get_inflow(g_s)))
         end
         if (
-            formulation.storage_capacity in
+            get_storage_capacity(storage_capacity) in
             PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
         )
             energy_cap_array .=
@@ -552,7 +554,7 @@ function assign_to_gen_stor_matrices!(
                             PSY.get_time_series_multiple(
                                 g_s,
                                 s2p_meta.filter_func,
-                                name=formulation.storage_capacity,
+                                name=get_storage_capacity(formulation),
                             ),
                         ),
                     ) * PSY.get_storage_capacity(g_s),
@@ -561,7 +563,7 @@ function assign_to_gen_stor_matrices!(
             fill!(energy_cap_array, floor(Int, PSY.get_storage_capacity(g_s)))
         end
         if (
-            formulation.max_active_power in
+            get_max_active_power(formulation) in
             PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
         )
             gridinj_cap_array .=
@@ -572,7 +574,7 @@ function assign_to_gen_stor_matrices!(
                             PSY.get_time_series_multiple(
                                 g_s,
                                 s2p_meta.filter_func,
-                                name=formulation.max_active_power,
+                                name=get_max_active_power(formulation),
                             ),
                         ),
                     ) * PSY.get_max_active_power(g_s),
@@ -616,7 +618,6 @@ function process_genstorage(
     λ_genstors = Matrix{Float64}(undef, n_genstors, s2p_meta.N)
     μ_genstors = Matrix{Float64}(undef, n_genstors, s2p_meta.N)
 
-    # FIXME
     for (idx, g_s) in enumerate(gen_stor)
         assign_to_gen_stor_matrices!(
             component_to_formulation[g_s],

@@ -32,6 +32,20 @@ struct GeneratorFormulation <: AbstractPRASFormulation
 end
 
 """
+Get max active power time series name
+"""
+function get_max_active_power(f::GeneratorFormulation)
+    return f.max_active_power
+end
+
+"""
+Get whether renewable generation is lumped to regions
+"""
+function get_lump_renewable_generation(f::GeneratorFormulation)
+    return f.lump_renewable_generation
+end
+
+"""
     GeneratorStorageFormulation <: AbstractPRASFormulation
 
 Objects in Sienna that behave like generator and storage are mapped to generatorstorage in PRAS.
@@ -58,6 +72,13 @@ struct HybridSystemFormulation <: GeneratorStorageFormulation
 end
 
 """
+Get max active power time series name
+"""
+function get_max_active_power(f::HybridSystemFormulation)
+    return f.max_active_power
+end
+
+"""
     HydroEnergyReservoirFormulation <: GeneratorStorageFormulation
 
 # Arguments
@@ -78,6 +99,27 @@ struct HydroEnergyReservoirFormulation <: GeneratorStorageFormulation
     )
         return new(max_active_power, inflow, storage_capacity)
     end
+end
+
+"""
+Get max active power time series name
+"""
+function get_max_active_power(f::HydroEnergyReservoirFormulation)
+    return f.max_active_power
+end
+
+"""
+Get inflow time series name
+"""
+function get_inflow(f::HydroEnergyReservoirFormulation)
+    return f.inflow
+end
+
+"""
+Get storage capacity time series name
+"""
+function get_storage_capacity(f::HydroEnergyReservoirFormulation)
+    return f.storage_capacity
 end
 
 """
