@@ -224,7 +224,7 @@ function get_storage_region_indices(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
     regions,
-    component_to_formulation::Dict{PSY.Device, StorageFormulation},
+    component_to_formulation::Dict{PSY.Device, StoragePRAS},
 )
     stors = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
@@ -403,12 +403,12 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Apply StorageFormulation to process all storage objects
+Apply StoragePRAS to process all storage objects
 """
 function process_storage(
     stor::Array{PSY.Device},
     s2p_meta::S2P_metadata,
-    component_to_formulation::Dict{PSY.Device, StorageFormulation},
+    component_to_formulation::Dict{PSY.Device, StoragePRAS},
 )
     if (length(stor) == 0)
         stor_names = String[]
@@ -793,7 +793,7 @@ function generate_pras_system(
     # **TODO Future : time series for storage devices
     @info "Processing Storages in PSY System... "
     stors_to_formula =
-        build_component_to_formulation(StorageFormulation, sys, template.device_models)
+        build_component_to_formulation(StoragePRAS, sys, template.device_models)
     stors, region_stor_idxs =
         get_storage_region_indices(sys, s2p_meta, regions, stors_to_formula)
     new_storage = process_storage(stors, s2p_meta, stors_to_formula)

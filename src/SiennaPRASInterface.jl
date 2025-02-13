@@ -55,7 +55,7 @@ export HybridSystemPRAS
 export HydroEnergyReservoirPRAS
 export DeviceRAModel
 export PRASGeneratorStorage
-export StorageFormulation
+export StoragePRAS
 export set_device_model!
 export RATemplate
 

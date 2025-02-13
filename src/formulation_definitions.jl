@@ -10,7 +10,7 @@ configuration such as time series names.
 PRAS formulation subtypes for specific PRAS types
 
   - [`GeneratorPRAS`](@ref)
-  - [`StorageFormulation`](@ref) (abstract type)
+  - [`StoragePRAS`](@ref) (abstract type)
   - [`GeneratorStoragePRAS`](@ref) (abstract type)
 """
 abstract type AbstractRAFormulation end
@@ -132,18 +132,20 @@ function get_storage_capacity(f::HydroEnergyReservoirPRAS)
 end
 
 """
-    StorageFormulation <: AbstractRAFormulation
+    StoragePRAS <: AbstractRAFormulation
 
 Objects in Sienna that behave like storage are mapped to storage in PRAS.
+
+Subtypes must provide [`assign_to_stor_matrices!`](@ref) function.
 """
-struct StorageFormulation <: AbstractRAFormulation end
+struct StoragePRAS <: AbstractRAFormulation end
 
 """
-    EnergyReservoirLossless <: StorageFormulation
+    EnergyReservoirLossless <: StoragePRAS
 
 EnergyReservoirLossless is a storage formulation that does not lose energy.
 """
-struct EnergyReservoirLossless <: StorageFormulation end
+struct EnergyReservoirLossless <: StoragePRAS end
 
 """
     DeviceRAModel{D <: PSY.Device, B <: AbstractRAFormulation}

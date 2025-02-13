@@ -197,7 +197,7 @@ end
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.Storage,
-                SiennaPRASInterface.StorageFormulation(),
+                SiennaPRASInterface.StoragePRAS(),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroEnergyReservoir,
