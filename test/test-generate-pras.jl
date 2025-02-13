@@ -137,7 +137,7 @@ end
     end
 end
 
-@testset "RTS GMLC DA with PRASProblemTemplate" begin
+@testset "RTS GMLC DA with RATemplate" begin
     rts_da_sys = get_rts_gmlc_outage("RT")
     area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
     generator_names =
@@ -180,34 +180,28 @@ end
         end
     end
 
-    problem_template = SiennaPRASInterface.PRASProblemTemplate(
+    problem_template = SiennaPRASInterface.RATemplate(
         PSY.Area,
         [
-            SiennaPRASInterface.DevicePRASModel(
+            SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
-                SiennaPRASInterface.GeneratorFormulation(
-                    max_active_power="max_active_POWER",
-                ),
+                SiennaPRASInterface.PRASGenerator(max_active_power="max_active_POWER"),
             ),
-            SiennaPRASInterface.DevicePRASModel(
+            SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroDispatch,
-                SiennaPRASInterface.GeneratorFormulation(
-                    max_active_power="max_active_POWER",
-                ),
+                SiennaPRASInterface.PRASGenerator(max_active_power="max_active_POWER"),
             ),
-            SiennaPRASInterface.DevicePRASModel(
+            SiennaPRASInterface.DeviceRAModel(
                 PSY.RenewableGen,
-                SiennaPRASInterface.GeneratorFormulation(
-                    max_active_power="max_active_POWER",
-                ),
+                SiennaPRASInterface.PRASGenerator(max_active_power="max_active_POWER"),
             ),
-            SiennaPRASInterface.DevicePRASModel(
+            SiennaPRASInterface.DeviceRAModel(
                 PSY.Storage,
                 SiennaPRASInterface.StorageFormulation(),
             ),
-            SiennaPRASInterface.DevicePRASModel(
+            SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroEnergyReservoir,
-                SiennaPRASInterface.HydroEnergyReservoirFormulation(
+                SiennaPRASInterface.HydroEnergyReservoirPRAS(
                     max_active_power="max_active_POWER",
                 ),
             ),

@@ -50,14 +50,14 @@ export add_csv_time_series!
 export add_csv_time_series_single_stage!
 export make_generator_outage_draws!
 
-export GeneratorFormulation
-export HybridSystemFormulation
-export HydroEnergyReservoirFormulation
-export DevicePRASModel
-export GeneratorStorageFormulation
+export PRASGenerator
+export HybridSystemPRAS
+export HydroEnergyReservoirPRAS
+export DeviceRAModel
+export PRASGeneratorStorage
 export StorageFormulation
 export set_device_model!
-export PRASProblemTemplate
+export RATemplate
 
 #################################################################################
 # Imports
@@ -165,7 +165,7 @@ Analyze resource adequacy using Monte Carlo simulation.
 # Arguments
 
   - `sys::PSY.System`: PowerSystems.jl system model
-  - `template::PRASProblemTemplate`: PRAS problem template
+  - `template::RATemplate`: PRAS problem template
   - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
   - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
 
@@ -175,7 +175,7 @@ Analyze resource adequacy using Monte Carlo simulation.
 """
 function PRASCore.assess(
     sys::PSY.System,
-    template::PRASProblemTemplate,
+    template::RATemplate,
     method::PRASCore.SequentialMonteCarlo,
     resultsspecs::PRASCore.Results.ResultSpec...,
 )

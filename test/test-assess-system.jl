@@ -34,16 +34,16 @@ end
         test_shortfalls(shortfalls)
     end
 
-    @testset "sys PRASProblemTemplate call" begin
-        template = SiennaPRASInterface.PRASProblemTemplate(
+    @testset "sys RATemplate call" begin
+        template = SiennaPRASInterface.RATemplate(
             PSY.Area,
             deepcopy(SiennaPRASInterface.DEFAULT_DEVICE_MODELS),
         )
         SiennaPRASInterface.set_device_model!(
             template,
-            DevicePRASModel(
+            DeviceRAModel(
                 PSY.RenewableDispatch,
-                GeneratorFormulation,
+                PRASGenerator,
                 lump_renewable_generation=true,
             ),
         )

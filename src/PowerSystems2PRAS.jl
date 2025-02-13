@@ -129,7 +129,7 @@ function get_generator_region_indices(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
     regions,
-    component_to_formulation::Dict{PSY.Device, GeneratorFormulation},
+    component_to_formulation::Dict{PSY.Device, PRASGenerator},
 )
     gens = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
@@ -257,7 +257,7 @@ Extract components with a generator storage formulation.
 function get_gen_storage_region_indices(
     sys::PSY.System,
     regions,
-    component_to_formulation::Dict{PSY.Device, GeneratorStorageFormulation},
+    component_to_formulation::Dict{PSY.Device, PRASGeneratorStorage},
 )
     gen_stors = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
@@ -290,7 +290,7 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Apply GeneratorFormulation to process all generators objects
+Apply PRASGenerator to process all generators objects
 into rows in PRAS matrices:
 - Capacity, λ, μ
 
@@ -299,7 +299,7 @@ Negative max active power will translate into zeros for time series data.
 function process_generators(
     gen::Array{PSY.Device},
     s2p_meta::S2P_metadata,
-    component_to_formulation::Dict{PSY.Device, GeneratorFormulation},
+    component_to_formulation::Dict{PSY.Device, PRASGenerator},
 )
     if (length(gen) == 0)
         gen_names = String[]
@@ -470,7 +470,7 @@ Apply HybridSystem Formulation to fill in a row of a PRAS Matrix.
 Views should be passed in for all arrays.
 """
 function assign_to_gen_stor_matrices!(
-    formulation::HybridSystemFormulation,
+    formulation::HybridSystemPRAS,
     g_s::PSY.Device,
     s2p_meta::S2P_metadata,
     charge_cap_array,
@@ -525,7 +525,7 @@ Apply HydroEnergyReservoir Formulation to fill in a row of a PRAS Matrix.
 Views should be passed in for all arrays.
 """
 function assign_to_gen_stor_matrices!(
-    formulation::HydroEnergyReservoirFormulation,
+    formulation::HydroEnergyReservoirPRAS,
     g_s::PSY.Device,
     s2p_meta::S2P_metadata,
     charge_cap_array,
@@ -590,12 +590,12 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Apply GeneratorStorageFormulation to create PRAS matrices for generator storage
+Apply PRASGeneratorStorage to create PRAS matrices for generator storage
 """
 function process_genstorage(
     gen_stor::Array{PSY.Device},
     s2p_meta::S2P_metadata,
-    component_to_formulation::Dict{PSY.Device, GeneratorStorageFormulation},
+    component_to_formulation::Dict{PSY.Device, PRASGeneratorStorage},
 )
     if (length(gen_stor) == 0)
         gen_stor_names = String[]
@@ -660,12 +660,12 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Use a PRASProblemTemplate to create a PRAS system from a Sienna system.
+Use a RATemplate to create a PRAS system from a Sienna system.
 
 # Arguments
 
 - `sys::PSY.System`: Sienna PowerSystems System
-- `template::PRASProblemTemplate`: PRASProblemTemplate
+- `template::RATemplate`: RATemplate
 - `export_location::Union{Nothing, String}`: Export location for PRAS SystemModel
 
 # Returns
@@ -682,7 +682,7 @@ Note that the original system will only be set to NATURAL_UNITS.
 """
 function generate_pras_system(
     sys::PSY.System,
-    template::PRASProblemTemplate,
+    template::RATemplate,
     export_location::Union{Nothing, String}=nothing,
 )::PRASCore.SystemModel
 
@@ -785,7 +785,7 @@ function generate_pras_system(
 
     @info "Processing Generators in PSY System... "
     gens_to_formula =
-        build_component_to_formulation(GeneratorFormulation, sys, template.device_models)
+        build_component_to_formulation(PRASGenerator, sys, template.device_models)
     gens, region_gen_idxs =
         get_generator_region_indices(sys, s2p_meta, regions, gens_to_formula)
     new_generators = process_generators(gens, s2p_meta, gens_to_formula)
@@ -800,11 +800,8 @@ function generate_pras_system(
 
     # **TODO Consider all combinations of HybridSystem (Currently only works for DER+ESS)
     @info "Processing GeneratorStorages in PSY System... "
-    gen_stors_to_formula = build_component_to_formulation(
-        GeneratorStorageFormulation,
-        sys,
-        template.device_models,
-    )
+    gen_stors_to_formula =
+        build_component_to_formulation(PRASGeneratorStorage, sys, template.device_models)
     gen_stors, region_genstor_idxs =
         get_gen_storage_region_indices(sys, regions, gen_stors_to_formula)
     new_gen_stors = process_genstorage(gen_stors, s2p_meta, gen_stors_to_formula)
@@ -884,24 +881,24 @@ function generate_pras_system(
 end
 
 const DEFAULT_DEVICE_MODELS = [
-    DevicePRASModel(PSY.ThermalGen, GeneratorFormulation),
-    DevicePRASModel(PSY.RenewableGen, GeneratorFormulation),
-    DevicePRASModel(PSY.HydroDispatch, GeneratorFormulation),
-    DevicePRASModel(PSY.EnergyReservoirStorage, EnergyReservoirLossless),
-    DevicePRASModel(PSY.HybridSystem, HybridSystemFormulation),
-    DevicePRASModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirFormulation),
+    DeviceRAModel(PSY.ThermalGen, PRASGenerator),
+    DeviceRAModel(PSY.RenewableGen, PRASGenerator),
+    DeviceRAModel(PSY.HydroDispatch, PRASGenerator),
+    DeviceRAModel(PSY.EnergyReservoirStorage, EnergyReservoirLossless),
+    DeviceRAModel(PSY.HybridSystem, HybridSystemPRAS),
+    DeviceRAModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirPRAS),
 ]
 
 const _LUMPED_RENEWABLE_DEVICE_MODELS = [
-    DevicePRASModel(PSY.ThermalGen, GeneratorFormulation),
-    DevicePRASModel(PSY.RenewableGen, GeneratorFormulation, lump_renewable_generation=true),
-    DevicePRASModel(PSY.HydroDispatch, GeneratorFormulation),
-    DevicePRASModel(PSY.EnergyReservoirStorage, EnergyReservoirLossless),
-    DevicePRASModel(PSY.HybridSystem, HybridSystemFormulation),
-    DevicePRASModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirFormulation),
+    DeviceRAModel(PSY.ThermalGen, PRASGenerator),
+    DeviceRAModel(PSY.RenewableGen, PRASGenerator, lump_renewable_generation=true),
+    DeviceRAModel(PSY.HydroDispatch, PRASGenerator),
+    DeviceRAModel(PSY.EnergyReservoirStorage, EnergyReservoirLossless),
+    DeviceRAModel(PSY.HybridSystem, HybridSystemPRAS),
+    DeviceRAModel(PSY.HydroEnergyReservoir, HydroEnergyReservoirPRAS),
 ]
 
-const DEFAULT_TEMPLATE = PRASProblemTemplate(PSY.Area, DEFAULT_DEVICE_MODELS)
+const DEFAULT_TEMPLATE = RATemplate(PSY.Area, DEFAULT_DEVICE_MODELS)
 
 """
     $(TYPEDSIGNATURES)
@@ -935,9 +932,9 @@ function generate_pras_system(
     export_location::Union{Nothing, String}=nothing,
 )::PRASCore.SystemModel where {AT <: PSY.AggregationTopology}
     if lump_region_renewable_gens
-        template = PRASProblemTemplate(aggregation, _LUMPED_RENEWABLE_DEVICE_MODELS)
+        template = RATemplate(aggregation, _LUMPED_RENEWABLE_DEVICE_MODELS)
     else
-        template = PRASProblemTemplate(aggregation, DEFAULT_DEVICE_MODELS)
+        template = RATemplate(aggregation, DEFAULT_DEVICE_MODELS)
     end
     generate_pras_system(sys, template, export_location)
 end
