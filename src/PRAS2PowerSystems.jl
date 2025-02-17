@@ -265,10 +265,13 @@ function generate_outage_profile(
     sys::PSY.System,
     aggregation::Type{AT},
     method::PRASCore.SequentialMonteCarlo,
-    metric::Type{RM}
+    metric::Type{RM},
 ) where {AT <: PSY.AggregationTopology, RM <: PRASCore.Results.ReliabilityMetric}
     pras_system = generate_pras_system(sys, aggregation)
-    return PRASCore.assess(pras_system, method, resultsspecs...)
+    resultsspecs = get_outage_pras_resultspec(DEFAULT_TEMPLATE)
+    results = PRASCore.assess(pras_system, method, resultsspecs...)
+    add_asset_status!(sys, results, metric)
+    return sys
 end
 
 """
@@ -292,10 +295,13 @@ function generate_outage_profile(
     sys::PSY.System,
     template::RATemplate,
     method::PRASCore.SequentialMonteCarlo,
-    metric::Type{RM}
+    metric::Type{RM},
 ) where {RM <: PRASCore.Results.ReliabilityMetric}
     pras_system = generate_pras_system(sys, template)
-    return PRASCore.assess(pras_system, method, resultsspecs...)
+    resultsspecs = get_outage_pras_resultspec(template)
+    results = PRASCore.assess(pras_system, method, resultsspecs...)
+    add_asset_status!(sys, results, metric)
+    return sys
 end
 
 """
@@ -319,8 +325,53 @@ Uses default template with PSY.Area AggregationTopology.
 function generate_outage_profile(
     sys::PSY.System,
     method::PRASCore.SequentialMonteCarlo,
-    metric::Type{RM}
+    metric::Type{RM},
 ) where {RM <: PRASCore.Results.ReliabilityMetric}
     pras_system = generate_pras_system(sys, DEFAULT_TEMPLATE)
-    return PRASCore.assess(pras_system, method, resultsspecs...)
+    resultsspecs = get_outage_pras_resultspec(DEFAULT_TEMPLATE)
+    results = PRASCore.assess(pras_system, method, resultsspecs...)
+    add_asset_status!(sys, results, metric)
+    return sys
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Add the asset status from the worst sample to PSY.TimeSeriesForcedOutage of the component.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `results::T`: Tuple of results from the PRAS assess call
+  - `metric::Type{RM}` : ReliabilityMetric to use for sorting
+
+# Returns
+
+    - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
+"""
+function add_asset_status!(
+    sys::PSY.System,
+    results::T,
+    metric::Type{RM},
+) where {
+    T <: Tuple{Vararg{PRASCore.Results.Result}},
+    RM <: PRASCore.Results.ReliabilityMetric,
+}
+end
+
+function get_outage_pras_resultspec(template::RATemplate)
+    # We have to change this once we define a formulation for Lines
+    resultsspecs = [ShortfallSamples(), LineAvailability()]
+
+    for model in template.device_models
+        if (typeof(get_formulation(model)) == GeneratorPRAS)
+            push!(resultsspecs, GeneratorAvailability())
+        elseif (typeof(get_formulation(model)) <: StoragePRAS)
+            push!(resultsspecs, StorageAvailability())
+        elseif (typeof(get_formulation(model)) <: GeneratorStoragePRAS)
+            push!(resultsspecs, GeneratorStorageAvailability())
+        end
+    end
+
+    return unique(resultsspecs)
 end

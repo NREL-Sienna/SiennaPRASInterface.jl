@@ -172,6 +172,13 @@ struct DeviceRAModel{D <: PSY.Device, B <: AbstractRAFormulation}
 end
 
 """
+Get formulation from a DeviceRAModel
+"""
+function get_formulation(f::DeviceRAModel)
+    return f.formulation
+end
+
+"""
     $(TYPEDSIGNATURES)
     
 # Arguments
