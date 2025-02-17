@@ -238,3 +238,89 @@ function generate_csv_outage_profile(
     end
     @info "Succesfully exported the outage profiles. The CSV files for all asset types for all scenarios are available here : $(dir_name)."
 end
+
+"""
+    generate_outage_profile(
+        sys::PSY.System,
+        aggregation::Type{AT},
+        method::PRASCore.SequentialMonteCarlo,
+        metric::Type{RM}
+    ) where {AT <: PSY.AggregationTopology, RM <: PRASCore.Results.ReliabilityMetric}
+
+Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
+to PSY.TimeSeriesForcedOutage of the component.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `aggregation::Type{AT}`: Aggregation topology to use in translating to PRAS
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `metric::Type{RM}` : ReliabilityMetric to use for sorting
+
+# Returns
+
+  - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
+"""
+function generate_outage_profile(
+    sys::PSY.System,
+    aggregation::Type{AT},
+    method::PRASCore.SequentialMonteCarlo,
+    metric::Type{RM}
+) where {AT <: PSY.AggregationTopology, RM <: PRASCore.Results.ReliabilityMetric}
+    pras_system = generate_pras_system(sys, aggregation)
+    return PRASCore.assess(pras_system, method, resultsspecs...)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
+to PSY.TimeSeriesForcedOutage of the component.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `template::RATemplate`: PRAS problem template
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `metric::Type{RM}` : ReliabilityMetric to use for sorting
+
+# Returns
+
+ - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
+"""
+function generate_outage_profile(
+    sys::PSY.System,
+    template::RATemplate,
+    method::PRASCore.SequentialMonteCarlo,
+    metric::Type{RM}
+) where {RM <: PRASCore.Results.ReliabilityMetric}
+    pras_system = generate_pras_system(sys, template)
+    return PRASCore.assess(pras_system, method, resultsspecs...)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
+to PSY.TimeSeriesForcedOutage of the component.
+
+Uses default template with PSY.Area AggregationTopology.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `metric::Type{RM}` : ReliabilityMetric to use for sorting
+
+# Returns
+
+    - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
+"""
+function generate_outage_profile(
+    sys::PSY.System,
+    method::PRASCore.SequentialMonteCarlo,
+    metric::Type{RM}
+) where {RM <: PRASCore.Results.ReliabilityMetric}
+    pras_system = generate_pras_system(sys, DEFAULT_TEMPLATE)
+    return PRASCore.assess(pras_system, method, resultsspecs...)
+end

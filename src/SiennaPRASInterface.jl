@@ -105,7 +105,7 @@ import PRASCore:
     StorageAvailability,
     GeneratorStorageAvailability,
     LineAvailability,
-    SystemModel
+    SystemModel,
 
 import PRASFiles
 
