@@ -282,9 +282,9 @@ mutable struct RATemplate{T <: PSY.AggregationTopology}
 
     function RATemplate(
         aggregation::Type{T}=PSY.Area,
-        device_models::Array{DeviceRAModel}=DeviceRAModel[],
+        device_models::Vector{<:DeviceRAModel}=DeviceRAModel[],
     ) where {T <: PSY.AggregationTopology}
-        return new{T}(aggregation, device_models)
+        return new{T}(aggregation, convert(Vector{DeviceRAModel}, device_models))
     end
 end
 
@@ -304,7 +304,6 @@ function set_device_model!(template::RATemplate, device_model::DeviceRAModel{D})
         if appliestodevice(existing_model, D)
             @warn "Device model $(D) already exists in template"
         end
-        return
     end
     push!(template.device_models, device_model)
 end

@@ -15,6 +15,7 @@ const PSY = PowerSystems
 const PSCB = PowerSystemCaseBuilder
 
 include("rts_gmlc.jl")
+include("comparison_utils.jl")
 
 @testset "Aqua.jl" begin
     Aqua.test_unbound_args(SiennaPRASInterface)
