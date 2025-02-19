@@ -44,7 +44,7 @@ export LOLE
 export EUE
 export val
 export stderror
-export generate_outage_profile
+export generate_outage_profile!
 export make_generator_outage_draws!
 
 export GeneratorPRAS
@@ -115,7 +115,6 @@ include("util/parsing/outage_data_helper_functions.jl")
 include("util/parsing/PRAS_export.jl")
 
 include("util/sienna/helper_functions.jl")
-include("util/sienna/add_csv_time_series_data.jl")
 
 include("util/draws/draw_helper_functions.jl")
 include("util/draws/sienna_draws.jl")

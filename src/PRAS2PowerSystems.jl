@@ -1,5 +1,5 @@
 """
-    generate_outage_profile(
+    generate_outage_profile!(
         sys::PSY.System,
         aggregation::Type{AT},
         method::PRASCore.SequentialMonteCarlo,
@@ -18,7 +18,7 @@ to PSY.TimeSeriesForcedOutage of the component.
 
   - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
 """
-function generate_outage_profile(
+function generate_outage_profile!(
     sys::PSY.System,
     aggregation::Type{AT},
     method::PRASCore.SequentialMonteCarlo,
@@ -46,7 +46,7 @@ to PSY.TimeSeriesForcedOutage of the component.
 
  - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
 """
-function generate_outage_profile(
+function generate_outage_profile!(
     sys::PSY.System,
     template::RATemplate,
     method::PRASCore.SequentialMonteCarlo,
@@ -75,7 +75,7 @@ Uses default template with PSY.Area AggregationTopology.
 
     - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
 """
-function generate_outage_profile(sys::PSY.System, method::PRASCore.SequentialMonteCarlo)
+function generate_outage_profile!(sys::PSY.System, method::PRASCore.SequentialMonteCarlo)
     pras_system = generate_pras_system(sys, DEFAULT_TEMPLATE)
     resultsspecs = get_outage_pras_resultspec(DEFAULT_TEMPLATE)
     results = PRASCore.assess(pras_system, method, resultsspecs...)
@@ -103,7 +103,7 @@ function add_asset_status!(
     results::T,
     template::RATemplate,
 ) where {T <: Tuple{Vararg{PRASCore.Results.Result}}}
-
+    @info ""
     # Time series timestamps
     filter_func = x -> (typeof(x) <: PSY.StaticTimeSeries)
     all_ts = PSY.get_time_series_multiple(sys, filter_func)
@@ -138,6 +138,7 @@ function add_asset_status!(
                 PSY.SingleTimeSeries("availability", availability_data)
 
             PSY.add_time_series!(sys, ts_forced_outage, availability_timeseries)
+            @info "Added availability time series to TimeSeriesForcedOutage supplemental attribute of $(gen.name)."
         end
     end
 end
