@@ -50,6 +50,16 @@ export add_csv_time_series!
 export add_csv_time_series_single_stage!
 export make_generator_outage_draws!
 
+export GeneratorPRAS
+export HybridSystemPRAS
+export HydroEnergyReservoirPRAS
+export DeviceRAModel
+export GeneratorStoragePRAS
+export EnergyReservoirLossless
+export StoragePRAS
+export set_device_model!
+export RATemplate
+
 #################################################################################
 # Imports
 #################################################################################
@@ -63,6 +73,7 @@ import UUIDs
 import TimeSeries
 import Random123
 import Random
+using DocStringExtensions
 
 const PSY = PowerSystems
 #################################################################################
@@ -112,6 +123,7 @@ include("util/sienna/add_csv_time_series_data.jl")
 include("util/draws/draw_helper_functions.jl")
 include("util/draws/sienna_draws.jl")
 
+include("formulation_definitions.jl")
 include("PowerSystems2PRAS.jl")
 include("PRAS2PowerSystems.jl")
 
@@ -123,7 +135,7 @@ include("PRAS2PowerSystems.jl")
         resultsspecs::PRASCore.Results.ResultSpec...,
     ) where {AT <: PSY.AggregationTopology}
 
-Estimate resource adequacy using Monte Carlo simulation.
+Analyze resource adequacy using Monte Carlo simulation.
 
 # Arguments
 
@@ -143,6 +155,58 @@ function PRASCore.assess(
     resultsspecs::PRASCore.Results.ResultSpec...,
 ) where {AT <: PSY.AggregationTopology}
     pras_system = generate_pras_system(sys, aggregation)
+    return PRASCore.assess(pras_system, method, resultsspecs...)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Analyze resource adequacy using Monte Carlo simulation.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `template::RATemplate`: PRAS problem template
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
+
+# Returns
+
+  - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
+"""
+function PRASCore.assess(
+    sys::PSY.System,
+    template::RATemplate,
+    method::PRASCore.SequentialMonteCarlo,
+    resultsspecs::PRASCore.Results.ResultSpec...,
+)
+    pras_system = generate_pras_system(sys, template)
+    return PRASCore.assess(pras_system, method, resultsspecs...)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Analyze resource adequacy using Monte Carlo simulation.
+
+Uses default template with Area level aggregation.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
+
+# Returns
+
+  - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
+"""
+function PRASCore.assess(
+    sys::PSY.System,
+    method::PRASCore.SequentialMonteCarlo,
+    resultsspecs::PRASCore.Results.ResultSpec...,
+)
+    pras_system = generate_pras_system(sys, DEFAULT_TEMPLATE)
     return PRASCore.assess(pras_system, method, resultsspecs...)
 end
 
