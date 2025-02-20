@@ -104,9 +104,9 @@ function add_asset_status!(
     all_ts = PSY.get_time_series_multiple(sys, x -> (typeof(x) <: PSY.StaticTimeSeries))
     ts_timestamps = TimeSeries.timestamp(first(all_ts).data)
 
-    shortfall_samp_idx =
-        findfirst(type_name.(typeof.(results)) .== PRASCore.Results.ShortfallSamplesResult)
-    shortfall_samples = results[shortfall_samp_idx]
+    shortfall_samples = first(
+        filter(x -> !(typeof(x) <: PRASCore.Results.AbstractAvailabilityResult), results),
+    )
 
     sample_idx = argmax(shortfall_samples[])
 
@@ -115,10 +115,12 @@ function add_asset_status!(
         gens_to_formula =
             build_component_to_formulation(device_ramodel, sys, template.device_models)
 
-        gens_avail_idx = findfirst(
-            type_name.(typeof.(results)) .== get_pras_resulttype(typeof(result_spec)),
+        gens_avail = first(
+            filter(
+                x -> (type_name(typeof(x)) == get_pras_resulttype(typeof(result_spec))),
+                results,
+            ),
         )
-        gens_avail = results[gens_avail_idx]
 
         for gen in keys(gens_to_formula)
             ts_forced_outage =
