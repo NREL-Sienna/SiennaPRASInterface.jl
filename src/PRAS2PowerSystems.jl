@@ -1,4 +1,32 @@
 """
+    $(TYPEDSIGNATURES)
+
+Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
+to PSY.TimeSeriesForcedOutage of the component.
+
+# Arguments
+
+  - `sys::PSY.System`: PowerSystems.jl system model
+  - `template::RATemplate`: PRAS problem template
+  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+
+# Returns
+
+ - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
+"""
+function generate_outage_profile!(
+    sys::PSY.System,
+    template::RATemplate,
+    method::PRASCore.SequentialMonteCarlo,
+)
+    pras_system = generate_pras_system(sys, template)
+    resultsspecs = get_outage_pras_resultspec(template)
+    results = PRASCore.assess(pras_system, method, resultsspecs...)
+    add_asset_status!(sys, results, template, resultsspecs)
+    return sys
+end
+
+"""
     generate_outage_profile!(
         sys::PSY.System,
         aggregation::Type{AT},
@@ -23,38 +51,8 @@ function generate_outage_profile!(
     aggregation::Type{AT},
     method::PRASCore.SequentialMonteCarlo,
 ) where {AT <: PSY.AggregationTopology}
-    pras_system = generate_pras_system(sys, aggregation)
-    resultsspecs = get_outage_pras_resultspec(DEFAULT_TEMPLATE)
-    results = PRASCore.assess(pras_system, method, resultsspecs...)
-    add_asset_status!(sys, results, DEFAULT_TEMPLATE)
-    return sys
-end
-
-"""
-    $(TYPEDSIGNATURES)
-
-Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
-to PSY.TimeSeriesForcedOutage of the component.
-
-# Arguments
-
-  - `sys::PSY.System`: PowerSystems.jl system model
-  - `template::RATemplate`: PRAS problem template
-  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
-
-# Returns
-
- - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
-"""
-function generate_outage_profile!(
-    sys::PSY.System,
-    template::RATemplate,
-    method::PRASCore.SequentialMonteCarlo,
-)
-    pras_system = generate_pras_system(sys, template)
-    resultsspecs = get_outage_pras_resultspec(template)
-    results = PRASCore.assess(pras_system, method, resultsspecs...)
-    add_asset_status!(sys, results, template)
+    template = RATemplate(aggregation, DEFAULT_DEVICE_MODELS)
+    sys = generate_outage_profile!(sys, template, method)
     return sys
 end
 
@@ -76,10 +74,7 @@ Uses default template with PSY.Area AggregationTopology.
     - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
 """
 function generate_outage_profile!(sys::PSY.System, method::PRASCore.SequentialMonteCarlo)
-    pras_system = generate_pras_system(sys, DEFAULT_TEMPLATE)
-    resultsspecs = get_outage_pras_resultspec(DEFAULT_TEMPLATE)
-    results = PRASCore.assess(pras_system, method, resultsspecs...)
-    add_asset_status!(sys, results, DEFAULT_TEMPLATE)
+    sys = generate_outage_profile!(sys, DEFAULT_TEMPLATE, method)
     return sys
 end
 
@@ -93,7 +88,8 @@ Add the asset status from the worst sample to PSY.TimeSeriesForcedOutage of the 
   - `sys::PSY.System`: PowerSystems.jl system model
   - `results::T`: Tuple of results from the PRAS assess call
   - `template::RATemplate`: PRAS problem template
-
+  - `resultsspecs::Vector{PRASCore.Results.ResultSpec}`: PRAS ResultSpecs
+  
 # Returns
 
     - PSY System with PSY.TimeSeriesForcedOutage for all components for which asset status is available
@@ -102,27 +98,26 @@ function add_asset_status!(
     sys::PSY.System,
     results::T,
     template::RATemplate,
+    resultsspecs::Vector{PRASCore.Results.ResultSpec},
 ) where {T <: Tuple{Vararg{PRASCore.Results.Result}}}
-    @info ""
     # Time series timestamps
-    filter_func = x -> (typeof(x) <: PSY.StaticTimeSeries)
-    all_ts = PSY.get_time_series_multiple(sys, filter_func)
+    all_ts = PSY.get_time_series_multiple(sys, x -> (typeof(x) <: PSY.StaticTimeSeries))
     ts_timestamps = TimeSeries.timestamp(first(all_ts).data)
 
     shortfall_samp_idx =
-        findfirst(name.(typeof.(results)) .== PRASCore.Results.ShortfallSamplesResult)
+        findfirst(type_name.(typeof.(results)) .== PRASCore.Results.ShortfallSamplesResult)
     shortfall_samples = results[shortfall_samp_idx]
 
-    sample_idx = sortperm(shortfall_samples[], rev=true)[1]
-    resultsspecs = get_outage_pras_resultspec(template)
+    sample_idx = argmax(shortfall_samples[])
 
     for result_spec in filter(x -> !(x == ShortfallSamples()), resultsspecs)
         device_ramodel = get_device_ramodel(typeof(result_spec))
         gens_to_formula =
             build_component_to_formulation(device_ramodel, sys, template.device_models)
 
-        gens_avail_idx =
-            findfirst(name.(typeof.(results)) .== get_pras_resulttype(typeof(result_spec)))
+        gens_avail_idx = findfirst(
+            type_name.(typeof.(results)) .== get_pras_resulttype(typeof(result_spec)),
+        )
         gens_avail = results[gens_avail_idx]
 
         for gen in keys(gens_to_formula)
@@ -260,6 +255,6 @@ function get_pras_resulttype(::Type{R}) where {R <: PRASCore.Results.ResultSpec}
 end
 
 """
-Get name of Type to strip out parametes for easy comparison
+Get name of Type to strip out parameters for easy comparison
 """
-name(::Type{T}) where {T} = (isempty(T.parameters) ? T : T.name.wrapper)
+type_name(::Type{T}) where {T} = (isempty(T.parameters) ? T : T.name.wrapper)
