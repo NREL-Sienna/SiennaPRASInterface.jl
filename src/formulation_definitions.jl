@@ -21,7 +21,7 @@ abstract type AbstractRAFormulation end
 # Arguments
 $(TYPEDFIELDS)
 
-GeneratorPRAS produces generator entires in PRAS.
+GeneratorPRAS produces generator entries in PRAS.
 """
 struct GeneratorPRAS <: AbstractRAFormulation
     "Name of time series to use for max active power"

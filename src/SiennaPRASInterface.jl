@@ -121,6 +121,8 @@ include("util/draws/sienna_draws.jl")
 
 include("formulation_definitions.jl")
 include("PowerSystems2PRAS.jl")
+
+include("util/parsing/result_export_helper_functions.jl")
 include("PRAS2PowerSystems.jl")
 
 """
