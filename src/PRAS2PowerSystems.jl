@@ -108,29 +108,37 @@ function add_asset_status!(
 
     sample_idx = argmax(shortfall_samples[])
 
-    for result_spec in filter(x -> !(x == ShortfallSamples()), resultsspecs)
-        device_ramodel = get_device_ramodel(typeof(result_spec))
-        gens_to_formula =
-            build_component_to_formulation(device_ramodel, sys, template.device_models)
+    num_fields = fieldcount(SPIOutageResult)
+    for i in 2:num_fields
+        fname = fieldname(SPIOutageResult, i)
+        ftype = fieldtype(SPIOutageResult, i)
+        if !(isnothing(getproperty(results, fname)))
+            device_ramodel = get_device_ramodel(ftype)
+            gens_to_formula = build_component_to_formulation(
+                device_ramodel.model,
+                sys,
+                template.device_models,
+            )
 
-        gens_avail = getproperty(results, get_outage_result_fname(typeof(result_spec)))
+            gens_avail = getproperty(results, fname)
 
-        if !(isnothing(gens_avail))
             for gen in keys(gens_to_formula)
-                ts_forced_outage = PSY.TimeSeriesForcedOutage(;
-                    outage_status_scenario="WorstShortfallSample",
-                )
-                PSY.add_supplemental_attribute!(sys, gen, ts_forced_outage)
+                if (gen.name in getproperty(gens_avail, device_ramodel.key))
+                    ts_forced_outage = PSY.TimeSeriesForcedOutage(;
+                        outage_status_scenario="WorstShortfallSample",
+                    )
+                    PSY.add_supplemental_attribute!(sys, gen, ts_forced_outage)
 
-                availability_data = TimeSeries.TimeArray(
-                    ts_timestamps,
-                    getindex.(gens_avail[gen.name, :], sample_idx),
-                )
-                availability_timeseries =
-                    PSY.SingleTimeSeries("availability", availability_data)
+                    availability_data = TimeSeries.TimeArray(
+                        ts_timestamps,
+                        getindex.(gens_avail[gen.name, :], sample_idx),
+                    )
+                    availability_timeseries =
+                        PSY.SingleTimeSeries("availability", availability_data)
 
-                PSY.add_time_series!(sys, ts_forced_outage, availability_timeseries)
-                @info "Added availability time series to TimeSeriesForcedOutage supplemental attribute of $(gen.name)."
+                    PSY.add_time_series!(sys, ts_forced_outage, availability_timeseries)
+                    @info "Added availability time series to TimeSeriesForcedOutage supplemental attribute of $(gen.name)."
+                end
             end
         end
     end

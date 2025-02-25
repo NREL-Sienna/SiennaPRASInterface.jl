@@ -74,7 +74,7 @@
     @test (lole - 200) < 10
 end
 
-@testset "Test TimeSeriesForcedOutage Avaialability Time Series Generation" begin
+@testset "Test TimeSeriesForcedOutage Avaialability Time Series Generation - PJM" begin
     pjm_sys = PSCB.build_system(PSCB.PSISystems, "two_area_pjm_DA")
     device_models = SiennaPRASInterface.DeviceRAModel[
         DeviceRAModel(PSY.ThermalStandard, GeneratorPRAS),
@@ -95,6 +95,37 @@ end
     @test all(
         PSY.has_time_series.(
             PSY.get_supplemental_attributes(PSY.TimeSeriesForcedOutage, pjm_sys)
+        ),
+    )
+end
+
+@testset "Test TimeSeriesForcedOutage Avaialability Time Series Generation - RTS" begin
+    rts_sys = get_rts_gmlc_outage("DA")
+    template =
+        SiennaPRASInterface.RATemplate(PSY.Area, SiennaPRASInterface.DEFAULT_DEVICE_MODELS)
+    sampling_method = SiennaPRASInterface.SequentialMonteCarlo(samples=10, seed=1)
+    generate_outage_profile!(rts_sys, template, sampling_method)
+    @test all(
+        PSY.has_supplemental_attributes.(
+            PSY.get_components(
+                x -> PSY.get_max_active_power(x) > 0,
+                PSY.Generator,
+                rts_sys,
+            ),
+            PSY.TimeSeriesForcedOutage,
+        ),
+    )
+
+    @test all(
+        PSY.has_supplemental_attributes.(
+            PSY.get_components(PSY.Storage, rts_sys),
+            PSY.TimeSeriesForcedOutage,
+        ),
+    )
+
+    @test all(
+        PSY.has_time_series.(
+            PSY.get_supplemental_attributes(PSY.TimeSeriesForcedOutage, rts_sys)
         ),
     )
 end

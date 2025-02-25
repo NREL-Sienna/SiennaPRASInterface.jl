@@ -59,31 +59,30 @@ function get_pras_resultspec(::Type{B}) where {B <: AbstractRAFormulation}
 end
 
 """
-Get DeviceRAModel for PRAS ResultSpec
+Get DeviceRAModel for PRAS AbstractAvailabilityResult
 """
-function get_device_ramodel(::Type{GeneratorAvailability})
-    return GeneratorPRAS
+function get_device_ramodel(
+    ::Type{Union{Nothing, PRASCore.Results.GeneratorAvailabilityResult}},
+)
+    return (model=GeneratorPRAS, key=:generators)
 end
 
 """
-Get DeviceRAModel for PRAS ResultSpec
+Get DeviceRAModel for PRAS AbstractAvailabilityResult
 """
-function get_device_ramodel(::Type{StorageAvailability})
-    return StoragePRAS
+function get_device_ramodel(
+    ::Type{Union{Nothing, PRASCore.Results.StorageAvailabilityResult}},
+)
+    return (model=StoragePRAS, key=:storages)
 end
 
 """
-Get DeviceRAModel for PRAS ResultSpec
+Get DeviceRAModel for PRAS AbstractAvailabilityResult
 """
-function get_device_ramodel(::Type{GeneratorStorageAvailability})
-    return GeneratorStoragePRAS
-end
-
-"""
-Get DeviceRAModel for PRAS ResultSpec
-"""
-function get_device_ramodel(::Type{R}) where {R <: PRASCore.Results.ResultSpec}
-    return error("DeviceRAModel not defined for $(R)")
+function get_device_ramodel(
+    ::Type{Union{Nothing, PRASCore.Results.GeneratorStorageAvailabilityResult}},
+)
+    return (model=GeneratorStoragePRAS, key=:generatorstorages)
 end
 
 """
