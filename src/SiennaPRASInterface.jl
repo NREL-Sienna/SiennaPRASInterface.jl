@@ -44,10 +44,7 @@ export LOLE
 export EUE
 export val
 export stderror
-export generate_outage_profile
-export generate_csv_outage_profile
-export add_csv_time_series!
-export add_csv_time_series_single_stage!
+export generate_outage_profile!
 export make_generator_outage_draws!
 
 export GeneratorPRAS
@@ -118,13 +115,14 @@ include("util/parsing/outage_data_helper_functions.jl")
 include("util/parsing/PRAS_export.jl")
 
 include("util/sienna/helper_functions.jl")
-include("util/sienna/add_csv_time_series_data.jl")
 
 include("util/draws/draw_helper_functions.jl")
 include("util/draws/sienna_draws.jl")
 
 include("formulation_definitions.jl")
 include("PowerSystems2PRAS.jl")
+
+include("util/parsing/result_export_helper_functions.jl")
 include("PRAS2PowerSystems.jl")
 
 """

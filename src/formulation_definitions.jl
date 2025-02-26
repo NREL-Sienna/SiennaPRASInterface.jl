@@ -21,7 +21,7 @@ abstract type AbstractRAFormulation end
 # Arguments
 $(TYPEDFIELDS)
 
-GeneratorPRAS produces generator entires in PRAS.
+GeneratorPRAS produces generator entries in PRAS.
 """
 struct GeneratorPRAS <: AbstractRAFormulation
     "Name of time series to use for max active power"
@@ -169,6 +169,13 @@ struct DeviceRAModel{D <: PSY.Device, B <: AbstractRAFormulation}
     ) where {D <: PSY.Device, B <: AbstractRAFormulation}
         return new{D, B}(formulation)
     end
+end
+
+"""
+Get formulation from a DeviceRAModel
+"""
+function get_formulation(f::DeviceRAModel)
+    return f.formulation
 end
 
 """
