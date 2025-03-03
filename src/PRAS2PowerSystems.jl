@@ -126,7 +126,7 @@ function add_asset_status!(sys::PSY.System, results::SPIOutageResult, template::
                     PSY.SingleTimeSeries("availability", availability_data)
 
                 PSY.add_time_series!(sys, ts_forced_outage, availability_timeseries)
-                @info "Added availability time series to TimeSeriesForcedOutage supplemental attribute of $(gen.name)."
+                @debug "Added availability time series to TimeSeriesForcedOutage supplemental attribute of $(gen.name)."
             end
         end
     end

@@ -21,9 +21,9 @@ function get_rts_gmlc_outage(sys_type::String)
         )
         comp = PSY.get_component(PSY.Generator, rts_sys, row["GEN UID"])
 
-        if ~(isnothing(comp))
+        if !isnothing(comp)
             PSY.add_supplemental_attribute!(rts_sys, comp, transition_data)
-            @info "Added outage data supplemental attribute to $(row["GEN UID"]) generator"
+            @debug "Added outage data supplemental attribute to $(row["GEN UID"]) generator"
         else
             @warn "$(row["GEN UID"]) generator doesn't exist in the System."
         end
