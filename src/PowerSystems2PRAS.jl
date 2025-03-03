@@ -657,6 +657,11 @@ function process_genstorage(
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Apply LinePRAS to create PRAS matrices for lines. Views should be passed in.
+"""
 function assign_to_line_matrices!(
     ::LinePRAS,
     line::PSY.Branch,
@@ -668,6 +673,11 @@ function assign_to_line_matrices!(
     fill!(backward_cap, floor(Int, line_rating(line).backward_capacity))
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Create PRAS from sorted lines and formulations.
+"""
 function process_lines(
     sorted_lines::Vector{PSY.Branch},
     s2p_meta::S2P_metadata,
@@ -714,6 +724,11 @@ function process_lines(
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Create PRAS interfaces from PRAS Lines
+"""
 function build_interfaces_from_lines(
     line_forward_cap::Matrix{Int64},
     line_backward_cap::Matrix{Int64},
@@ -739,6 +754,11 @@ function build_interfaces_from_lines(
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Add flow limits of an Sienna interface to an existing PRAS interface
+"""
 function add_to_interface!(
     ::AreaInterchangeInterface,
     interface,
