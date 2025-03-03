@@ -663,14 +663,9 @@ function assign_to_line_matrices!(
     s2p_meta::S2P_metadata,
     forward_cap,
     backward_cap,
-    λ,
-    μ,
 )
     fill!(forward_cap, floor(Int, line_rating(line).forward_capacity))
     fill!(backward_cap, floor(Int, line_rating(line).backward_capacity))
-    lambda, mu = get_outage_time_series_data(line, s2p_meta)
-    λ .= lambda
-    μ .= mu
 end
 
 function process_lines(
@@ -699,9 +694,9 @@ function process_lines(
             s2p_meta,
             view(line_forward_cap, i, :),
             view(line_backward_cap, i, :),
-            view(line_λ, i, :),
-            view(line_μ, i, :),
         )
+
+        line_λ[i, :], line_μ[i, :] = get_outage_time_series_data(line, s2p_meta)
     end
 
     return PRASCore.Lines{
