@@ -657,6 +657,22 @@ function process_genstorage(
     )
 end
 
+function assign_to_line_matrices!(
+    ::LinePRAS,
+    line::PSY.Branch,
+    s2p_meta::S2P_metadata,
+    forward_cap,
+    backward_cap,
+    λ,
+    μ,
+)
+    fill!(forward_cap, floor(Int, line_rating(line).forward_capacity))
+    fill!(backward_cap, floor(Int, line_rating(line).backward_capacity))
+    lambda, mu = get_outage_time_series_data(line, s2p_meta)
+    λ .= lambda
+    μ .= mu
+end
+
 function process_lines(
     sorted_lines::Vector{PSY.Branch},
     s2p_meta::S2P_metadata,
@@ -677,13 +693,15 @@ function process_lines(
     line_μ = Matrix{Float64}(undef, num_lines, s2p_meta.N) # Not currently available/ defined in PowerSystems
 
     for (i, line) in enumerate(sorted_lines)
-        # TODO: Use lines_to_formulation
-        line_forward_cap[i, :] =
-            fill.(floor.(Int, line_rating(line).forward_capacity), 1, s2p_meta.N)
-        line_backward_cap[i, :] =
-            fill.(floor.(Int, line_rating(line).backward_capacity), 1, s2p_meta.N)
-
-        line_λ[i, :], line_μ[i, :] = get_outage_time_series_data(line, s2p_meta)
+        assign_to_line_matrices!(
+            lines_to_formulation[line],
+            line,
+            s2p_meta,
+            view(line_forward_cap, i, :),
+            view(line_backward_cap, i, :),
+            view(line_λ, i, :),
+            view(line_μ, i, :),
+        )
     end
 
     return PRASCore.Lines{
