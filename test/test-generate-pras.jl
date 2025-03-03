@@ -144,6 +144,15 @@ end
     problem_template = SiennaPRASInterface.RATemplate(
         PSY.Area,
         [
+            SiennaPRASInterface.DeviceRAModel(PSY.Line, SiennaPRASInterface.LinePRAS()),
+            SiennaPRASInterface.DeviceRAModel(
+                PSY.MonitoredLine,
+                SiennaPRASInterface.LinePRAS(),
+            ),
+            SiennaPRASInterface.DeviceRAModel(
+                PSY.TwoTerminalHVDCLine,
+                SiennaPRASInterface.LinePRAS(),
+            ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
                 SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
@@ -251,20 +260,57 @@ end
 
 @testset "Two Area PJM with default data AreaInterchange" begin
     pjm_sys = PSCB.build_system(PSCB.PSISystems, "two_area_pjm_DA")
-    pjm_pras_sys = generate_pras_system(pjm_sys, PSY.Area)
+    template = RATemplate(PSY.Area, copy(SiennaPRASInterface.DEFAULT_DEVICE_MODELS))
+    set_device_model!(
+        template,
+        PSY.AreaInterchange,
+        SiennaPRASInterface.AreaInterchangeInterface,
+    )
+    pjm_pras_sys = generate_pras_system(pjm_sys, template)
     @test pjm_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
 
     # Test that PRAS Interfaces limit_forward and limit_backward look right
-    area_interchange = first(PSY.get_components(PSY.AreaInterchange, pjm_sys))
+    area_interchange = only(PSY.get_components(PSY.AreaInterchange, pjm_sys))
 
-    @test all(
-        pjm_pras_sys.interfaces.limit_forward .==
-        Int(floor(getfield(PSY.get_flow_limits(area_interchange), :to_from))),
-    )
-    @test all(
-        pjm_pras_sys.interfaces.limit_backward .==
-        Int(floor(getfield(PSY.get_flow_limits(area_interchange), :from_to))),
-    )
+    @test size(pjm_pras_sys.interfaces.limit_forward) == (1, 168)
+    @test pjm_pras_sys.interfaces.regions_from == [1]
+    @test pjm_pras_sys.interfaces.regions_to == [2]
+    if pjm_pras_sys.regions.names[1] == PSY.get_name(PSY.get_from_area(area_interchange))
+        @test pjm_pras_sys.regions.names == [
+            PSY.get_name(PSY.get_from_area(area_interchange)),
+            PSY.get_name(PSY.get_to_area(area_interchange)),
+        ]
+        @test all(
+            pjm_pras_sys.interfaces.limit_forward .==
+            Int(floor(PSY.get_flow_limits(area_interchange).from_to)),
+        )
+        @test all(
+            pjm_pras_sys.interfaces.limit_backward .==
+            Int(floor(PSY.get_flow_limits(area_interchange).to_from)),
+        )
+    else
+        @test pjm_pras_sys.regions.names == [
+            PSY.get_name(PSY.get_to_area(area_interchange)),
+            PSY.get_name(PSY.get_from_area(area_interchange)),
+        ]
+        @test all(
+            pjm_pras_sys.interfaces.limit_forward .==
+            Int(floor(PSY.get_flow_limits(area_interchange).to_from)),
+        )
+        @test all(
+            pjm_pras_sys.interfaces.limit_backward .==
+            Int(floor(PSY.get_flow_limits(area_interchange).from_to)),
+        )
+    end
+
+    line_names =
+        PSY.get_name.(
+            PSY.get_components(Union{PSY.MonitoredLine, PSY.Line}, pjm_sys) do c
+                PSY.get_available(c) &&
+                    PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
+            end
+        )
+    @test test_names_equal(pjm_pras_sys.lines.names, line_names)
 end
 
 # TODO: We want to test time-series λ, μ
