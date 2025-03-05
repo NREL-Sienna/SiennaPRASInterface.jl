@@ -660,6 +660,161 @@ end
 """
     $(TYPEDSIGNATURES)
 
+Apply LinePRAS to create PRAS matrices for lines. Views should be passed in.
+"""
+function assign_to_line_matrices!(
+    ::LinePRAS,
+    line::PSY.Branch,
+    s2p_meta::S2P_metadata,
+    forward_cap,
+    backward_cap,
+)
+    fill!(forward_cap, floor(Int, line_rating(line).forward_capacity))
+    fill!(backward_cap, floor(Int, line_rating(line).backward_capacity))
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Create PRAS from sorted lines and formulations.
+"""
+function process_lines(
+    sorted_lines::Vector{PSY.Branch},
+    s2p_meta::S2P_metadata,
+    lines_to_formulation::Dict{PSY.Device, LinePRAS},
+)
+    num_lines = length(sorted_lines)
+    if num_lines == 0
+        line_names = String[]
+    else
+        line_names = PSY.get_name.(sorted_lines)
+    end
+    # Lines
+    line_cats = line_type.(sorted_lines)
+
+    line_forward_cap = Matrix{Int64}(undef, num_lines, s2p_meta.N)
+    line_backward_cap = Matrix{Int64}(undef, num_lines, s2p_meta.N)
+    line_λ = Matrix{Float64}(undef, num_lines, s2p_meta.N) # Not currently available/ defined in PowerSystems
+    line_μ = Matrix{Float64}(undef, num_lines, s2p_meta.N) # Not currently available/ defined in PowerSystems
+
+    for (i, line) in enumerate(sorted_lines)
+        assign_to_line_matrices!(
+            lines_to_formulation[line],
+            line,
+            s2p_meta,
+            view(line_forward_cap, i, :),
+            view(line_backward_cap, i, :),
+        )
+
+        line_λ[i, :], line_μ[i, :] = get_outage_time_series_data(line, s2p_meta)
+    end
+
+    return PRASCore.Lines{
+        s2p_meta.N,
+        s2p_meta.pras_timestep,
+        s2p_meta.pras_resolution,
+        PRASCore.MW,
+    }(
+        line_names,
+        line_cats,
+        line_forward_cap,
+        line_backward_cap,
+        line_λ,
+        line_μ,
+    )
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Create PRAS interfaces from PRAS Lines
+"""
+function build_interfaces_from_lines(
+    line_forward_cap::Matrix{Int64},
+    line_backward_cap::Matrix{Int64},
+    interface_reg_idxs::Vector{Tuple{Int64, Int64}},
+    interface_line_idxs::Vector{UnitRange{Int64}},
+    s2p_meta::S2P_metadata,
+)
+    num_interfaces = length(interface_line_idxs)
+    interface_forward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
+    interface_backward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
+    for (i, line_indices) in enumerate(interface_line_idxs)
+        interface_forward_capacity_array[i, :] =
+            sum(line_forward_cap[line_indices, :], dims=1)
+        interface_backward_capacity_array[i, :] =
+            sum(line_backward_cap[line_indices, :], dims=1)
+    end
+
+    return PRASCore.Interfaces{s2p_meta.N, PRASCore.MW}(
+        first.(interface_reg_idxs),
+        last.(interface_reg_idxs),
+        interface_forward_capacity_array,
+        interface_backward_capacity_array,
+    )
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Add flow limits of an Sienna interface to an existing PRAS interface
+"""
+function add_to_interface!(
+    ::AreaInterchangeLimit,
+    interface,
+    s2p_meta,
+    forward_row,
+    backward_row,
+)
+    forward_row .+= floor(Int, PSY.get_flow_limits(interface).from_to)
+    backward_row .+= floor(Int, PSY.get_flow_limits(interface).to_from)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Process interfaces using a formulation dictionary to create PRAS matrices.
+"""
+function process_interfaces(
+    interface_reg_idxs::Vector{Tuple{Int64, Int64}},
+    regions,
+    s2p_meta::S2P_metadata,
+    interfaces_to_formulation::Dict{PSY.Device, InterfacePRAS},
+)
+    num_interfaces = length(interface_reg_idxs)
+    interface_forward_capacity = zeros(Int64, num_interfaces, s2p_meta.N)
+    interface_backward_capacity = zeros(Int64, num_interfaces, s2p_meta.N)
+    regions_to_idx = Dict(
+        (regions[idx1], regions[idx2]) => i for
+        (i, (idx1, idx2)) in enumerate(interface_reg_idxs)
+    )
+
+    for (interface, formulation) in interfaces_to_formulation
+        area_arc = (PSY.get_from_area(interface), PSY.get_to_area(interface))
+        if haskey(regions_to_idx, area_arc)
+            forward_row = view(interface_forward_capacity, regions_to_idx[area_arc], :)
+            backward_row = view(interface_backward_capacity, regions_to_idx[area_arc], :)
+        elseif haskey(regions_to_idx, reverse(area_arc))
+            area_arc = reverse(area_arc)
+            forward_row = view(interface_backward_capacity, regions_to_idx[area_arc], :)
+            backward_row = view(interface_forward_capacity, regions_to_idx[area_arc], :)
+        else
+            error("Interface $(PSY.get_name(interface)) does not have any lines.")
+        end
+        add_to_interface!(formulation, interface, s2p_meta, forward_row, backward_row)
+    end
+
+    return PRASCore.Interfaces{s2p_meta.N, PRASCore.MW}(
+        first.(interface_reg_idxs),
+        last.(interface_reg_idxs),
+        interface_forward_capacity,
+        interface_backward_capacity,
+    )
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
 Use a RATemplate to create a PRAS system from a Sienna system.
 
 # Arguments
@@ -815,36 +970,46 @@ function generate_pras_system(
         #######################################################
         @info "Collecting all inter regional lines in Sienna/Data PowerSystems System..."
 
+        lines_to_formulation =
+            build_component_to_formulation(LinePRAS, sys, template.device_models)
         lines = collect(
-            PSY.get_components(
-                x -> (
-                    PSY.get_available(x) &&
-                    typeof(x) ∉ TransformerTypes &&
-                    typeof(x) != PSY.AreaInterchange
-                ),
-                PSY.Branch,
-                sys,
+            PSY.Branch,
+            filter(
+                x -> !(x.arc.from.area.name == x.arc.to.area.name),
+                keys(lines_to_formulation),
             ),
         )
-        #######################################################
-        # Inter-Regional Line Processing
-        #######################################################
-        inter_regional_lines =
-            filter(x -> !(x.arc.from.area.name == x.arc.to.area.name), lines)
+        # Sorting here let's us better control the interface/line link
         sorted_lines, interface_reg_idxs, interface_line_idxs =
-            get_sorted_lines(inter_regional_lines, PSY.get_name.(regions))
-        new_lines, new_interfaces = make_pras_interfaces(
-            sorted_lines,
-            interface_reg_idxs,
-            interface_line_idxs,
-            PSY.get_name.(regions),
-            sys,
-            s2p_meta,
-        )
+            get_sorted_lines(lines, PSY.get_name.(regions))
+        @assert length(sorted_lines) == length(lines)
+        @assert length(interface_reg_idxs) == length(interface_line_idxs)  # num_interfaces
+        @assert sum(length.(interface_line_idxs)) == length(lines)
+        @assert issorted(interface_line_idxs, lt=(x1, x2) -> x1.stop < x2.start)
+        new_lines = process_lines(sorted_lines, s2p_meta, lines_to_formulation)
+
+        interfaces_to_formulation =
+            build_component_to_formulation(InterfacePRAS, sys, template.device_models)
+        if !isempty(interfaces_to_formulation)
+            interfaces = process_interfaces(
+                interface_reg_idxs,
+                regions,
+                s2p_meta,
+                interfaces_to_formulation,
+            )
+        else
+            interfaces = build_interfaces_from_lines(
+                new_lines.forward_capacity,
+                new_lines.backward_capacity,
+                interface_reg_idxs,
+                interface_line_idxs,
+                s2p_meta,
+            )
+        end
 
         pras_system = PRASCore.SystemModel(
             new_regions,
-            new_interfaces,
+            interfaces,
             new_generators,
             region_gen_idxs,
             new_storage,
@@ -857,7 +1022,6 @@ function generate_pras_system(
         )
 
         @info "Successfully built a PRAS SystemModel of type $(typeof(pras_system))."
-
         export_pras_system(pras_system, export_location::Union{Nothing, String})
 
         return pras_system
@@ -881,6 +1045,9 @@ function generate_pras_system(
 end
 
 const DEFAULT_DEVICE_MODELS = [
+    DeviceRAModel(PSY.Line, LinePRAS),
+    DeviceRAModel(PSY.MonitoredLine, LinePRAS),
+    DeviceRAModel(PSY.TwoTerminalHVDCLine, LinePRAS),
     DeviceRAModel(PSY.ThermalGen, GeneratorPRAS),
     DeviceRAModel(PSY.RenewableGen, GeneratorPRAS),
     DeviceRAModel(PSY.HydroDispatch, GeneratorPRAS),
@@ -890,6 +1057,9 @@ const DEFAULT_DEVICE_MODELS = [
 ]
 
 const _LUMPED_RENEWABLE_DEVICE_MODELS = [
+    DeviceRAModel(PSY.Line, LinePRAS),
+    DeviceRAModel(PSY.MonitoredLine, LinePRAS),
+    DeviceRAModel(PSY.TwoTerminalHVDCLine, LinePRAS),
     DeviceRAModel(PSY.ThermalGen, GeneratorPRAS),
     DeviceRAModel(PSY.RenewableGen, GeneratorPRAS, lump_renewable_generation=true),
     DeviceRAModel(PSY.HydroDispatch, GeneratorPRAS),

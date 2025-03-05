@@ -191,7 +191,6 @@ function get_outage_time_series_data(
     # Get GeometricForcedOutage SupplementalAttribute of the generator g
     outage_sup_attrs =
         PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, gen)
-    λ_gen, μ_gen = zeros(Float64, 1, s2p_meta.N), ones(Float64, 1, s2p_meta.N)
     if (length(outage_sup_attrs) > 0)
         transition_data = first(outage_sup_attrs)
         λ = PSY.get_outage_transition_probability(transition_data)
@@ -201,8 +200,8 @@ function get_outage_time_series_data(
             1 / PSY.get_mean_time_to_recovery(transition_data)
         end
 
-        λ_gen, μ_gen = if (PSY.has_time_series(transition_data, PSY.SingleTimeSeries))
-            PSY.get_time_series_values(
+        if (PSY.has_time_series(transition_data, PSY.SingleTimeSeries))
+            return PSY.get_time_series_values(
                 PSY.SingleTimeSeries,
                 transition_data,
                 "outage_probability",
@@ -213,24 +212,10 @@ function get_outage_time_series_data(
                 "recovery_probability",
             )
         else
-            fill.(λ, 1, s2p_meta.N), fill.(μ, 1, s2p_meta.N)
+            return fill(λ, s2p_meta.N), fill(μ, s2p_meta.N)
         end
     else
         @warn "No GeometricForcedOutage SupplementalAttribute available for $(PSY.get_name(gen)) of $(typeof(gen)). Using nominal outage and recovery probabilities for this component."
+        return zeros(Float64, s2p_meta.N), ones(Float64, s2p_meta.N)
     end
-
-    return λ_gen, μ_gen
-end
-
-function make_area_interchange_dict(area_interchanges::Vector{PSY.AreaInterchange})
-    area_interchange_data = Dict{Tuple{String, String}, PSY.FromTo_ToFrom}()
-    for a_i in area_interchanges
-        f_l = PSY.get_flow_limits(a_i)
-        push!(
-            area_interchange_data,
-            (PSY.get_name(PSY.get_from_area(a_i)), PSY.get_name(PSY.get_to_area(a_i))) =>
-                (from_to=f_l.from_to, to_from=f_l.to_from),
-        )
-    end
-    return area_interchange_data
 end
