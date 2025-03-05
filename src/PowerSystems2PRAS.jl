@@ -760,7 +760,7 @@ end
 Add flow limits of an Sienna interface to an existing PRAS interface
 """
 function add_to_interface!(
-    ::AreaInterchangeInterface,
+    ::AreaInterchangeLimit,
     interface,
     s2p_meta,
     forward_row,

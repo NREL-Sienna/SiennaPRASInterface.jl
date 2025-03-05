@@ -159,14 +159,14 @@ Subtypes must provide [`add_to_interface!`](@ref) function.
 abstract type InterfacePRAS <: AbstractRAFormulation end
 
 """
-    AreaInterchangeInterface <: InterfacePRAS
+    AreaInterchangeLimit <: InterfacePRAS
 
-AreaInterchangeInterface produces interfaces from AreaInterchange objects
+AreaInterchangeLimit produces interfaces from AreaInterchange objects
 
 Each line must have a corresponding AreaInterchange. All AreaInterchange
 objects will be consolidated for each pair of directly connected regions.
 """
-struct AreaInterchangeInterface <: InterfacePRAS end
+struct AreaInterchangeLimit <: InterfacePRAS end
 
 """
     LinePRAS <: AbstractRAFormulation

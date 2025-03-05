@@ -264,7 +264,7 @@ end
     set_device_model!(
         template,
         PSY.AreaInterchange,
-        SiennaPRASInterface.AreaInterchangeInterface,
+        SiennaPRASInterface.AreaInterchangeLimit,
     )
     pjm_pras_sys = generate_pras_system(pjm_sys, template)
     @test pjm_pras_sys isa SiennaPRASInterface.PRASCore.SystemModel
