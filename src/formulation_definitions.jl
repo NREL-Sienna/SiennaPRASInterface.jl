@@ -179,6 +179,29 @@ subtypes must implement this.
 struct LinePRAS <: AbstractRAFormulation end
 
 """
+    LoadPRAS <: AbstractRAFormulation
+
+See [`add_to_load_matrix`](@ref) for how the formulation is used to add load to
+regions.
+"""
+abstract type LoadPRAS <: AbstractRAFormulation end
+
+"""
+    StaticLoadPRAS <: LoadPRAS
+
+# Arguments
+$(TYPEDFIELDS)
+"""
+struct StaticLoadPRAS <: LoadPRAS
+    """Name of time series to use for max active power"""
+    max_active_power::String
+
+    function StaticLoadPRAS(; max_active_power="max_active_power")
+        return new(max_active_power)
+    end
+end
+
+"""
     DeviceRAModel{D <: PSY.Device, B <: AbstractRAFormulation}
 
 # Arguments
