@@ -54,6 +54,9 @@ export DeviceRAModel
 export GeneratorStoragePRAS
 export EnergyReservoirLossless
 export StoragePRAS
+export LinePRAS
+export AreaInterchangeLimit
+export StaticLoadPRAS
 export set_device_model!
 export RATemplate
 

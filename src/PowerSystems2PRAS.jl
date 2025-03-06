@@ -79,43 +79,42 @@ function add_default_data!(sys::PSY.System, outage_info_file=OUTAGE_INFO_FILE)
     end
 end
 
+function add_to_load_matrix!(
+    formulation::StaticLoadPRAS,
+    load::PSY.Device,
+    s2p_meta::S2P_metadata,
+    load_row,
+)
+    load_row .+=
+        get_ts_values(
+            get_first_ts(
+                PSY.get_time_series_multiple(
+                    load,
+                    s2p_meta.filter_func,
+                    name=formulation.max_active_power,
+                ),
+            ),
+        ) .* PSY.get_max_active_power(load)
+end
+
 """
     $(TYPEDSIGNATURES)
 
 Extract region load as a matrix of Int64 values.
-
-Uses to all StaticLoad objects.
-
-Note that behavior is not controlled by a formulation.
 """
-function get_region_loads(sys::PSY.System, s2p_meta::S2P_metadata, regions)
-    region_load = Array{Int64, 2}(undef, length(regions), s2p_meta.N)
+function get_region_loads(
+    s2p_meta::S2P_metadata,
+    regions,
+    loads_to_formulations::Dict{PSY.Device, LoadPRAS},
+)
+    region_load = zeros(Float64, length(regions), s2p_meta.N)
+    aggregation = Dict(region => i for (i, region) in enumerate(regions))
 
-    # FIXME We should make this work for all ElectricLoads
-    for (idx, region) in enumerate(regions)
-        reg_load_comps =
-            get_available_components_in_aggregation_topology(PSY.StaticLoad, sys, region)
-        if (length(reg_load_comps) > 0)
-            region_load[idx, :] =
-                floor.(
-                    Int,
-                    sum(
-                        get_ts_values.(
-                            get_first_ts.(
-                                PSY.get_time_series_multiple.(
-                                    reg_load_comps,
-                                    s2p_meta.filter_func,
-                                    name="max_active_power",
-                                )
-                            )
-                        ) .* PSY.get_max_active_power.(reg_load_comps),
-                    ),
-                ) # Any issues with using the first of time_series_multiple?
-        else
-            region_load[idx, :] = zeros(Int64, s2p_meta.N)
-        end
+    for (load, formulation) in loads_to_formulations
+        index = aggregation[PSY.get_area(PSY.get_bus(load))]
+        add_to_load_matrix!(formulation, load, s2p_meta, view(region_load, index, :))
     end
-    return region_load
+    return floor.(Int, region_load)
 end
 
 # Generator must not have HydroEenergyReservoir or have 0 max active power or be a hybrid system
@@ -934,7 +933,8 @@ function generate_pras_system(
         )
     end
 
-    region_load = get_region_loads(sys, s2p_meta, regions)
+    loads_to_formula = build_component_to_formulation(LoadPRAS, sys, template.device_models)
+    region_load = get_region_loads(s2p_meta, regions, loads_to_formula)
     new_regions =
         PRASCore.Regions{s2p_meta.N, PRASCore.MW}(PSY.get_name.(regions), region_load)
 
@@ -1048,6 +1048,7 @@ const DEFAULT_DEVICE_MODELS = [
     DeviceRAModel(PSY.Line, LinePRAS),
     DeviceRAModel(PSY.MonitoredLine, LinePRAS),
     DeviceRAModel(PSY.TwoTerminalHVDCLine, LinePRAS),
+    DeviceRAModel(PSY.StaticLoad, StaticLoadPRAS),
     DeviceRAModel(PSY.ThermalGen, GeneratorPRAS),
     DeviceRAModel(PSY.RenewableGen, GeneratorPRAS),
     DeviceRAModel(PSY.HydroDispatch, GeneratorPRAS),
@@ -1060,6 +1061,7 @@ const _LUMPED_RENEWABLE_DEVICE_MODELS = [
     DeviceRAModel(PSY.Line, LinePRAS),
     DeviceRAModel(PSY.MonitoredLine, LinePRAS),
     DeviceRAModel(PSY.TwoTerminalHVDCLine, LinePRAS),
+    DeviceRAModel(PSY.StaticLoad, StaticLoadPRAS),
     DeviceRAModel(PSY.ThermalGen, GeneratorPRAS),
     DeviceRAModel(PSY.RenewableGen, GeneratorPRAS, lump_renewable_generation=true),
     DeviceRAModel(PSY.HydroDispatch, GeneratorPRAS),
