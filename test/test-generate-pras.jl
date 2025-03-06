@@ -101,6 +101,7 @@ end
 @testset "RTS GMLC DA with RATemplate" begin
     rts_da_sys = get_rts_gmlc_outage("RT")
     area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
+    load_names = PSY.get_name.(PSY.get_components(PSY.StaticLoad, rts_da_sys))
     generator_names =
         PSY.get_name.(
             PSY.get_components(
@@ -126,18 +127,28 @@ end
                 PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
             end
         )
-    for name in vcat(generator_names, storage_names, generatorstorage_names)
-        comp = PSY.get_component(PSY.Component, rts_da_sys, name)
-        if PSY.has_time_series(PSY.SingleTimeSeries, comp, "max_active_power")
-            sts = PSY.get_time_series(PSY.SingleTimeSeries, comp, "max_active_power")
-            PSY.remove_time_series!(
-                rts_da_sys,
-                PSY.SingleTimeSeries,
-                comp,
-                "max_active_power",
-            )
-            sts.name = "max_active_POWER"
-            PSY.add_time_series!(rts_da_sys, comp, sts)
+    for (type, names) in zip(
+        [
+            PSY.StaticLoad,  # Bajer has two ElectricLoads
+            PSY.Generator,
+            PSY.Storage,
+            Union{PSY.HydroEnergyReservoir, PSY.HybridSystem},
+        ],
+        [load_names, generator_names, storage_names, generatorstorage_names],
+    )
+        for name in names
+            comp = PSY.get_component(type, rts_da_sys, name)
+            if PSY.has_time_series(PSY.SingleTimeSeries, comp, "max_active_power")
+                sts = PSY.get_time_series(PSY.SingleTimeSeries, comp, "max_active_power")
+                PSY.remove_time_series!(
+                    rts_da_sys,
+                    PSY.SingleTimeSeries,
+                    comp,
+                    "max_active_power",
+                )
+                sts.name = "max_active_POWER"
+                PSY.add_time_series!(rts_da_sys, comp, sts)
+            end
         end
     end
 
@@ -152,6 +163,10 @@ end
             SiennaPRASInterface.DeviceRAModel(
                 PSY.TwoTerminalHVDCLine,
                 SiennaPRASInterface.LinePRAS(),
+            ),
+            SiennaPRASInterface.DeviceRAModel(
+                PSY.StaticLoad,
+                SiennaPRASInterface.StaticLoadPRAS(max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
@@ -194,6 +209,19 @@ end
         TimeSeries.timestamp(psy_ts.data) .== collect(DateTime.(rts_pras_sys.timestamps)),
     )
 
+    load_values = zeros(Float64, length(rts_pras_sys.regions.names), length(psy_ts))
+    for load_name in load_names
+        load = PSY.get_component(PSY.StaticLoad, rts_da_sys, load_name)
+        region = PSY.get_area(PSY.get_bus(load))
+        # Fast enough for # areas < 10
+        idx = findfirst(x -> x == PSY.get_name(region), rts_pras_sys.regions.names)
+        max_active_power =
+            PSY.get_time_series_values(PSY.SingleTimeSeries, load, "max_active_POWER")
+        load_values[idx, :] += max_active_power
+    end
+    # The rounding here gets weird because there's a 1199.9999999999995 load value
+    @test all(rts_pras_sys.regions.load .<= floor.(Int64, load_values .+ 0.01))
+    @test all(rts_pras_sys.regions.load .>= floor.(Int64, load_values .- 0.01))
     # Test capacities
     # 201_HYDRO_4 should have max active power from time series
     idx = findfirst(x -> x == "201_HYDRO_4", rts_pras_sys.generators.names)

@@ -2,6 +2,7 @@ keys_to_names(x) = PSY.get_name.(collect(keys(x)))
 
 @testset "RATemplate formulation construction" begin
     rts_da_sys = get_rts_gmlc_outage("RT")
+    load_names = PSY.get_name.(PSY.get_components(PSY.StaticLoad, rts_da_sys))
     generator_names =
         PSY.get_name.(
             PSY.get_components(
@@ -23,6 +24,10 @@ keys_to_names(x) = PSY.get_name.(collect(keys(x)))
     problem_template = SiennaPRASInterface.RATemplate(
         PSY.Area,
         [
+            SiennaPRASInterface.DeviceRAModel(
+                PSY.StaticLoad,
+                SiennaPRASInterface.StaticLoadPRAS(max_active_power="max_active_POWER"),
+            ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
                 SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
@@ -71,11 +76,24 @@ keys_to_names(x) = PSY.get_name.(collect(keys(x)))
     )
     @test generatorstorage_to_pras isa Dict{PSY.Device, GeneratorStoragePRAS}
     @test test_names_equal(keys_to_names(generatorstorage_to_pras), generatorstorage_names)
+
+    # Test load formulation building
+    load_to_pras = SiennaPRASInterface.build_component_to_formulation(
+        SiennaPRASInterface.StaticLoadPRAS,
+        rts_da_sys,
+        problem_template.device_models,
+    )
+    @test load_to_pras isa Dict{PSY.Device, SiennaPRASInterface.StaticLoadPRAS}
+    @test test_names_equal(keys_to_names(load_to_pras), load_names)
 end
 
 @testset "RATemplate construction and manipulation" begin
     @testset "Creation and modification (with time-series-names)" begin
         device_models = [
+            SiennaPRASInterface.DeviceRAModel(
+                PSY.StaticLoad,
+                SiennaPRASInterface.StaticLoadPRAS(max_active_power="max_active_POWER"),
+            ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
                 SiennaPRASInterface.GeneratorPRAS,
@@ -89,7 +107,7 @@ end
         @test device_models isa Vector{
             SiennaPRASInterface.DeviceRAModel{
                 <:PSY.Device,
-                SiennaPRASInterface.GeneratorPRAS,
+                <:SiennaPRASInterface.AbstractRAFormulation,
             },
         }
         template = SiennaPRASInterface.RATemplate(PSY.Area, device_models)
@@ -106,6 +124,6 @@ end
                 SiennaPRASInterface.EnergyReservoirLossless(),
             ),
         )
-        @test length(template.device_models) == 3
+        @test length(template.device_models) == 4
     end
 end
