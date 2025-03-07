@@ -180,6 +180,8 @@ function get_first_ts(ts::TS) where {TS <: Channel{Any}}
         return first(ts)
     end
 end
+
+st_ts_key_filter_func = x -> isa(x, PSY.IS.StaticTimeSeriesKey)
 function get_forecast_values(ts::Nothing)
     return zeros(length(period_of_interest))
 end

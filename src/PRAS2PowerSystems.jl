@@ -94,8 +94,17 @@ Add the asset status from the worst sample to PSY.TimeSeriesForcedOutage of the 
 """
 function add_asset_status!(sys::PSY.System, results::SPIOutageResult, template::RATemplate)
     # Time series timestamps
-    all_ts = PSY.get_time_series_multiple(sys, x -> (typeof(x) <: PSY.StaticTimeSeries))
-    ts_timestamps = TimeSeries.timestamp(first(all_ts).data)
+    static_ts_summary = PSY.get_static_time_series_summary_table(sys)
+    s2p_meta = S2P_metadata(static_ts_summary)
+
+    finish_datetime = s2p_meta.first_timestamp + s2p_meta.pras_resolution(s2p_meta.N - 1)
+    ts_timestamps = collect(
+        StepRange(
+            s2p_meta.first_timestamp,
+            s2p_meta.pras_resolution(s2p_meta.pras_timestep),
+            finish_datetime,
+        ),
+    )
 
     shortfall_samples = results.shortfall_samples
 

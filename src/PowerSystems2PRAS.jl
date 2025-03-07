@@ -86,15 +86,7 @@ function add_to_load_matrix!(
     load_row,
 )
     load_row .+=
-        get_ts_values(
-            get_first_ts(
-                PSY.get_time_series_multiple(
-                    load,
-                    s2p_meta.filter_func,
-                    name=formulation.max_active_power,
-                ),
-            ),
-        ) .* PSY.get_max_active_power(load)
+        PSY.get_time_series_values(PSY.SingleTimeSeries, load, formulation.max_active_power)
 end
 
 """
@@ -277,13 +269,8 @@ end
 """
 Turn a time series into an Array of floored ints
 """
-function get_pras_array_from_timseries(device::PSY.Device, filter_func, name, multiplier)
-    return floor.(
-        Int,
-        get_ts_values(
-            get_first_ts(PSY.get_time_series_multiple(device, filter_func, name=name)),
-        ) * multiplier,
-    )
+function get_pras_array_from_timeseries(device::PSY.Device, name)
+    return floor.(Int, PSY.get_time_series_values(PSY.SingleTimeSeries, device, name))
 end
 
 """
@@ -321,31 +308,25 @@ function process_generators(
                 round.(
                     Int,
                     sum([
-                        get_ts_values(
-                            get_first_ts(
-                                PSY.get_time_series_multiple(
-                                    reg_gen,
-                                    s2p_meta.filter_func,
-                                    name=get_max_active_power(
-                                        component_to_formulation[reg_gen],
-                                    ),
-                                ),
-                            ),
-                        ) * PSY.get_max_active_power(reg_gen) for reg_gen in reg_gens_DA
+                        PSY.get_time_series_values(
+                            PSY.SingleTimeSeries,
+                            reg_gen,
+                            get_max_active_power(component_to_formulation[reg_gen]),
+                        ) for reg_gen in reg_gens_DA
                     ]),
                 )
         else
             if (
                 PSY.has_time_series(g) && (
                     get_max_active_power(component_to_formulation[g]) in
-                    PSY.get_name.(PSY.get_time_series_multiple(g, s2p_meta.filter_func))
+                    PSY.get_name.(
+                        filter(st_ts_key_filter_func, PSY.get_time_series_keys(g))
+                    )
                 )
             )
-                gen_cap_array[idx, :] = get_pras_array_from_timseries(
+                gen_cap_array[idx, :] = get_pras_array_from_timeseries(
                     g,
-                    s2p_meta.filter_func,
                     get_max_active_power(component_to_formulation[g]),
-                    PSY.get_max_active_power(g),
                 )
                 if !(all(gen_cap_array[idx, :] .>= 0))
                     @warn "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data."
@@ -496,18 +477,16 @@ function assign_to_gen_stor_matrices!(
         PSY.has_time_series(PSY.get_renewable_unit(g_s)) && (
             get_max_active_power(formulation) in
             PSY.get_name.(
-                PSY.get_time_series_multiple(
-                    PSY.get_renewable_unit(g_s),
-                    s2p_meta.filter_func,
+                filter(
+                    st_ts_key_filter_func,
+                    PSY.get_time_series_keys(PSY.get_renewable_unit(g_s)),
                 )
             )
         )
     )
-        inflow_array .= get_pras_array_from_timseries(
+        inflow_array .= get_pras_array_from_timeseries(
             PSY.get_renewable_unit(g_s),
-            s2p_meta.filter_func,
             get_max_active_power(formulation),
-            PSY.get_max_active_power(PSY.get_renewable_unit(g_s)),
         )
     else
         fill!(
@@ -536,14 +515,9 @@ function assign_to_gen_stor_matrices!(
     if (PSY.has_time_series(g_s))
         if (
             get_inflow(formulation) in
-            PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
+            PSY.get_name.(filter(st_ts_key_filter_func, PSY.get_time_series_keys(g_s)))
         )
-            charge_cap_array .= get_pras_array_from_timseries(
-                g_s,
-                s2p_meta.filter_func,
-                get_inflow(formulation),
-                PSY.get_inflow(g_s),
-            )
+            charge_cap_array .= get_pras_array_from_timeseries(g_s, get_inflow(formulation))
             discharge_cap_array .= charge_cap_array
             inflow_array .= charge_cap_array
         else
@@ -553,27 +527,19 @@ function assign_to_gen_stor_matrices!(
         end
         if (
             get_storage_capacity(formulation) in
-            PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
+            PSY.get_name.(filter(st_ts_key_filter_func, PSY.get_time_series_keys(g_s)))
         )
-            energy_cap_array .= get_pras_array_from_timseries(
-                g_s,
-                s2p_meta.filter_func,
-                get_storage_capacity(formulation),
-                PSY.get_storage_capacity(g_s),
-            )
+            energy_cap_array .=
+                get_pras_array_from_timeseries(g_s, get_storage_capacity(formulation))
         else
             fill!(energy_cap_array, floor(Int, PSY.get_storage_capacity(g_s)))
         end
         if (
             get_max_active_power(formulation) in
-            PSY.get_name.(PSY.get_time_series_multiple(g_s, s2p_meta.filter_func))
+            PSY.get_name.(filter(st_ts_key_filter_func, PSY.get_time_series_keys(g_s)))
         )
-            gridinj_cap_array .= get_pras_array_from_timseries(
-                g_s,
-                s2p_meta.filter_func,
-                get_max_active_power(formulation),
-                PSY.get_max_active_power(g_s),
-            )
+            gridinj_cap_array .=
+                get_pras_array_from_timeseries(g_s, get_max_active_power(formulation))
         else
             fill!(gridinj_cap_array, floor(Int, PSY.get_max_active_power(g_s)))
         end
