@@ -857,54 +857,24 @@ function generate_pras_system(
     # SingleTimeSeries?
     #######################################################
     #
-    s2p_meta = S2P_metadata()
+    static_ts_summary = PSY.get_static_time_series_summary_table(sys)
 
-    ts_counts = PSY.get_time_series_counts(sys)
-    if (!iszero(ts_counts.static_time_series_count))
-        s2p_meta.has_static_timeseries = true
-        filter_func = x -> (typeof(x) <: PSY.StaticTimeSeries)
-        s2p_meta.filter_func = filter_func
-        all_ts = PSY.get_time_series_multiple(sys, filter_func)
-        start_datetime = PSY.IS.get_initial_timestamp(first(all_ts))
-        s2p_meta.first_timestamp = start_datetime
-        s2p_meta.first_timeseries = first(all_ts)
-    else
-        if (!iszero(ts_counts.forecast_count))
-            s2p_meta.has_forecasts = true
-            filter_func = x -> (typeof(x) <: PSY.Forecast)
-            s2p_meta.filter_func = filter_func
-            all_ts = PSY.get_time_series_multiple(sys, filter_func)
-            start_datetime = PSY.IS.get_initial_timestamp(first(all_ts))
-            s2p_meta.first_timestamp = start_datetime
-            s2p_meta.first_timeseries = first(all_ts)
-        end
-    end
-
-    # Ensure Sienna/Data System has either static time series or forecasts
-    if !(s2p_meta.has_static_timeseries) && !(s2p_meta.has_forecasts)
+    # Ensure Sienna/Data System has static time series
+    if isempty(static_ts_summary)
         error(
-            "Sienna/Data PowerSystems System has no time series data (static time series data and/or forecasts)",
+            "System doesn't have any StaticTimeSeries. Other TimeSeries types are not suitable for resource adequacy analysis.",
         )
     end
-    # add N to S2P_metadata object
-    add_N!(s2p_meta)
 
-    # TODO: Is it okay to just get the first elemnt of vector returned by PSY.get_time_series_resolutions?
-    sys_res =
-        round(Dates.Millisecond(first(PSY.get_time_series_resolutions(sys))), Dates.Hour)
-    if iszero(sys_res.value)
-        sys_res = round(
-            Dates.Millisecond(first(PSY.get_time_series_resolutions(sys))),
-            Dates.Minute,
-        )
-        s2p_meta.pras_resolution = Dates.Minute
-    end
-    s2p_meta.pras_timestep = sys_res.value
+    s2p_meta = S2P_metadata(static_ts_summary)
+
     start_datetime_tz = TimeZones.ZonedDateTime(s2p_meta.first_timestamp, TimeZones.tz"UTC")
-    finish_datetime_tz =
-        start_datetime_tz + s2p_meta.pras_resolution((s2p_meta.N - 1) * sys_res)
-    my_timestamps =
-        StepRange(start_datetime_tz, s2p_meta.pras_resolution(sys_res), finish_datetime_tz)
+    finish_datetime_tz = start_datetime_tz + s2p_meta.pras_resolution(s2p_meta.N - 1)
+    my_timestamps = StepRange(
+        start_datetime_tz,
+        s2p_meta.pras_resolution(s2p_meta.pras_timestep),
+        finish_datetime_tz,
+    )
 
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
     #######################################################
