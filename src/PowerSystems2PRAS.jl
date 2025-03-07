@@ -835,12 +835,10 @@ function generate_pras_system(
     s2p_meta = S2P_metadata(static_ts_summary)
 
     start_datetime_tz = TimeZones.ZonedDateTime(s2p_meta.first_timestamp, TimeZones.tz"UTC")
-    finish_datetime_tz = start_datetime_tz + s2p_meta.pras_resolution(s2p_meta.N - 1)
-    my_timestamps = StepRange(
-        start_datetime_tz,
-        s2p_meta.pras_resolution(s2p_meta.pras_timestep),
-        finish_datetime_tz,
-    )
+    step = s2p_meta.pras_resolution(s2p_meta.pras_timestep)
+    finish_datetime_tz =
+        start_datetime_tz + s2p_meta.pras_resolution((s2p_meta.N - 1) * step)
+    my_timestamps = StepRange(start_datetime_tz, step, finish_datetime_tz)
 
     @info "The first timestamp of PRAS System being built is : $(start_datetime_tz) and last timestamp is : $(finish_datetime_tz) "
     #######################################################

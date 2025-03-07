@@ -96,15 +96,10 @@ function add_asset_status!(sys::PSY.System, results::SPIOutageResult, template::
     # Time series timestamps
     static_ts_summary = PSY.get_static_time_series_summary_table(sys)
     s2p_meta = S2P_metadata(static_ts_summary)
-
-    finish_datetime = s2p_meta.first_timestamp + s2p_meta.pras_resolution(s2p_meta.N - 1)
-    ts_timestamps = collect(
-        StepRange(
-            s2p_meta.first_timestamp,
-            s2p_meta.pras_resolution(s2p_meta.pras_timestep),
-            finish_datetime,
-        ),
-    )
+    step = s2p_meta.pras_resolution(s2p_meta.pras_timestep)
+    finish_datetime =
+        s2p_meta.first_timestamp + s2p_meta.pras_resolution((s2p_meta.N - 1) * step)
+    ts_timestamps = collect(StepRange(s2p_meta.first_timestamp, step, finish_datetime))
 
     shortfall_samples = results.shortfall_samples
 
