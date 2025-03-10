@@ -120,41 +120,36 @@ function get_generator_region_indices(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
     regions,
-    component_to_formulation::Dict{PSY.Device, GeneratorPRAS},
+    component_to_formulation::Dict{String, Dict{PowerSystems.Device, GeneratorPRAS}},
 )
     gens = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
     region_gen_idxs = Array{UnitRange{Int64}, 1}(undef, length(regions))
 
-    reg_wind_gens = []
-    reg_pv_gens = []
+    reg_wind_gens = Array{PSY.Device}[]
+    reg_pv_gens = Array{PSY.Device}[]
     for (idx, region) in enumerate(regions)
-        reg_ren_comps = filter(
-            x -> haskey(component_to_formulation, x),
-            get_available_components_in_aggregation_topology(PSY.RenewableGen, sys, region),
-        )
         wind_gs = filter(
             x -> (
                 (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.WT) &&
-                get_lump_renewable_generation(component_to_formulation[x])
+                (get_aggregation_function(region)(x.bus) == region)
             ),
-            reg_ren_comps,
+            collect(keys(component_to_formulation["Lumped"])),
         )
         pv_gs = filter(
             x -> (
                 (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe) &&
-                get_lump_renewable_generation(component_to_formulation[x])
+                (get_aggregation_function(region)(x.bus) == region)
             ),
-            reg_ren_comps,
+            collect(keys(component_to_formulation["Lumped"])),
         )
         gs = filter(
             x -> (
-                haskey(component_to_formulation, x) &&
-                !get_lump_renewable_generation(component_to_formulation[x]) &&
+                (get_aggregation_function(region)(x.bus) == region) &&
                 !(iszero(PSY.get_max_active_power(x))) &&
                 PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids
             ),
-            get_available_components_in_aggregation_topology(PSY.Generator, sys, region),
+            collect(keys(component_to_formulation["NonLumped"])),
         )
         push!(gens, gs)
         push!(reg_wind_gens, wind_gs)
@@ -180,6 +175,7 @@ function get_generator_region_indices(
             region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
         end
     end
+    lumped_mapping = Dict{String, Vector{PSY.Device}}()
     for (gen, region, reg_wind_gen, reg_pv_gen) in
         zip(gens, regions, reg_wind_gens, reg_pv_gens)
         if (length(reg_wind_gen) > 0)
@@ -187,8 +183,7 @@ function get_generator_region_indices(
             temp_lumped_wind_gen = PSY.RenewableDispatch(nothing)
             PSY.set_name!(temp_lumped_wind_gen, "Lumped_Wind_" * PSY.get_name(region))
             PSY.set_prime_mover_type!(temp_lumped_wind_gen, PSY.PrimeMovers.WT)
-            ext = PSY.get_ext(temp_lumped_wind_gen)
-            ext["region_gens"] = reg_wind_gen
+            push!(lumped_mapping, "Lumped_Wind_" * PSY.get_name(region) => reg_wind_gen)
             push!(gen, temp_lumped_wind_gen)
         end
         if (length(reg_pv_gen) > 0)
@@ -196,13 +191,12 @@ function get_generator_region_indices(
             temp_lumped_pv_gen = PSY.RenewableDispatch(nothing)
             PSY.set_name!(temp_lumped_pv_gen, "Lumped_PV_" * PSY.get_name(region))
             PSY.set_prime_mover_type!(temp_lumped_pv_gen, PSY.PrimeMovers.PVe)
-            ext = PSY.get_ext(temp_lumped_pv_gen)
-            ext["region_gens"] = reg_pv_gen
+            push!(lumped_mapping, "Lumped_PV_" * PSY.get_name(region) => reg_pv_gen)
             push!(gen, temp_lumped_pv_gen)
         end
     end
     gen = reduce(vcat, gens)
-    return gen, region_gen_idxs
+    return gen, region_gen_idxs, lumped_mapping
 end
 
 """
@@ -285,7 +279,8 @@ Negative max active power will translate into zeros for time series data.
 function process_generators(
     gen::Array{PSY.Device},
     s2p_meta::S2P_metadata,
-    component_to_formulation::Dict{PSY.Device, GeneratorPRAS},
+    component_to_formulation::Dict{String, Dict{PowerSystems.Device, GeneratorPRAS}},
+    lumped_mapping::Dict{String, Vector{PSY.Device}},
 )
     if (length(gen) == 0)
         gen_names = String[]
@@ -302,8 +297,8 @@ function process_generators(
 
     #FIXME This should use a component map instead.
     for (idx, g) in enumerate(gen)
-        if haskey(PSY.get_ext(g), "region_gens")
-            reg_gens_DA = PSY.get_ext(g)["region_gens"]
+        if haskey(lumped_mapping, g.name)
+            reg_gens_DA = lumped_mapping[g.name]
             gen_cap_array[idx, :] =
                 round.(
                     Int,
@@ -311,14 +306,16 @@ function process_generators(
                         PSY.get_time_series_values(
                             PSY.SingleTimeSeries,
                             reg_gen,
-                            get_max_active_power(component_to_formulation[reg_gen]),
+                            get_max_active_power(
+                                component_to_formulation["Lumped"][reg_gen],
+                            ),
                         ) for reg_gen in reg_gens_DA
                     ]),
                 )
         else
             if (
                 PSY.has_time_series(g) && (
-                    get_max_active_power(component_to_formulation[g]) in
+                    get_max_active_power(component_to_formulation["NonLumped"][g]) in
                     PSY.get_name.(
                         filter(st_ts_key_filter_func, PSY.get_time_series_keys(g))
                     )
@@ -326,7 +323,7 @@ function process_generators(
             )
                 gen_cap_array[idx, :] = get_pras_array_from_timeseries(
                     g,
-                    get_max_active_power(component_to_formulation[g]),
+                    get_max_active_power(component_to_formulation["NonLumped"][g]),
                 )
                 if !(all(gen_cap_array[idx, :] .>= 0))
                     @warn "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data."
@@ -875,9 +872,9 @@ function generate_pras_system(
     @info "Processing Generators in PSY System... "
     gens_to_formula =
         build_component_to_formulation(GeneratorPRAS, sys, template.device_models)
-    gens, region_gen_idxs =
+    gens, region_gen_idxs, lumped_mapping =
         get_generator_region_indices(sys, s2p_meta, regions, gens_to_formula)
-    new_generators = process_generators(gens, s2p_meta, gens_to_formula)
+    new_generators = process_generators(gens, s2p_meta, gens_to_formula, lumped_mapping)
 
     # **TODO Future : time series for storage devices
     @info "Processing Storages in PSY System... "

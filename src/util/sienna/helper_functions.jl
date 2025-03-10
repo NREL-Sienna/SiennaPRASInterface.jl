@@ -1,4 +1,16 @@
 """
+    get_aggregation_function(::Type{PSY.Area})
+
+Get getter function based on PSY.AggregationTopology
+"""
+function get_aggregation_function(reg::PSY.Area)
+    return PSY.get_area
+end
+
+function get_aggregation_function(reg::PSY.LoadZone)
+    return PSY.get_load_zone
+end
+"""
     get_available_components_in_aggregation_topology(
         type::Type{<:PSY.StaticInjection},
         sys::PSY.System,
@@ -131,60 +143,7 @@ function line_type(line::DCLine) where {DCLine <: HVDCLineTypes}
     error("line_type isn't defined for $(typeof(line))")
 end
 
-"""
-    get_ts_values(ts::PSY.TimeSeriesData)
-
-Get the time series values.
-
-# Arguments
-
-  - `ts::TimeSeries`: Time series
-
-# Returns
-
-  - `Array{Float64}`: Time series values
-"""
-function get_ts_values(ts::PSY.TimeSeriesData)
-    error("get_ts_values isn't defined for $(typeof(ts))")
-end
-
-function get_ts_values(ts::TS) where {TS <: PSY.AbstractDeterministic}
-    if (typeof(ts) == PSY.DeterministicSingleTimeSeries)
-        forecast_vals = get_ts_values(ts.single_time_series)
-    else
-        forecast_vals = []
-        for it in collect(keys(PSY.get_data(ts)))
-            append!(
-                forecast_vals,
-                collect(values(PSY.get_window(ts, it; len=interval_len))),
-            )
-        end
-    end
-    return forecast_vals
-end
-
-function get_ts_values(ts::TS) where {TS <: PSY.StaticTimeSeries}
-    forecast_vals = values(PSY.get_data(ts))
-    return forecast_vals
-end
-
-"""
-    get_first_ts(ts::TS)
-
-Get time series and handle components with no time series (such as unavailable)
-"""
-function get_first_ts(ts::TS) where {TS <: Channel{Any}}
-    if isempty(ts)
-        return nothing
-    else
-        return first(ts)
-    end
-end
-
 st_ts_key_filter_func = x -> isa(x, PSY.IS.StaticTimeSeriesKey)
-function get_forecast_values(ts::Nothing)
-    return zeros(length(period_of_interest))
-end
 
 function get_outage_time_series_data(
     gen::Union{PSY.StaticInjection, PSY.Branch},

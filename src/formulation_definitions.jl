@@ -413,3 +413,57 @@ function build_component_to_formulation(
     end
     return component_to_formulation
 end
+
+"""
+    $(SIGNATURES)
+
+Constructs a dictionary from Sienna Devices to GeneratorPRAS formulation objects
+"""
+function build_component_to_formulation(
+    ::Type{GeneratorPRAS},
+    sys::PSY.System,
+    device_models::Array{DeviceRAModel},
+)::Dict{String, Dict{PSY.Device, GeneratorPRAS}}
+    component_to_formulation = Dict(
+        "Lumped" => Dict{PSY.Device, GeneratorPRAS}(),
+        "NonLumped" => Dict{PSY.Device, GeneratorPRAS}(),
+    )
+
+    for device_model in reverse(device_models)
+        if !(device_model.formulation isa GeneratorPRAS)
+            continue
+        end
+        for component in get_available_components(device_model, sys)
+            if haskey(component_to_formulation, component)
+                @warn "Component $(PSY.get_name(component)) has multiple formulations. Choosing last applied"
+                continue
+            end
+            if get_lump_renewable_generation(device_model.formulation)
+                if (
+                    PSY.has_supplemental_attributes(
+                        PSY.GeometricDistributionForcedOutage,
+                        component,
+                    ) &&
+                    !all(
+                        iszero.(
+                            PSY.get_outage_transition_probability.(
+                                PSY.get_supplemental_attributes(
+                                    PSY.GeometricDistributionForcedOutage,
+                                    component,
+                                )
+                            )
+                        ),
+                    )
+                )
+                    component_to_formulation["NonLumped"][component] =
+                        device_model.formulation
+                else
+                    component_to_formulation["Lumped"][component] = device_model.formulation
+                end
+            else
+                component_to_formulation["NonLumped"][component] = device_model.formulation
+            end
+        end
+    end
+    return component_to_formulation
+end
