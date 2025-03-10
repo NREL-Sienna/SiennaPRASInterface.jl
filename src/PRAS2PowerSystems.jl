@@ -1,4 +1,21 @@
 """
+    get_generators_from_formulation_mapping(Dict{PSY.Device, B}) where {B <: AbstractRAFormulation}
+
+Get generators based on formulation to add availability data
+"""
+function get_generators_from_formulation_mapping(
+    gens_to_formula::Dict{PSY.Device, B},
+) where {B <: AbstractRAFormulation}
+    return keys(gens_to_formula)
+end
+
+function get_generators_from_formulation_mapping(
+    gens_to_formula::Dict{String, Dict{PSY.Device, GeneratorPRAS}},
+)
+    return keys(gens_to_formula["NonLumped"])
+end
+
+"""
     $(TYPEDSIGNATURES)
 
 Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
@@ -114,7 +131,7 @@ function add_asset_status!(sys::PSY.System, results::SPIOutageResult, template::
             template.device_models,
         )
 
-        for gen in keys(gens_to_formula)
+        for gen in get_generators_from_formulation_mapping(gens_to_formula)
             pras_gen_names = getfield(result, device_ramodel.key)
             if (gen.name in pras_gen_names)
                 ts_forced_outage = PSY.TimeSeriesForcedOutage(;

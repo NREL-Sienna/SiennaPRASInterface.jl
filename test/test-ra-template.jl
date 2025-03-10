@@ -1,9 +1,13 @@
-keys_to_names(x::Dict{PSY.Device, B}) where {B <: AbstractRAFormulation} =
-    PSY.get_name.(collect(keys(x)))
-keys_to_names(x::Dict{String, Dict{PSY.Device, GeneratorPRAS}}) = append!(
-    PSY.get_name.(collect(keys(x["Lumped"]))),
-    PSY.get_name.(collect(keys(x["NonLumped"]))),
-)
+keys_to_names(
+    x::Dict{PSY.Device, B},
+) where {B <: SiennaPRASInterface.AbstractRAFormulation} = PSY.get_name.(collect(keys(x)))
+keys_to_names(x::Dict{String, Dict{PSY.Device, SiennaPRASInterface.GeneratorPRAS}}) =
+    string.(
+        append!(
+            PSY.get_name.(collect(keys(x["Lumped"]))),
+            PSY.get_name.(collect(keys(x["NonLumped"]))),
+        )
+    )
 
 @testset "RATemplate formulation construction" begin
     rts_da_sys = get_rts_gmlc_outage("RT")

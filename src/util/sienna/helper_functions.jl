@@ -1,5 +1,5 @@
 """
-    get_aggregation_function(::Type{PSY.Area})
+    get_aggregation_function(::PSY.Area)
 
 Get getter function based on PSY.AggregationTopology
 """
