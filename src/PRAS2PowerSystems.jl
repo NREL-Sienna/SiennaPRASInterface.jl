@@ -1,21 +1,4 @@
 """
-    get_generators_from_formulation_mapping(Dict{PSY.Device, B}) where {B <: AbstractRAFormulation}
-
-Get generators based on formulation to add availability data
-"""
-function get_generators_from_formulation_mapping(
-    gens_to_formula::Dict{PSY.Device, B},
-) where {B <: AbstractRAFormulation}
-    return keys(gens_to_formula)
-end
-
-function get_generators_from_formulation_mapping(
-    gens_to_formula::Dict{String, Dict{PSY.Device, GeneratorPRAS}},
-)
-    return keys(gens_to_formula["NonLumped"])
-end
-
-"""
     $(TYPEDSIGNATURES)
 
 Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
@@ -131,7 +114,7 @@ function add_asset_status!(sys::PSY.System, results::SPIOutageResult, template::
             template.device_models,
         )
 
-        for gen in get_generators_from_formulation_mapping(gens_to_formula)
+        for gen in keys(gens_to_formula)
             pras_gen_names = getfield(result, device_ramodel.key)
             if (gen.name in pras_gen_names)
                 ts_forced_outage = PSY.TimeSeriesForcedOutage(;
@@ -148,6 +131,8 @@ function add_asset_status!(sys::PSY.System, results::SPIOutageResult, template::
 
                 PSY.add_time_series!(sys, ts_forced_outage, availability_timeseries)
                 @debug "Added availability time series to TimeSeriesForcedOutage supplemental attribute of $(gen.name)."
+            else
+                @debug "Asset availability time series not available for $(gen.name) of $(typeof(gen)) type. This generator either has zero max active power or was lumped based on the formulation."
             end
         end
     end

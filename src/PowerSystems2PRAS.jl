@@ -120,8 +120,10 @@ function get_generator_region_indices(
     sys::PSY.System,
     s2p_meta::S2P_metadata,
     regions,
-    component_to_formulation::Dict{String, Dict{PowerSystems.Device, GeneratorPRAS}},
+    component_to_formulation::Dict{PowerSystems.Device, GeneratorPRAS},
 )
+    lumped_gens_to_formula, nonlumped_gens_to_formula =
+        filter_component_to_formulation(component_to_formulation)
     gens = Array{PSY.Device}[]
     start_id = Array{Int64}(undef, length(regions))
     region_gen_idxs = Array{UnitRange{Int64}, 1}(undef, length(regions))
@@ -134,14 +136,14 @@ function get_generator_region_indices(
                 (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.WT) &&
                 (get_aggregation_function(region)(x.bus) == region)
             ),
-            collect(keys(component_to_formulation["Lumped"])),
+            collect(keys(lumped_gens_to_formula)),
         )
         pv_gs = filter(
             x -> (
                 (PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe) &&
                 (get_aggregation_function(region)(x.bus) == region)
             ),
-            collect(keys(component_to_formulation["Lumped"])),
+            collect(keys(lumped_gens_to_formula)),
         )
         gs = filter(
             x -> (
@@ -149,7 +151,7 @@ function get_generator_region_indices(
                 !(iszero(PSY.get_max_active_power(x))) &&
                 PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids
             ),
-            collect(keys(component_to_formulation["NonLumped"])),
+            collect(keys(nonlumped_gens_to_formula)),
         )
         push!(gens, gs)
         push!(reg_wind_gens, wind_gs)
@@ -279,7 +281,7 @@ Negative max active power will translate into zeros for time series data.
 function process_generators(
     gen::Array{PSY.Device},
     s2p_meta::S2P_metadata,
-    component_to_formulation::Dict{String, Dict{PowerSystems.Device, GeneratorPRAS}},
+    component_to_formulation::Dict{PowerSystems.Device, GeneratorPRAS},
     lumped_mapping::Dict{String, Vector{PSY.Device}},
 )
     if (length(gen) == 0)
@@ -306,16 +308,14 @@ function process_generators(
                         PSY.get_time_series_values(
                             PSY.SingleTimeSeries,
                             reg_gen,
-                            get_max_active_power(
-                                component_to_formulation["Lumped"][reg_gen],
-                            ),
+                            get_max_active_power(component_to_formulation[reg_gen]),
                         ) for reg_gen in reg_gens_DA
                     ]),
                 )
         else
             if (
                 PSY.has_time_series(g) && (
-                    get_max_active_power(component_to_formulation["NonLumped"][g]) in
+                    get_max_active_power(component_to_formulation[g]) in
                     PSY.get_name.(
                         filter(st_ts_key_filter_func, PSY.get_time_series_keys(g))
                     )
@@ -323,7 +323,7 @@ function process_generators(
             )
                 gen_cap_array[idx, :] = get_pras_array_from_timeseries(
                     g,
-                    get_max_active_power(component_to_formulation["NonLumped"][g]),
+                    get_max_active_power(component_to_formulation[g]),
                 )
                 if !(all(gen_cap_array[idx, :] .>= 0))
                     @warn "There are negative values in max active time series data for $(PSY.get_name(g)) of type $(gen_categories[idx]) is negative. Using zeros for time series data."
