@@ -1,4 +1,6 @@
-keys_to_names(x) = PSY.get_name.(collect(keys(x)))
+keys_to_names(
+    x::Dict{PSY.Device, B},
+) where {B <: SiennaPRASInterface.AbstractRAFormulation} = PSY.get_name.(collect(keys(x)))
 
 @testset "RATemplate formulation construction" begin
     rts_da_sys = get_rts_gmlc_outage("RT")

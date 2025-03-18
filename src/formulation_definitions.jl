@@ -413,3 +413,36 @@ function build_component_to_formulation(
     end
     return component_to_formulation
 end
+
+"""
+    $(SIGNATURES)
+
+Filter the dictionary from Sienna Devices to GeneratorPRAS formulation objects for Lumped vs. NonLumped
+"""
+function filter_component_to_formulation(gens_to_formula::Dict{PSY.Device, GeneratorPRAS})
+    lumped_gens_to_formula = filter(
+        ((k, v),) ->
+            (
+                get_lump_renewable_generation(v) &&
+                PSY.has_supplemental_attributes(PSY.GeometricDistributionForcedOutage, k) &&
+                all(
+                    iszero.(
+                        PSY.get_outage_transition_probability.(
+                            PSY.get_supplemental_attributes(
+                                PSY.GeometricDistributionForcedOutage,
+                                k,
+                            )
+                        )
+                    ),
+                )
+            ) || (
+                get_lump_renewable_generation(v) &&
+                !PSY.has_supplemental_attributes(PSY.GeometricDistributionForcedOutage, k)
+            ),
+        gens_to_formula,
+    )
+    nonlumped_gens_to_formula =
+        filter(((k, v),) -> k ∉ keys(lumped_gens_to_formula), gens_to_formula)
+
+    return lumped_gens_to_formula, nonlumped_gens_to_formula
+end

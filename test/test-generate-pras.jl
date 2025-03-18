@@ -1,3 +1,10 @@
+@testset "RTS GMLC DA Error" begin
+    rts_da_sys = get_rts_gmlc_outage("DA")
+    PSY.remove_time_series!(rts_da_sys, PSY.SingleTimeSeries)
+    @test_throws "System doesn't have any StaticTimeSeries." rts_pras_sys =
+        generate_pras_system(rts_da_sys, PSY.Area)
+end
+
 @testset "RTS GMLC DA" begin
     rts_da_sys = get_rts_gmlc_outage("DA")
     area_names = PSY.get_name.(PSY.get_components(PSY.Area, rts_da_sys))
