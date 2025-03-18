@@ -143,8 +143,6 @@ function line_type(line::DCLine) where {DCLine <: HVDCLineTypes}
     error("line_type isn't defined for $(typeof(line))")
 end
 
-st_ts_key_filter_func = x -> isa(x, PSY.IS.StaticTimeSeriesKey)
-
 function get_outage_time_series_data(
     gen::Union{PSY.StaticInjection, PSY.Branch},
     s2p_meta::S2P_metadata,

@@ -313,14 +313,11 @@ function process_generators(
                     ]),
                 )
         else
-            if (
-                PSY.has_time_series(g) && (
-                    get_max_active_power(component_to_formulation[g]) in
-                    PSY.get_name.(
-                        filter(st_ts_key_filter_func, PSY.get_time_series_keys(g))
-                    )
-                )
-            )
+            if (PSY.has_time_series(
+                g,
+                PSY.SingleTimeSeries,
+                get_max_active_power(component_to_formulation[g]),
+            ))
                 gen_cap_array[idx, :] = get_pras_array_from_timeseries(
                     g,
                     get_max_active_power(component_to_formulation[g]),
@@ -470,17 +467,11 @@ function assign_to_gen_stor_matrices!(
     )
     fill!(gridinj_cap_array, floor(Int, PSY.get_output_active_power_limits(g_s).max))
 
-    if (
-        PSY.has_time_series(PSY.get_renewable_unit(g_s)) && (
-            get_max_active_power(formulation) in
-            PSY.get_name.(
-                filter(
-                    st_ts_key_filter_func,
-                    PSY.get_time_series_keys(PSY.get_renewable_unit(g_s)),
-                )
-            )
-        )
-    )
+    if (PSY.has_time_series(
+        PSY.get_renewable_unit(g_s),
+        PSY.SingleTimeSeries,
+        get_max_active_power(formulation),
+    ))
         inflow_array .= get_pras_array_from_timeseries(
             PSY.get_renewable_unit(g_s),
             get_max_active_power(formulation),
@@ -510,10 +501,7 @@ function assign_to_gen_stor_matrices!(
     gridinj_cap_array,
 )
     if (PSY.has_time_series(g_s))
-        if (
-            get_inflow(formulation) in
-            PSY.get_name.(filter(st_ts_key_filter_func, PSY.get_time_series_keys(g_s)))
-        )
+        if (PSY.has_time_series(g_s, PSY.SingleTimeSeries, get_inflow(formulation)))
             charge_cap_array .= get_pras_array_from_timeseries(g_s, get_inflow(formulation))
             discharge_cap_array .= charge_cap_array
             inflow_array .= charge_cap_array
@@ -522,19 +510,21 @@ function assign_to_gen_stor_matrices!(
             fill!(discharge_cap_array, floor(Int, PSY.get_inflow(g_s)))
             fill!(inflow_array, floor(Int, PSY.get_inflow(g_s)))
         end
-        if (
-            get_storage_capacity(formulation) in
-            PSY.get_name.(filter(st_ts_key_filter_func, PSY.get_time_series_keys(g_s)))
-        )
+        if (PSY.has_time_series(
+            g_s,
+            PSY.SingleTimeSeries,
+            get_storage_capacity(formulation),
+        ))
             energy_cap_array .=
                 get_pras_array_from_timeseries(g_s, get_storage_capacity(formulation))
         else
             fill!(energy_cap_array, floor(Int, PSY.get_storage_capacity(g_s)))
         end
-        if (
-            get_max_active_power(formulation) in
-            PSY.get_name.(filter(st_ts_key_filter_func, PSY.get_time_series_keys(g_s)))
-        )
+        if (PSY.has_time_series(
+            g_s,
+            PSY.SingleTimeSeries,
+            get_max_active_power(formulation),
+        ))
             gridinj_cap_array .=
                 get_pras_array_from_timeseries(g_s, get_max_active_power(formulation))
         else
