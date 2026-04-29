@@ -21,7 +21,7 @@ makedocs(
         prettyurls=haskey(ENV, "GITHUB_ACTIONS"),
         size_threshold=nothing,
     ),
-    sitename="github.com/Sienna-Platform/SiennaPRASInterface.jl",
+    sitename="SiennaPRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
     pages=Any[p for p in pages],
     warnonly=true,
