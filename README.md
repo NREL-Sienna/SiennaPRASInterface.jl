@@ -2,14 +2,14 @@
 
 [![Main - CI](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/actions/workflows/main-tests.yml/badge.svg)](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/actions/workflows/main-tests.yml)
 [![codecov](https://codecov.io/gh/Sienna-Platform/SiennaPRASInterface.jl/graph/badge.svg?token=AwsS9lNNSE)](https://codecov.io/gh/Sienna-Platform/SiennaPRASInterface.jl)
-[![Documentation Build](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/workflows/Documentation/badge.svg?)](https://sienna-platform.github.io/SiennaPRASInterface.jl/dev)
+[![Documentation Build](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/workflows/Documentation/badge.svg?)](https://sienna-platform.github.io/SiennaPRASInterface.jl/stable/)
 [<img src="https://img.shields.io/badge/slack-@Sienna/SiennaPRASInterface-sienna.svg?logo=slack">](https://join.slack.com/t/core-sienna/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)
 
 ## About this package
 
 SiennaPRASInterface.jl is a Julia package that provides an interface to (the unregistered package) [PRAS.jl](https://nrel.github.io/PRAS/) employing PowerSystem.jl's System data model. This package facilitates executing and analyzing the resource adequacy of a bulk power system using Monte Carlo methods with Julia.
 
-For information on using the package check the [documentation](https://sienna-platform.github.io/SiennaPRASInterface.jl/dev).
+For information on using the package, see the [stable documentation](https://sienna-platform.github.io/SiennaPRASInterface.jl/stable/). Use the [in-development documentation](https://sienna-platform.github.io/SiennaPRASInterface.jl/dev/) for the version of the documentation which contains the unreleased features.
 
 ## Development
 
