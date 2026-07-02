@@ -2,17 +2,18 @@
     $(TYPEDSIGNATURES)
 
 Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
-to PSY.GeometricDistributionForcedOutage of the component.
+to [`PowerSystems.GeometricDistributionForcedOutage`](@extref) supplemental attributes.
 
 # Arguments
 
-  - `sys::PSY.System`: PowerSystems.jl system model
-  - `template::RATemplate`: PRAS problem template
-  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `sys`: [`PowerSystems.System`](@extref) to assess and update
+  - `template`: [`RATemplate`](@ref) defining aggregation topology and device mappings
+  - `method`: [`PRASCore.Simulations.SequentialMonteCarlo`](@extref) simulation method
 
 # Returns
 
- - PSY System with asset availability times series added to PSY.GeometricDistributionForcedOutage for all components for which asset status is available
+  - [`PowerSystems.System`](@extref) with asset availability time series added to
+    [`PowerSystems.GeometricDistributionForcedOutage`](@extref) for components with available asset status
 """
 function generate_outage_profile!(
     sys::PSY.System,
@@ -26,24 +27,21 @@ function generate_outage_profile!(
 end
 
 """
-    generate_outage_profile!(
-        sys::PSY.System,
-        aggregation::Type{AT},
-        method::PRASCore.SequentialMonteCarlo,
-    ) where {AT <: PSY.AggregationTopology, RM <: PRASCore.Results.ReliabilityMetric}
+    $(TYPEDSIGNATURES)
 
 Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
-to PSY.GeometricDistributionForcedOutage of the component.
+to [`PowerSystems.GeometricDistributionForcedOutage`](@extref) supplemental attributes.
 
 # Arguments
 
-  - `sys::PSY.System`: PowerSystems.jl system model
-  - `aggregation::Type{AT}`: Aggregation topology to use in translating to PRAS
-  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `sys`: [`PowerSystems.System`](@extref) to assess and update
+  - `aggregation`: [`PowerSystems.AggregationTopology`](@extref) type used for PRAS region aggregation
+  - `method`: [`PRASCore.Simulations.SequentialMonteCarlo`](@extref) simulation method
 
 # Returns
 
-  - PSY System with asset availability times series added to PSY.GeometricDistributionForcedOutage for all components for which asset status is available
+  - [`PowerSystems.System`](@extref) with asset availability time series added to
+    [`PowerSystems.GeometricDistributionForcedOutage`](@extref) for components with available asset status
 """
 function generate_outage_profile!(
     sys::PSY.System,
@@ -59,18 +57,19 @@ end
     $(TYPEDSIGNATURES)
 
 Analyze resource adequacy using Monte Carlo simulation and add the asset status from the worst sample
-to PSY.GeometricDistributionForcedOutage of the component.
+to [`PowerSystems.GeometricDistributionForcedOutage`](@extref) supplemental attributes.
 
-Uses default template with PSY.Area AggregationTopology.
+Uses default template with [`PowerSystems.Area`](@extref) level aggregation.
 
 # Arguments
 
-  - `sys::PSY.System`: PowerSystems.jl system model
-  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
+  - `sys`: [`PowerSystems.System`](@extref) to assess and update
+  - `method`: [`PRASCore.Simulations.SequentialMonteCarlo`](@extref) simulation method
 
 # Returns
 
-    - PSY System with asset availability times series added to PSY.GeometricDistributionForcedOutage for all components for which asset status is available
+  - [`PowerSystems.System`](@extref) with asset availability time series added to
+    [`PowerSystems.GeometricDistributionForcedOutage`](@extref) for components with available asset status
 """
 function generate_outage_profile!(sys::PSY.System, method::PRASCore.SequentialMonteCarlo)
     sys = generate_outage_profile!(sys, DEFAULT_TEMPLATE, method)

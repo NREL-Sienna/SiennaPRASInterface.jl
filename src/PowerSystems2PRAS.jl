@@ -79,6 +79,12 @@ function add_default_data!(sys::PSY.System, outage_info_file=OUTAGE_INFO_FILE)
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Internal helper that adds a load device time series into one row of the
+region-level PRAS load matrix.
+"""
 function add_to_load_matrix!(
     formulation::StaticLoadPRAS,
     load::PSY.Device,
@@ -361,6 +367,12 @@ function process_generators(
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Apply the [`EnergyReservoirSoC`](@ref) formulation to fill in a row of the PRAS
+storage matrices. Views should be passed in for all arrays.
+"""
 function assign_to_stor_matrices!(
     ::EnergyReservoirSoC,
     s::PSY.Device,
@@ -830,17 +842,17 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Use a RATemplate to create a PRAS system from a Sienna system.
+Use a [`RATemplate`](@ref) to create a PRAS system from a Sienna system.
 
 # Arguments
 
-- `sys::PSY.System`: Sienna PowerSystems System
-- `template::RATemplate`: RATemplate
-- `export_location::Union{Nothing, String}`: Export location for PRAS SystemModel
+- `sys`: [`PowerSystems.System`](@extref) to translate
+- `template`: [`RATemplate`](@ref) defining aggregation topology and device mappings
+- `export_location`: optional path ending in `.pras` to export the translated [`PRASCore.Systems.SystemModel`](@extref)
 
 # Returns
 
-- `PRASCore.SystemModel`: PRAS SystemModel
+- [`PRASCore.Systems.SystemModel`](@extref): translated PRAS system
 
 # Examples
 
@@ -1107,20 +1119,19 @@ const DEFAULT_TEMPLATE = RATemplate(PSY.Area, DEFAULT_DEVICE_MODELS)
 """
     $(TYPEDSIGNATURES)
 
-Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemModel is returned.
-...
+Translate a [`PowerSystems.System`](@extref) to a [`PRASCore.Systems.SystemModel`](@extref)
+using default device mappings.
 
 # Arguments
 
-  - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
-  - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional}
-  - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional}
-  - `export_location::String`: Export location of the .pras file
-    ...
+  - `sys`: [`PowerSystems.System`](@extref) to translate
+  - `aggregation`: [`PowerSystems.AggregationTopology`](@extref) type (for example [`PowerSystems.Area`](@extref) or [`PowerSystems.LoadZone`](@extref))
+  - `lump_region_renewable_gens`: whether to lump PV and wind generators within a region when outage data are absent
+  - `export_location`: optional path ending in `.pras` to export the translated model
 
 # Returns
 
-    - `PRASCore.SystemModel`: PRAS SystemModel object
+  - [`PRASCore.Systems.SystemModel`](@extref): translated PRAS system
 
 # Examples
 
@@ -1144,20 +1155,20 @@ function generate_pras_system(
 end
 
 """
-    generate_pras_system(sys_location::String, aggregation; kwargs...)
+    $(TYPEDSIGNATURES)
 
-Generate a PRAS SystemModel from a Sienna/Data PowerSystems System JSON file.
+Generate a [`PRASCore.Systems.SystemModel`](@extref) from a [`PowerSystems.System`](@extref) JSON file.
 
 # Arguments
 
-  - `sys_location::String`: Location of the Sienna/Data PowerSystems System JSON file
-  - `aggregation::Type{AT}`: Aggregation topology type
-  - `lump_region_renewable_gens::Bool`: Lumping of region renewable generators
-  - `export_location::Union{Nothing, String}`: Export location of the .pras file
+  - `sys_location`: path to the [`PowerSystems.System`](@extref) JSON file
+  - `aggregation`: [`PowerSystems.AggregationTopology`](@extref) type
+  - `lump_region_renewable_gens`: whether to lump region renewable generators
+  - `export_location`: optional path ending in `.pras` to export the translated model
 
 # Returns
 
-  - `PRASCore.SystemModel`: PRAS SystemModel
+  - [`PRASCore.Systems.SystemModel`](@extref): translated PRAS system
 """
 function generate_pras_system(
     sys_location::String,

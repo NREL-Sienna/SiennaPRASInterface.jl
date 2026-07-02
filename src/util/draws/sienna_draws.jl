@@ -2,17 +2,26 @@
 rng = Random123.Philox4x((0, 0), 10)
 
 """
-    make_generator_outage_draws!(
-        sys,
-        initial_time::Dates.DateTime=nothing,
-        resolution::TIMEPERIOD=nothing,
-        steps::Int=nothing,
-        horizon::Int=nothing,
-    ) where {TIMEPERIOD <: Dates.TimePeriod}
+    $(TYPEDSIGNATURES)
 
-Adds availability time series to the generators in the system.
+Draw stochastic generator availability profiles and attach them as time series.
 
-Main function to make generator outage draws.
+For each [`PowerSystems.Generator`](@extref) with a positive
+[`PowerSystems.GeometricDistributionForcedOutage`](@extref) transition probability,
+simulates sequential outage and recovery states and writes an `availability` time series
+to the supplemental attribute.
+
+# Arguments
+
+  - `sys`: [`PowerSystems.System`](@extref) to update in place
+  - `initial_time`: start time for generated time series (defaults to system time series metadata when omitted)
+  - `resolution`: time step for generated time series
+  - `steps`: number of time steps per horizon segment
+  - `horizon`: number of horizon segments to simulate
+
+# Returns
+
+  - `nothing`; availability time series are added to `sys`
 """
 function make_generator_outage_draws!(
     sys::PSY.System,
