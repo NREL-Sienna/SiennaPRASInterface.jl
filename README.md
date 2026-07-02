@@ -7,7 +7,7 @@
 
 ## About this package
 
-SiennaPRASInterface.jl is a Julia package that provides an interface to (the unregistered package) [PRAS.jl](https://nrel.github.io/PRAS/) employing PowerSystem.jl's System data model. This package facilitates executing and analyzing the resource adequacy of a bulk power system using Monte Carlo methods with Julia.
+SiennaPRASInterface.jl is a Julia package that provides an interface to the unregistered [PRAS.jl](https://natlabrockies.github.io/PRAS/stable/) package from [NatLabRockies](https://github.com/NatLabRockies/PRAS), employing [`PowerSystems.jl`](https://github.com/Sienna-Platform/PowerSystems.jl)'s `System` data model. This package facilitates executing and analyzing the resource adequacy of a bulk power system using Monte Carlo methods with Julia.
 
 For information on using the package, see the [stable documentation](https://sienna-platform.github.io/SiennaPRASInterface.jl/stable/). Use the [in-development documentation](https://sienna-platform.github.io/SiennaPRASInterface.jl/dev/) for the version of the documentation which contains the unreleased features.
 
@@ -17,4 +17,4 @@ Contributions to the development and enhancement of SiennaPRASInterface is welco
 
 ## License
 
-SiennaPRASInterface is released under a BSD [license](https://github.com/NREL/SiennaPRASInterface/blob/master/LICENSE). SiennaPRASInterface has been developed as part of the transmission planning tools project at the U.S. Department of Energy's National Laboratory of the Rockies [NLR](https://www.nlr.gov/) formerly known as NREL.
+SiennaPRASInterface is released under a BSD [license](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/blob/master/LICENSE). SiennaPRASInterface has been developed as part of the transmission planning tools project at the U.S. Department of Energy's National Laboratory of the Rockies [NLR](https://www.nlr.gov/) formerly known as NREL.
