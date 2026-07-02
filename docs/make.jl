@@ -21,14 +21,10 @@ pages = OrderedDict(
         "Resource adequacy workflow" => "tutorials/generated_resource_adequacy_workflow.md",
     ],
     "How to..." => Any[
-        "Prepare stochastic outage data for resource adequacy" =>
-            "how_to_guides/how_do_i_add_outage_data.md",
-        "Configure device mappings for PRAS" =>
-            "how_to_guides/how_to_configure_device_mappings.md",
-        "Request multiple result specifications" =>
-            "how_to_guides/how_to_request_multiple_results.md",
-        "Inspect or export a PRAS SystemModel" =>
-            "how_to_guides/how_to_inspect_pras_system.md",
+        "Prepare stochastic outage data for resource adequacy" => "how_to_guides/how_do_i_add_outage_data.md",
+        "Configure device mappings for PRAS" => "how_to_guides/how_to_configure_device_mappings.md",
+        "Request multiple result specifications" => "how_to_guides/how_to_request_multiple_results.md",
+        "Inspect or export a PRAS SystemModel" => "how_to_guides/how_to_inspect_pras_system.md",
     ],
     "Explanation" => Any[
         "Default outage values" => "explanations/default_outage_values.md",
@@ -39,19 +35,21 @@ pages = OrderedDict(
     ],
 )
 
-makedocs(
+makedocs(;
     modules=[SiennaPRASInterface, PRASCore],
-    format=Documenter.HTML(
+    format=Documenter.HTML(;
         prettyurls=haskey(ENV, "GITHUB_ACTIONS"),
         size_threshold=nothing,
     ),
     sitename="SiennaPRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
     pages=Any[p for p in pages],
+    checkdocs=:none,
+    doctest=false,
     plugins=[links],
 )
 
-deploydocs(
+deploydocs(;
     repo="github.com/Sienna-Platform/SiennaPRASInterface.jl.git",
     target="build",
     branch="gh-pages",

@@ -68,8 +68,8 @@ function initialize_availability!(
                     PSY.get_supplemental_attributes.(
                         PSY.GeometricDistributionForcedOutage,
                         devices,
-                    )
-                )
+                    ),
+                ),
             ),
             1,
             t_last,
@@ -84,8 +84,8 @@ function initialize_availability!(
                     PSY.get_supplemental_attributes.(
                         PSY.GeometricDistributionForcedOutage,
                         devices,
-                    )
-                )
+                    ),
+                ),
             ),
             1,
             t_last,
@@ -136,8 +136,8 @@ function update_availability!(
                     PSY.get_supplemental_attributes.(
                         PSY.GeometricDistributionForcedOutage,
                         devices,
-                    )
-                )
+                    ),
+                ),
             ),
             1,
             t_last,
@@ -152,8 +152,8 @@ function update_availability!(
                     PSY.get_supplemental_attributes.(
                         PSY.GeometricDistributionForcedOutage,
                         devices,
-                    )
-                )
+                    ),
+                ),
             ),
             1,
             t_last,

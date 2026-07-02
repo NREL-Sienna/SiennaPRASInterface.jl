@@ -12,7 +12,7 @@ keys_to_names(
                 PSY.get_available,
                 Union{PSY.HydroDispatch, PSY.RenewableGen, PSY.ThermalGen},
                 rts_da_sys,
-            )
+            ),
         )
     storage_names = PSY.get_name.(PSY.get_components(PSY.Storage, rts_da_sys))
     generatorstorage_names =
@@ -21,7 +21,7 @@ keys_to_names(
                 PSY.get_available,
                 Union{PSY.HydroUnit, PSY.HybridSystem},
                 rts_da_sys,
-            )
+            ),
         )
 
     problem_template = SiennaPRASInterface.RATemplate(
@@ -29,19 +29,19 @@ keys_to_names(
         [
             SiennaPRASInterface.DeviceRAModel(
                 PSY.StaticLoad,
-                SiennaPRASInterface.StaticLoadPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.StaticLoadPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
-                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroDispatch,
-                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.RenewableGen,
-                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.EnergyReservoirStorage,
@@ -99,7 +99,7 @@ end
         device_models = [
             SiennaPRASInterface.DeviceRAModel(
                 PSY.StaticLoad,
-                SiennaPRASInterface.StaticLoadPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.StaticLoadPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
@@ -107,7 +107,7 @@ end
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.RenewableGen,
-                SiennaPRASInterface.GeneratorPRAS,
+                SiennaPRASInterface.GeneratorPRAS;
                 time_series_names=Dict(:max_active_power => "max_active_POWER"),
             ),
         ]

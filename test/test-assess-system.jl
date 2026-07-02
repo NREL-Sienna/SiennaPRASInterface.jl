@@ -17,7 +17,7 @@ end
         PSCB.build_system(PSCB.SPISystems, "RTS_GMLC_Hourly with Static Outage Data")
 
     sequential_monte_carlo =
-        SiennaPRASInterface.SequentialMonteCarlo(samples=2, seed=1, threaded=false)
+        SiennaPRASInterface.SequentialMonteCarlo(; samples=2, seed=1, threaded=false)
     @testset "sys-area call" begin
         shortfalls, = SiennaPRASInterface.assess(
             rts_da_sys,
@@ -45,7 +45,7 @@ end
             template,
             DeviceRAModel(
                 PSY.RenewableDispatch,
-                GeneratorPRAS,
+                GeneratorPRAS;
                 lump_renewable_generation=true,
             ),
         )
@@ -64,7 +64,7 @@ end
     rts_rt_sys = PSCB.build_system(PSCB.SPISystems, "RTS_GMLC_5min with Static Outage Data")
 
     sequential_monte_carlo =
-        SiennaPRASInterface.SequentialMonteCarlo(samples=2, seed=1, threaded=false)
+        SiennaPRASInterface.SequentialMonteCarlo(; samples=2, seed=1, threaded=false)
     shortfalls, = SiennaPRASInterface.assess(
         rts_rt_sys,
         PSY.Area,

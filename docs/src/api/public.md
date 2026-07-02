@@ -99,12 +99,12 @@ PRASCore.Results.GeneratorStorageEnergySamples
 
 ### Availability results
 
-| Symbol | Description |
-|:-------|:------------|
-| [`PRASCore.Results.GeneratorAvailability`](@extref) | Generator availability time series per sample |
-| [`PRASCore.Results.StorageAvailability`](@extref) | Storage availability time series per sample |
-| [`PRASCore.Results.GeneratorStorageAvailability`](@extref) | Generator-storage availability per sample |
-| [`PRASCore.Results.LineAvailability`](@extref) | Line availability time series per sample |
+| Symbol                                                     | Description                                   |
+|:---------------------------------------------------------- |:--------------------------------------------- |
+| [`PRASCore.Results.GeneratorAvailability`](@extref)        | Generator availability time series per sample |
+| [`PRASCore.Results.StorageAvailability`](@extref)          | Storage availability time series per sample   |
+| [`PRASCore.Results.GeneratorStorageAvailability`](@extref) | Generator-storage availability per sample     |
+| [`PRASCore.Results.LineAvailability`](@extref)             | Line availability time series per sample      |
 
 ### Reliability metrics
 

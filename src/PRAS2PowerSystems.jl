@@ -86,7 +86,7 @@ Add the asset status from the worst sample to GeometricDistributionForcedOutage 
   - `sys::PSY.System`: PowerSystems.jl system model
   - `results::T`: SPIOutageResult
   - `template::RATemplate`: PRAS problem template
-  
+
 # Returns
 
     - PSY System with asset availability times series added to PSY.GeometricDistributionForcedOutage for all components for which asset status is available

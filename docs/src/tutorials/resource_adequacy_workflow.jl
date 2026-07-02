@@ -64,7 +64,8 @@ outage
 # sample. We construct a simulation method with a modest number of samples so the tutorial runs
 # quickly; increase `samples` for production studies:
 
-sequential_monte_carlo = SequentialMonteCarlo(samples=50, seed=1, threaded=false, verbose=false)
+sequential_monte_carlo =
+    SequentialMonteCarlo(; samples=50, seed=1, threaded=false, verbose=false)
 sequential_monte_carlo
 
 # ## Step 4: Run a shortfall assessment
@@ -134,7 +135,7 @@ set_device_model!(
     template,
     DeviceRAModel(
         RenewableDispatch,
-        GeneratorPRAS,
+        GeneratorPRAS;
         lump_renewable_generation=true,
     ),
 )

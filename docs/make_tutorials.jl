@@ -20,23 +20,23 @@ const _DF_MAX_COLS = _env_int("SIENNA_DOCS_DF_MAX_COLS", 80)
 function Base.show(io::IO, mime::MIME"text/plain", df::DataFrame; kwargs...)
     # Keep docs output bounded while allowing explicit caller kwargs.
     PrettyTables.pretty_table(io, df;
-        backend = :text,
-        maximum_number_of_rows = _DF_MAX_ROWS,
-        maximum_number_of_columns = _DF_MAX_COLS,
-        show_omitted_cell_summary = true,
-        compact_printing = false,
-        limit_printing = true,
+        backend=:text,
+        maximum_number_of_rows=_DF_MAX_ROWS,
+        maximum_number_of_columns=_DF_MAX_COLS,
+        show_omitted_cell_summary=true,
+        compact_printing=false,
+        limit_printing=true,
         kwargs...)
 end
 
 function Base.show(io::IO, mime::MIME"text/html", df::DataFrame; kwargs...)
     PrettyTables.pretty_table(io, df;
-        backend = :html,
-        maximum_number_of_rows = _DF_MAX_ROWS,
-        maximum_number_of_columns = _DF_MAX_COLS,
-        show_omitted_cell_summary = true,
-        compact_printing = false,
-        limit_printing = true,
+        backend=:html,
+        maximum_number_of_rows=_DF_MAX_ROWS,
+        maximum_number_of_columns=_DF_MAX_COLS,
+        show_omitted_cell_summary=true,
+        compact_printing=false,
+        limit_printing=true,
         kwargs...)
 end
 
@@ -55,11 +55,11 @@ function clean_old_generated_files(dir::String)
     generated_files = filter(
         f ->
             startswith(f, "generated_") &&
-                (endswith(f, ".md") || endswith(f, ".ipynb")),
+            (endswith(f, ".md") || endswith(f, ".ipynb")),
         readdir(dir),
     )
     for file in generated_files
-        rm(joinpath(dir, file); force = true)
+        rm(joinpath(dir, file); force=true)
         @info "Removed old generated file: $file"
     end
 end
@@ -108,11 +108,11 @@ const _DOCS_BASE_URL = _compute_docs_base_url()
 """
 Choose how tutorial download links are written in generated markdown.
 
-- **Absolute** (under `_DOCS_BASE_URL/tutorials/`): CI / Documenter context (`GITHUB_ACTIONS` or
-  non-empty `DOCUMENTER_CURRENT_VERSION`) so previews, `dev`, and versioned URLs match
-  `_compute_docs_base_url()`.
-- **Relative** (bare filenames): local/offline builds; files sit next to `generated_*.md`
-  under `docs/src/tutorials/`.
+  - **Absolute** (under `_DOCS_BASE_URL/tutorials/`): CI / Documenter context (`GITHUB_ACTIONS` or
+    non-empty `DOCUMENTER_CURRENT_VERSION`) so previews, `dev`, and versioned URLs match
+    `_compute_docs_base_url()`.
+  - **Relative** (bare filenames): local/offline builds; files sit next to `generated_*.md`
+    under `docs/src/tutorials/`.
 
 Override: `SIENNA_DOCS_DOWNLOAD_LINKS`=`absolute` or `relative`.
 """
@@ -161,7 +161,7 @@ const _ADMONITION_DISPLAY_NAMES = Dict{String, String}(
 # Documenter. Admonitions are not recognized by common mark or Jupyter; see
 # https://fredrikekre.github.io/Literate.jl/v2/tips/#admonitions-compatibility
 function preprocess_admonitions_for_notebook(str::AbstractString)
-    lines = split(str, '\n'; keepempty = true)
+    lines = split(str, '\n'; keepempty=true)
     out = String[]
     i = 1
     n = length(lines)
@@ -232,7 +232,7 @@ function add_download_links(content, jl_file, ipynb_file)
     m = match(r"^(#+ .+)$"m, content)
     if m !== nothing
         heading = m.match
-        content = replace(content, r"^(#+ .+)$"m => heading * download_section; count = 1)
+        content = replace(content, r"^(#+ .+)$"m => heading * download_section; count=1)
     end
     return content
 end
@@ -278,7 +278,7 @@ function add_pkg_status_to_notebook(nb::Dict)
 
     # Capture Pkg.status() output at build time
     io = IOBuffer()
-    Pkg.status(; io = io)
+    Pkg.status(; io=io)
     pkg_status_output = String(take!(io))
 
     # Create the content to insert: blockquote "Set up" with setup instructions and pkg.status()
@@ -294,7 +294,7 @@ function add_pkg_status_to_notebook(nb::Dict)
     ]
 
     # Format Pkg.status() output as a code block inside the blockquote
-    pkg_status_lines = split(pkg_status_output, '\n'; keepempty = true)
+    pkg_status_lines = split(pkg_status_output, '\n'; keepempty=true)
     pkg_status_block = [" > ```\n"]
     for line in pkg_status_lines
         push!(pkg_status_block, " > " * line * "\n")
@@ -389,7 +389,7 @@ function add_image_links(nb::Dict, outputfile_base::AbstractString)
             text *= suffix
         end
         # Convert back to notebook source array (lines, last without trailing \n if non-empty)
-        lines = split(text, "\n"; keepempty = true)
+        lines = split(text, "\n"; keepempty=true)
         new_source = String[]
         for i in 1:length(lines)
             if i < length(lines)
@@ -444,29 +444,29 @@ function make_tutorials()
                 # Generate markdown
                 Literate.markdown(infile_path,
                     tutorial_outputdir;
-                    name = outputfile,
-                    credit = false,
-                    flavor = Literate.DocumenterFlavor(),
-                    documenter = true,
-                    postprocess = (
+                    name=outputfile,
+                    credit=false,
+                    flavor=Literate.DocumenterFlavor(),
+                    documenter=true,
+                    postprocess=(
                         content -> add_download_links(
                             insert_md(content),
                             file,
                             string(outputfile, ".ipynb"),
                         )
                     ),
-                    execute = execute)
+                    execute=execute)
 
                 # Generate notebook (chain add_image_links after add_pkg_status_to_notebook).
                 # preprocess_admonitions_for_notebook converts Documenter admonitions to blockquotes
                 # so they render in Jupyter; markdown output keeps !!! style for Documenter.
                 Literate.notebook(infile_path,
                     tutorial_outputdir;
-                    name = outputfile,
-                    credit = false,
-                    execute = false,
-                    preprocess = preprocess_admonitions_for_notebook,
-                    postprocess = nb ->
+                    name=outputfile,
+                    credit=false,
+                    execute=false,
+                    preprocess=preprocess_admonitions_for_notebook,
+                    postprocess=nb ->
                         add_image_links(add_pkg_status_to_notebook(nb), outputfile))
             end
         end

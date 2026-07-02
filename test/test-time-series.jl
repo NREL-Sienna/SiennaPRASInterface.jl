@@ -3,7 +3,7 @@
         PSCB.build_system(PSCB.SPISystems, "RTS_GMLC_Hourly with TimeSeries Outage Data")
 
     num_samples = 100
-    sequential_monte_carlo = SiennaPRASInterface.SequentialMonteCarlo(
+    sequential_monte_carlo = SiennaPRASInterface.SequentialMonteCarlo(;
         samples=num_samples,
         threaded=false,
         verbose=false,
@@ -34,7 +34,7 @@ end
             DeviceRAModel(PSY.StaticLoad, StaticLoadPRAS),
             DeviceRAModel(
                 PSY.ThermalGen,
-                GeneratorPRAS(add_default_transition_probabilities=true),
+                GeneratorPRAS(; add_default_transition_probabilities=true),
             ),
         ],
     )
@@ -96,7 +96,7 @@ end
             DeviceRAModel(PSY.StaticLoad, StaticLoadPRAS),
             DeviceRAModel(
                 PSY.ThermalGen,
-                GeneratorPRAS(
+                GeneratorPRAS(;
                     add_default_transition_probabilities=true,
                     outage_probability="Outage_Probability",
                     recovery_probability="Recovery_Probability",
@@ -126,16 +126,16 @@ end
         DeviceRAModel(PSY.ThermalStandard, GeneratorPRAS),
         DeviceRAModel(
             PSY.RenewableDispatch,
-            GeneratorPRAS(lump_renewable_generation=false),
+            GeneratorPRAS(; lump_renewable_generation=false),
         ),
     ]
     template = SiennaPRASInterface.RATemplate(PSY.Area, device_models)
     sampling_method =
-        SiennaPRASInterface.SequentialMonteCarlo(samples=10, seed=1, threaded=false)
+        SiennaPRASInterface.SequentialMonteCarlo(; samples=10, seed=1, threaded=false)
     generate_outage_profile!(pjm_sys, template, sampling_method)
     @test all(
         PSY.has_time_series.(
-            PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, pjm_sys)
+            PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, pjm_sys),
         ),
     )
 end
@@ -145,7 +145,7 @@ end
     template =
         SiennaPRASInterface.RATemplate(PSY.Area, SiennaPRASInterface.DEFAULT_DEVICE_MODELS)
     sampling_method =
-        SiennaPRASInterface.SequentialMonteCarlo(samples=10, seed=1, threaded=false)
+        SiennaPRASInterface.SequentialMonteCarlo(; samples=10, seed=1, threaded=false)
     generate_outage_profile!(rts_sys, template, sampling_method)
     @test all(
         PSY.has_supplemental_attributes.(
@@ -160,7 +160,7 @@ end
 
     @test all(
         PSY.has_time_series.(
-            PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, rts_sys)
+            PSY.get_supplemental_attributes(PSY.GeometricDistributionForcedOutage, rts_sys),
         ),
     )
 end

@@ -22,7 +22,7 @@ end # hide
 sys = PSCB.build_system(PSCB.SPISystems, "RTS_GMLC_Hourly with Static Outage Data") # hide
 PSY.set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS) # hide
 
-method = SequentialMonteCarlo(samples=20, seed=1, threaded=false, verbose=false)
+method = SequentialMonteCarlo(; samples=20, seed=1, threaded=false, verbose=false)
 shortfall, surplus, storage_energy = assess(
     sys,
     PSY.Area,
@@ -36,14 +36,14 @@ typeof(shortfall), typeof(surplus), typeof(storage_energy)
 
 ## Common specifications
 
-| Specification | Purpose |
-|:--------------|:--------|
-| [`PRASCore.Results.Shortfall`](@extref) | Unserved load by region and sample; use with [`PRASCore.Results.LOLE`](@extref) and [`PRASCore.Results.EUE`](@extref) |
-| [`PRASCore.Results.Surplus`](@extref) | Excess generation periods |
-| [`PRASCore.Results.Flow`](@extref) | Interface flow utilization |
-| [`PRASCore.Results.Utilization`](@extref) | Generator output utilization |
-| [`PRASCore.Results.StorageEnergy`](@extref) | Storage energy state statistics |
-| [`PRASCore.Results.GeneratorAvailability`](@extref) | Generator availability time series per sample |
+| Specification                                       | Purpose                                                                                                               |
+|:--------------------------------------------------- |:--------------------------------------------------------------------------------------------------------------------- |
+| [`PRASCore.Results.Shortfall`](@extref)             | Unserved load by region and sample; use with [`PRASCore.Results.LOLE`](@extref) and [`PRASCore.Results.EUE`](@extref) |
+| [`PRASCore.Results.Surplus`](@extref)               | Excess generation periods                                                                                             |
+| [`PRASCore.Results.Flow`](@extref)                  | Interface flow utilization                                                                                            |
+| [`PRASCore.Results.Utilization`](@extref)           | Generator output utilization                                                                                          |
+| [`PRASCore.Results.StorageEnergy`](@extref)         | Storage energy state statistics                                                                                       |
+| [`PRASCore.Results.GeneratorAvailability`](@extref) | Generator availability time series per sample                                                                         |
 
 Append `Samples` to a specification type (for example [`PRASCore.Results.ShortfallSamples`](@extref))
 to retain per-sample arrays instead of summarized regional results. See the

@@ -34,7 +34,7 @@ set_device_model!(
     template,
     DeviceRAModel(
         PSY.RenewableDispatch,
-        GeneratorPRAS,
+        GeneratorPRAS;
         lump_renewable_generation=true,
     ),
 )
@@ -48,15 +48,15 @@ models apply to the same device type.
 
 Each [`DeviceRAModel`](@ref) pairs a Sienna device supertype with a formulation struct:
 
-| Formulation | Role |
-|:------------|:-----|
-| [`GeneratorPRAS`](@ref) | Thermal and renewable generators |
-| [`HybridSystemPRAS`](@ref) | Hybrid systems with co-located storage |
-| [`HydroEnergyReservoirPRAS`](@ref) | Hydro reservoirs with energy limits |
-| [`EnergyReservoirSoC`](@ref) | Storage state-of-charge devices |
-| [`LinePRAS`](@ref) | Transmission branches |
-| [`AreaInterchangeLimit`](@ref) | Inter-area transfer limits |
-| [`StaticLoadPRAS`](@ref) | Static loads |
+| Formulation                        | Role                                   |
+|:---------------------------------- |:-------------------------------------- |
+| [`GeneratorPRAS`](@ref)            | Thermal and renewable generators       |
+| [`HybridSystemPRAS`](@ref)         | Hybrid systems with co-located storage |
+| [`HydroEnergyReservoirPRAS`](@ref) | Hydro reservoirs with energy limits    |
+| [`EnergyReservoirSoC`](@ref)       | Storage state-of-charge devices        |
+| [`LinePRAS`](@ref)                 | Transmission branches                  |
+| [`AreaInterchangeLimit`](@ref)     | Inter-area transfer limits             |
+| [`StaticLoadPRAS`](@ref)           | Static loads                           |
 
 [`GeneratorPRAS`](@ref) accepts keyword arguments for time-series names (for example
 `max_active_power="max_active_power"`) and `add_default_transition_probabilities` to inject
@@ -65,7 +65,7 @@ Each [`DeviceRAModel`](@ref) pairs a Sienna device supertype with a formulation 
 ## Run an assessment with the template
 
 ```julia
-method = SequentialMonteCarlo(samples=100, seed=1, threaded=false)
+method = SequentialMonteCarlo(; samples=100, seed=1, threaded=false)
 shortfalls, = assess(sys, template, method, Shortfall())
 LOLE(shortfalls)
 ```
