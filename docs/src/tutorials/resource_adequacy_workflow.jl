@@ -1,4 +1,3 @@
-# EXECUTE = TRUE
 # # [Resource adequacy workflow](@id resource_adequacy_workflow)
 #
 # In this tutorial we will run a probabilistic resource adequacy study on a
@@ -16,10 +15,6 @@
 using SiennaPRASInterface
 using PowerSystems
 using PowerSystemCaseBuilder
-
-function PowerSystems.get_storage_capacity(res::HydroReservoir) # hide
-    return get_storage_level_limits(res).max # hide
-end # hide
 
 # ## Step 1: Load a test system
 #
