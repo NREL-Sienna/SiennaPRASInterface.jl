@@ -16,7 +16,13 @@ PRAS formulation subtypes for specific PRAS types
 abstract type AbstractRAFormulation end
 
 """
-    GeneratorPRAS(; max_active_power, lump_renewable_generation, add_default_transition_probabilities, outage_probability, recovery_probability) <: AbstractRAFormulation
+    GeneratorPRAS(;
+        max_active_power = "max_active_power",
+        lump_renewable_generation = false,
+        add_default_transition_probabilities = false,
+        outage_probability = "outage_probability",
+        recovery_probability = "recovery_probability",
+    )
 
 GeneratorPRAS maps [`PowerSystems.Generator`](@extref) devices to PRAS generator entries.
 
@@ -110,7 +116,12 @@ To add a generator storage formulation, you must also add a [`assign_to_gen_stor
 """
 abstract type GeneratorStoragePRAS <: AbstractRAFormulation end
 """
-    HybridSystemPRAS(; max_active_power, add_default_transition_probabilities, outage_probability, recovery_probability) <: GeneratorStoragePRAS
+    HybridSystemPRAS(;
+        max_active_power = "max_active_power",
+        add_default_transition_probabilities = false,
+        outage_probability = "outage_probability",
+        recovery_probability = "recovery_probability",
+    )
 
 HybridSystemPRAS maps hybrid systems to PRAS generator-storage entries.
 
@@ -152,7 +163,14 @@ struct HybridSystemPRAS <: GeneratorStoragePRAS
 end
 
 """
-    HydroEnergyReservoirPRAS <: GeneratorStoragePRAS
+    HydroEnergyReservoirPRAS(;
+        max_active_power = "max_active_power",
+        inflow = "inflow",
+        storage_capacity = "storage_capacity",
+        add_default_transition_probabilities = false,
+        outage_probability = "outage_probability",
+        recovery_probability = "recovery_probability",
+    )
 
 Maps hydro energy reservoirs to PRAS generator-storage entries.
 
@@ -257,7 +275,11 @@ Subtypes must provide [`assign_to_stor_matrices!`](@ref) function.
 abstract type StoragePRAS <: AbstractRAFormulation end
 
 """
-    EnergyReservoirSoC <: StoragePRAS
+    EnergyReservoirSoC(;
+        add_default_transition_probabilities = false,
+        outage_probability = "outage_probability",
+        recovery_probability = "recovery_probability",
+    )
 
 Storage formulation that tracks state of charge for energy reservoir devices.
 
@@ -353,7 +375,7 @@ regions.
 abstract type LoadPRAS <: AbstractRAFormulation end
 
 """
-    StaticLoadPRAS <: LoadPRAS
+    StaticLoadPRAS(; max_active_power = "max_active_power")
 
 Maps static loads to PRAS regional load entries.
 
