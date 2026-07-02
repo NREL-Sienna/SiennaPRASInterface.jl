@@ -24,6 +24,10 @@ Depth = 3
 
 ## Sienna PRAS interface
 
+```@docs
+SiennaPRASInterface
+```
+
 ### Assessment entry points
 
 ```@docs
@@ -76,25 +80,30 @@ and [`PRASCore` API](@extref PRASCore :label:`Systems`) for
 
 ### Simulation methods
 
-```@docs
-PRASCore.Simulations.SequentialMonteCarlo
+```@autodocs
+Modules = [PRASCore.Simulations]
+Filter = t -> applicable(nameof, t) && nameof(t) === :SequentialMonteCarlo
 ```
 
 ### Result specifications
 
-```@docs
-PRASCore.Results.Shortfall
-PRASCore.Results.ShortfallSamples
-PRASCore.Results.Surplus
-PRASCore.Results.SurplusSamples
-PRASCore.Results.Flow
-PRASCore.Results.FlowSamples
-PRASCore.Results.Utilization
-PRASCore.Results.UtilizationSamples
-PRASCore.Results.StorageEnergy
-PRASCore.Results.StorageEnergySamples
-PRASCore.Results.GeneratorStorageEnergy
-PRASCore.Results.GeneratorStorageEnergySamples
+```@autodocs
+Modules = [PRASCore.Results]
+Order = [:type]
+Filter = t -> applicable(nameof, t) && nameof(t) in (
+    :Shortfall,
+    :ShortfallSamples,
+    :Surplus,
+    :SurplusSamples,
+    :Flow,
+    :FlowSamples,
+    :Utilization,
+    :UtilizationSamples,
+    :StorageEnergy,
+    :StorageEnergySamples,
+    :GeneratorStorageEnergy,
+    :GeneratorStorageEnergySamples,
+)
 ```
 
 ### Availability results
@@ -108,9 +117,10 @@ PRASCore.Results.GeneratorStorageEnergySamples
 
 ### Reliability metrics
 
-```@docs
-PRASCore.Results.LOLE
-PRASCore.Results.EUE
+```@autodocs
+Modules = [PRASCore.Results]
+Order = [:type]
+Filter = t -> applicable(nameof, t) && nameof(t) in (:LOLE, :EUE)
 ```
 
 Use `val` and `stderror` on reliability metric objects returned by `LOLE` and `EUE`.

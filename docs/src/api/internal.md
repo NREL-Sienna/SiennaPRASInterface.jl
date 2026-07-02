@@ -1,11 +1,11 @@
 # Internal API
 
-```@docs
-Simulations.DispatchProblem
-Results.StorageAvailability
+```@autodocs
+Modules = [PRASCore.Simulations, PRASCore.Results]
+Filter = t -> applicable(nameof, t) && nameof(t) in (:DispatchProblem, :StorageAvailability)
 ```
 
 ```@autodocs
-Modules = [SiennaPRASInterface, SiennaPRASInterface.PRASCore]
+Modules = [SiennaPRASInterface]
 Public = false
 ```

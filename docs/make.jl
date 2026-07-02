@@ -36,7 +36,7 @@ pages = OrderedDict(
 )
 
 makedocs(;
-    modules=[SiennaPRASInterface, PRASCore],
+    modules=[SiennaPRASInterface],
     format=Documenter.HTML(;
         prettyurls=haskey(ENV, "GITHUB_ACTIONS"),
         size_threshold=nothing,
@@ -44,8 +44,6 @@ makedocs(;
     sitename="SiennaPRASInterface.jl",
     authors="Surya Dhulipala, Joseph McKinsey, José Daniel Lara",
     pages=Any[p for p in pages],
-    checkdocs=:none,
-    doctest=false,
     plugins=[links],
 )
 
