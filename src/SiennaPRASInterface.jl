@@ -8,11 +8,11 @@ PowerSystems Interface for Probabilistic Resource Adequacy Studies (PRAS)
 
 # Key PRAS Types
 
-  - [`SystemModel`](@ref): PRAS data structure
-  - [`SequentialMonteCarlo`](@ref): method for PRAS analysis
-  - [`Shortfall`](@ref): PRAS metric for missing generation
-  - [`LOLE`](@ref): PRAS metric for loss of load expectation
-  - [`EUE`](@ref): PRAS metric for energy unserved expectation
+  - [`PRASCore.Systems.SystemModel`](@extref): PRAS data structure
+  - [`PRASCore.Simulations.SequentialMonteCarlo`](@extref): method for PRAS analysis
+  - [`PRASCore.Results.Shortfall`](@extref): PRAS metric for missing generation
+  - [`PRASCore.Results.LOLE`](@extref): PRAS metric for loss of load expectation
+  - [`PRASCore.Results.EUE`](@extref): PRAS metric for energy unserved expectation
 """
 module SiennaPRASInterface
 #################################################################################
@@ -130,25 +130,20 @@ include("util/parsing/result_export_helper_functions.jl")
 include("PRAS2PowerSystems.jl")
 
 """
-    assess(
-        sys::PSY.System,
-        aggregation::Type{AT},
-        method::PRASCore.SequentialMonteCarlo,
-        resultsspecs::PRASCore.Results.ResultSpec...,
-    ) where {AT <: PSY.AggregationTopology}
+    $(TYPEDSIGNATURES)
 
 Analyze resource adequacy using Monte Carlo simulation.
 
 # Arguments
 
-  - `sys::PSY.System`: PowerSystems.jl system model
-  - `aggregation::Type{AT}`: Aggregation topology to use in translating to PRAS
-  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
-  - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
+  - `sys`: [`PowerSystems.System`](@extref) to translate and assess
+  - `aggregation`: [`PowerSystems.AggregationTopology`](@extref) type used for PRAS region aggregation
+  - `method`: [`PRASCore.Simulations.SequentialMonteCarlo`](@extref) simulation method
+  - `resultsspecs`: [PRAS result specifications](@extref PRASCore :doc:`PRAS/results`) to compute (for example [`PRASCore.Results.Shortfall`](@extref))
 
 # Returns
 
-  - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
+  - Tuple of result objects, one per requested result specification (for example [`PRASCore.Results.Shortfall`](@extref) when that is the only specification)
 """
 function PRASCore.assess(
     sys::PSY.System,
@@ -167,14 +162,14 @@ Analyze resource adequacy using Monte Carlo simulation.
 
 # Arguments
 
-  - `sys::PSY.System`: PowerSystems.jl system model
-  - `template::RATemplate`: PRAS problem template
-  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
-  - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
+  - `sys`: [`PowerSystems.System`](@extref) to translate and assess
+  - `template`: [`RATemplate`](@ref) defining aggregation topology and device mappings
+  - `method`: [`PRASCore.Simulations.SequentialMonteCarlo`](@extref) simulation method
+  - `resultsspecs`: [PRAS result specifications](@extref PRASCore :doc:`PRAS/results`) to compute (for example [`PRASCore.Results.Shortfall`](@extref))
 
 # Returns
 
-  - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
+  - Tuple of result objects, one per requested result specification (for example [`PRASCore.Results.Shortfall`](@extref) when that is the only specification)
 """
 function PRASCore.assess(
     sys::PSY.System,
@@ -191,17 +186,17 @@ end
 
 Analyze resource adequacy using Monte Carlo simulation.
 
-Uses default template with Area level aggregation.
+Uses default template with [`PowerSystems.Area`](@extref) level aggregation.
 
 # Arguments
 
-  - `sys::PSY.System`: PowerSystems.jl system model
-  - `method::PRASCore.SequentialMonteCarlo`: Simulation method to use
-  - `resultsspec::PRASCore.Results.ResultSpec...`: Results to compute
+  - `sys`: [`PowerSystems.System`](@extref) to translate and assess
+  - `method`: [`PRASCore.Simulations.SequentialMonteCarlo`](@extref) simulation method
+  - `resultsspecs`: [PRAS result specifications](@extref PRASCore :doc:`PRAS/results`) to compute (for example [`PRASCore.Results.Shortfall`](@extref))
 
 # Returns
 
-  - Tuple of results from `resultsspec`: default is ([`ShortfallResult`](@ref),)
+  - Tuple of result objects, one per requested result specification (for example [`PRASCore.Results.Shortfall`](@extref) when that is the only specification)
 """
 function PRASCore.assess(
     sys::PSY.System,

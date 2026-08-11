@@ -1,80 +1,65 @@
-# How do I add outage data to Sienna?
+# [Prepare stochastic outage data for resource adequacy](@id prepare_stochastic_outage_data)
 
-You can attach outage data to `PowerSystems` `Components` by using the
-supplemental attribute [`GeometricDistributionForcedOutage`](https://sienna-platform.github.io/PowerSystems.jl/stable/api/public/#PowerSystems.GeometricDistributionForcedOutage).
+```@meta
+CurrentModule = SiennaPRASInterface
+DocTestSetup = quote
+    using PowerSystems
+    using PowerSystemCaseBuilder
+end
+```
 
-## Step 1 : Parse your outage data into Sienna
+Resource adequacy studies in PRAS model random equipment failures and recoveries. On a Sienna
+system, attach a [`PowerSystems.GeometricDistributionForcedOutage`](@extref) supplemental
+attribute to each device that should participate in stochastic outages.
 
-`SiennaPRASInterface.jl` uses outage information in the form of independent `mean_time_to_recovery`
-in units of hours and `outage_transition_probability` in probability of outage per hour.
-A simple Markov model models the transitions between out and active using these parameters.
+This differs from the deterministic and planned outage patterns in the PowerSystems
+[Model Outages](@extref PowerSystems :label:`model_outages`)
+how-to, which targets security-constrained studies with [`PowerSystems.FixedForcedOutage`](@extref)
+and [`PowerSystems.PlannedOutage`](@extref). For background on outage types, see
+[Outage and contingency data](@extref PowerSystems :label:`outage_and_contingency_data`).
 
-We support data either being fixed and specified in the `GeometricDistributionForcedOutage` object
-or attached as time-series to the `GeometricDistributionForcedOutage` struct.
+## Attach fixed outage rates
 
-### Creating a `GeometricDistributionForcedOutage` from fixed data
+Use [`PowerSystems.add_supplemental_attribute!`](@extref PowerSystems :jl:method:`PowerSystems.add_supplemental_attribute!-Tuple{System, Component, SupplementalAttribute}`) following the general supplemental
+attribute pattern in
+[Attach supplemental data to components](@extref PowerSystems :label:`attach_contextual_data`).
 
-```@example 1
+```@example prepare_outage_data
 using PowerSystems
-import PowerSystemCaseBuilder # hide
-const PSCB = PowerSystemCaseBuilder # hide
-sys = PSCB.build_system(PSCB.PSISystems, "RTS_GMLC_DA_sys") # hide
-set_units_base_system!(sys, "natural_units") # hide
+import PowerSystemCaseBuilder
+const PSCB = PowerSystemCaseBuilder
+const PSY = PowerSystems
+sys = PSCB.build_system(PSCB.SPISystems, "RTS_GMLC_Hourly with Static Outage Data")
+PSY.set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
 
 transition_data = GeometricDistributionForcedOutage(;
-    mean_time_to_recovery=10,  # Units of hours
-    outage_transition_probability=0.005,  # Probability for outage per hour
+    mean_time_to_recovery=10.0,
+    outage_transition_probability=0.005,
 )
-transition_data
-```
-
-## Step 2 : Attaching Data to Components
-
-Once you have a `GeometricDistributionForcedOutage` object, then you can add it to
-any components with that data:
-
-```@example 1
-component = get_component(Generator, sys, "101_CT_1")
+component = get_component(ThermalStandard, sys, "101_CT_1")
 add_supplemental_attribute!(sys, component, transition_data)
-component
-```
-
-## Step 3 (Optional) : Adding time-series data to `GeometricDistributionForcedOutage` from time series data
-
-Time series should be attached to a `GeometricDistributionForcedOutage` object
-under the keys `recovery_probability` (1/`mean_time_to_recovery`) and `outage_probability`.
-
-See the [Sienna time-series documentation on working with time-series](https://sienna-platform.github.io/PowerSystems.jl/stable/tutorials/working_with_time_series/).
-
-```@example 1
-using Dates
-using TimeSeries
-
-outage_probability = [0.1, 0.1, 0.2, 0.3, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.4]
-recovery_probability = [0.1, 0.1, 0.2, 0.3, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.4]
-
-# Your resolution and length must match the other SingleTimeSeries in your System.
-resolution = Dates.Minute(5)
-timestamps = range(DateTime("2020-01-01T08:00:00"); step=resolution, length=8784)
-outage_timearray = TimeArray(timestamps, repeat(outage_probability, inner=div(8784, 12)))
-outage_time_series = SingleTimeSeries(; name="outage_probability", data=outage_timearray)
-
-recovery_timearray =
-    TimeArray(timestamps, repeat(recovery_probability, inner=div(8784, 12)))
-recovery_time_series =
-    SingleTimeSeries(; name="recovery_probability", data=recovery_timearray)
-
-# Here we assume you have a system named sys
-add_time_series!(sys, transition_data, outage_time_series)
-add_time_series!(sys, transition_data, recovery_time_series)
 transition_data
 ```
 
-## Step 4 : Run simulations and verify result
+`mean_time_to_recovery` is in hours. `outage_transition_probability` is the per-hour probability
+of transitioning into an outage state.
 
-```@example 1
-using SiennaPRASInterface
-method = SequentialMonteCarlo(samples=10, seed=1)
-shortfalls, = assess(sys, PowerSystems.Area, method, Shortfall())
-eue = EUE(shortfalls)
-```
+## Time-varying outage rates
+
+To vary failure and recovery rates over the study horizon, attach time series named
+`outage_probability` and `recovery_probability` to the supplemental attribute. The interface
+reads these names when building the PRAS model. For the general time-series workflow, see
+[Working with Time Series Data](@extref PowerSystems :doc:`tutorials/generated_working_with_time_series`).
+
+## When no outage data is present
+
+If a system has no [`PowerSystems.GeometricDistributionForcedOutage`](@extref) attributes,
+[`generate_pras_system`](@ref) can apply tabulated default rates or add defaults through
+[`GeneratorPRAS`](@ref) with `add_default_transition_probabilities=true`. See
+[Default outage values](@ref default_outage_values) for how those defaults are chosen.
+
+## See also
+
+  - [Resource adequacy workflow](@ref resource_adequacy_workflow) — end-to-end assessment tutorial
+  - [Configure device mappings for PRAS](@ref configure_device_mappings) — enable default outage injection per device type
+  - [PRAS System Model Specification](@extref PRASCore :doc:`PRAS/sysmodelspec`) — how outage statistics appear in PRAS

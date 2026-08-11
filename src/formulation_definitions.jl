@@ -16,23 +16,40 @@ PRAS formulation subtypes for specific PRAS types
 abstract type AbstractRAFormulation end
 
 """
-    GeneratorPRAS(; max_active_power, lump_renewable_generation, add_default_transition_probabilities, outage_probability, recovery_probability) <: AbstractRAFormulation
+    GeneratorPRAS(;
+        max_active_power = "max_active_power",
+        lump_renewable_generation = false,
+        add_default_transition_probabilities = false,
+        outage_probability = "outage_probability",
+        recovery_probability = "recovery_probability",
+    )
+
+GeneratorPRAS maps [`PowerSystems.Generator`](@extref) devices to PRAS generator entries.
 
 # Arguments
-$(TYPEDFIELDS)
 
-GeneratorPRAS produces generator entries in PRAS.
+$(TYPEDFIELDS)
 """
 struct GeneratorPRAS <: AbstractRAFormulation
-    "Name of time series to use for max active power"
+    """
+    Name of time series to use for max active power
+    """
     max_active_power::String
-    "Whether to lump renewable generation to regions"
+    """
+    Whether to lump renewable generation to regions
+    """
     lump_renewable_generation::Bool
-    "Whether to add default outage data to generators"
+    """
+    Whether to add default outage data to generators
+    """
     add_default_transition_probabilities::Bool
-    "Name of time series to use for outage_probability"
+    """
+    Name of time series to use for outage_probability
+    """
     outage_probability::String
-    "Name of time series to use for recovery_probability"
+    """
+    Name of time series to use for recovery_probability
+    """
     recovery_probability::String
 
     function GeneratorPRAS(;
@@ -90,7 +107,7 @@ end
 """
     GeneratorStoragePRAS <: AbstractRAFormulation
 
-Objects in Sienna that behave like generator and storage are mapped to generatorstorage in PRAS.
+Objects in Sienna that behave like generator and storage are mapped to generator-storage entries in [`PRASCore.Systems.SystemModel`](@extref).
 
 To add a generator storage formulation, you must also add a [`assign_to_gen_stor_matrices!`](@ref) function.
 
@@ -99,21 +116,35 @@ To add a generator storage formulation, you must also add a [`assign_to_gen_stor
 """
 abstract type GeneratorStoragePRAS <: AbstractRAFormulation end
 """
-    HybridSystemPRAS(; max_active_power, add_default_transition_probabilities, outage_probability, recovery_probability) <: GeneratorStoragePRAS
+    HybridSystemPRAS(;
+        max_active_power = "max_active_power",
+        add_default_transition_probabilities = false,
+        outage_probability = "outage_probability",
+        recovery_probability = "recovery_probability",
+    )
+
+HybridSystemPRAS maps hybrid systems to PRAS generator-storage entries.
 
 # Arguments
-$(TYPEDFIELDS)
 
-HybridSystemPRAS produces generatorstorage entries in PRAS.
+$(TYPEDFIELDS)
 """
 struct HybridSystemPRAS <: GeneratorStoragePRAS
-    "Name of time series to use for max active power"
+    """
+    Name of time series to use for max active power
+    """
     max_active_power::String
-    "Whether to add default outage data"
+    """
+    Whether to add default outage data
+    """
     add_default_transition_probabilities::Bool
-    "Name of time series to use for outage_probability"
+    """
+    Name of time series to use for outage_probability
+    """
     outage_probability::String
-    "Name of time series to use for recovery_probability"
+    """
+    Name of time series to use for recovery_probability
+    """
     recovery_probability::String
 
     function HybridSystemPRAS(;
@@ -132,23 +163,45 @@ struct HybridSystemPRAS <: GeneratorStoragePRAS
 end
 
 """
-    HydroEnergyReservoirPRAS <: GeneratorStoragePRAS
+    HydroEnergyReservoirPRAS(;
+        max_active_power = "max_active_power",
+        inflow = "inflow",
+        storage_capacity = "storage_capacity",
+        add_default_transition_probabilities = false,
+        outage_probability = "outage_probability",
+        recovery_probability = "recovery_probability",
+    )
+
+Maps hydro energy reservoirs to PRAS generator-storage entries.
 
 # Arguments
+
 $(TYPEDFIELDS)
 """
 struct HydroEnergyReservoirPRAS <: GeneratorStoragePRAS
-    "Name of time series to use for max active power"
+    """
+    Name of time series to use for max active power
+    """
     max_active_power::String
-    "Name of time series to use for inflow"
+    """
+    Name of time series to use for inflow
+    """
     inflow::String
-    "Name of time series to use for storage capacity"
+    """
+    Name of time series to use for storage capacity
+    """
     storage_capacity::String
-    "Whether to add default outage data"
+    """
+    Whether to add default outage data
+    """
     add_default_transition_probabilities::Bool
-    "Name of time series to use for outage_probability"
+    """
+    Name of time series to use for outage_probability
+    """
     outage_probability::String
-    "Name of time series to use for recovery_probability"
+    """
+    Name of time series to use for recovery_probability
+    """
     recovery_probability::String
 
     function HydroEnergyReservoirPRAS(;
@@ -215,23 +268,37 @@ end
 """
     StoragePRAS <: AbstractRAFormulation
 
-Objects in Sienna that behave like storage are mapped to storage in PRAS.
+Objects in Sienna that behave like storage are mapped to storage entries in [`PRASCore.Systems.SystemModel`](@extref).
 
 Subtypes must provide [`assign_to_stor_matrices!`](@ref) function.
 """
 abstract type StoragePRAS <: AbstractRAFormulation end
 
 """
-    EnergyReservoirSoC <: StoragePRAS
+    EnergyReservoirSoC(;
+        add_default_transition_probabilities = false,
+        outage_probability = "outage_probability",
+        recovery_probability = "recovery_probability",
+    )
 
-EnergyReservoirSoC is a storage formulation that keeps track oh state of charge.
+Storage formulation that tracks state of charge for energy reservoir devices.
+
+# Arguments
+
+$(TYPEDFIELDS)
 """
 struct EnergyReservoirSoC <: StoragePRAS
-    "Whether to add default outage data"
+    """
+    Whether to add default outage data
+    """
     add_default_transition_probabilities::Bool
-    "Name of time series to use for outage_probability"
+    """
+    Name of time series to use for outage_probability
+    """
     outage_probability::String
-    "Name of time series to use for recovery_probability"
+    """
+    Name of time series to use for recovery_probability
+    """
     recovery_probability::String
 
     function EnergyReservoirSoC(;
@@ -282,7 +349,7 @@ abstract type InterfacePRAS <: AbstractRAFormulation end
 """
     AreaInterchangeLimit <: InterfacePRAS
 
-AreaInterchangeLimit produces interfaces from AreaInterchange objects
+AreaInterchangeLimit produces interfaces from [`PowerSystems.AreaInterchange`](@extref) objects.
 
 Each line must have a corresponding AreaInterchange. All AreaInterchange
 objects will be consolidated for each pair of directly connected regions.
@@ -302,19 +369,24 @@ struct LinePRAS <: AbstractRAFormulation end
 """
     LoadPRAS <: AbstractRAFormulation
 
-See [`add_to_load_matrix`](@ref) for how the formulation is used to add load to
+See [`add_to_load_matrix!`](@ref) for how the formulation is used to add load to
 regions.
 """
 abstract type LoadPRAS <: AbstractRAFormulation end
 
 """
-    StaticLoadPRAS <: LoadPRAS
+    StaticLoadPRAS(; max_active_power = "max_active_power")
+
+Maps static loads to PRAS regional load entries.
 
 # Arguments
+
 $(TYPEDFIELDS)
 """
 struct StaticLoadPRAS <: LoadPRAS
-    """Name of time series to use for max active power"""
+    """
+    Name of time series to use for max active power
+    """
     max_active_power::String
 
     function StaticLoadPRAS(; max_active_power="max_active_power")
@@ -327,15 +399,17 @@ end
 
 # Arguments
 
-- D <: PSY.Device: Device type
-$(TYPEDFIELDS)
+  - `D <: `[`PowerSystems.Device`](@extref): device type
+    $(TYPEDFIELDS)
 
-A DeviceRAModel, like a DeviceModel in PowerSimulations, assigns a type of Component
+A DeviceRAModel, like a DeviceModel in PowerSimulations, assigns a [`PowerSystems.Device`](@extref)
 to a specific formulation. Unlike Sienna, we put configuration information
 in the formulation itself.
 """
 struct DeviceRAModel{D <: PSY.Device, B <: AbstractRAFormulation}
-    "Formulation containing configuration"
+    """
+    Formulation containing configuration
+    """
     formulation::B
 
     function DeviceRAModel(
@@ -347,7 +421,7 @@ struct DeviceRAModel{D <: PSY.Device, B <: AbstractRAFormulation}
 end
 
 """
-Get formulation from a DeviceRAModel
+Get formulation from a [`DeviceRAModel`](@ref)
 """
 function get_formulation(f::DeviceRAModel)
     return f.formulation
@@ -355,14 +429,15 @@ end
 
 """
     $(TYPEDSIGNATURES)
-    
-# Arguments
-- `::Type{D}`: Device type
-- `::Type{B}`: Formulation type
-- `time_series_names::Dict{Symbol, String}`: Mapping of time series `Symbol` to names
-- `kwargs...`: Additional arguments to pass to the formulation constructor
 
-Keyword arguments in DeviceRAModel are passed to the
+# Arguments
+
+  - `::Type{D}`: [`PowerSystems.Device`](@extref) type
+  - `::Type{B}`: [`AbstractRAFormulation`](@ref) type
+  - `time_series_names::Dict{Symbol, String}`: Mapping of time series `Symbol` to names
+  - `kwargs...`: Additional arguments to pass to the formulation constructor
+
+Keyword arguments in [`DeviceRAModel`](@ref) are passed to the
 formulation constructor.
 
 You may also pass a `time_series_names` Dict to map time series `Symbol` to names.
@@ -372,7 +447,7 @@ You may also pass a `time_series_names` Dict to map time series `Symbol` to name
 ```julia
 DeviceRAModel(
     PSY.Generator,
-    GeneratorPRAS(max_active_power="max_active_power"),
+    GeneratorPRAS(; max_active_power="max_active_power"),
 )
 ```
 
@@ -390,7 +465,7 @@ DeviceRAModel(
 DeviceRAModel(
     PSY.HybridSystem,
     HybridSystemPRAS;
-    time_series_names=Dict(:max_active_power="max_active_power"),
+    time_series_names=Dict(; :max_active_power="max_active_power"),
 )
 ```
 """
@@ -405,7 +480,7 @@ function DeviceRAModel(
 end
 
 """
-Check whether a DeviceRAModel applies to a given type
+Check whether a [`DeviceRAModel`](@ref) applies to a given type
 """
 function appliestodevice(::DeviceRAModel{D}, ::Type{T}) where {D, T}
     return T <: D
@@ -425,12 +500,11 @@ end
     $(TYPEDSIGNATURES)
 
 # Arguments
+
 $(TYPEDFIELDS)
 
 The RATemplate contains all configuration necessary for building
-a PRAS Simulation from a PowerSystems.jl System.
-
-Since PRAS is an area-based model, we provide a level of aggregation to apply.
+a PRAS simulation from a [`PowerSystems.System`](@extref).
 
 PRAS models are processed in reverse order, with later models taking precedence.
 
@@ -442,11 +516,11 @@ template = RATemplate(
     [
         DeviceRAModel(
             PSY.Generator,
-            GeneratorPRAS(max_active_power="max_active_power"),
+            GeneratorPRAS(; max_active_power="max_active_power"),
         ),
         DeviceRAModel(
             PSY.HydroEnergyReservoir,
-            HydroEnergyReservoirPRAS(
+            HydroEnergyReservoirPRAS(;
                 max_active_power="max_active_power",
                 inflow="inflow",
                 storage_capacity="storage_capacity",
@@ -457,9 +531,13 @@ template = RATemplate(
 ```
 """
 mutable struct RATemplate{T <: PSY.AggregationTopology}
-    "Level of aggregation to use for PRAS regions"
+    """
+    [`PowerSystems.AggregationTopology`](@extref) level of aggregation to use for PRAS regions, since PRAS is an area-based model
+    """
     aggregation::Type{T}
-    "DeviceRAModels to translate components into PRAS"
+    """
+    [`DeviceRAModel`](@ref)s to translate components into PRAS
+    """
     device_models::Array{DeviceRAModel}
 
     function RATemplate(
@@ -474,10 +552,11 @@ end
     $(TYPEDSIGNATURES)
 
 # Arguments
-- `template::RATemplate`: Template to add device model to
-- `device_model::DeviceRAModel{D}`: Device model to add
 
-Add a device model to a RATemplate. If an existing model
+  - `template::`[`RATemplate`](@ref): template to add device model to
+  - `device_model::`[`DeviceRAModel`](@ref)`{D}`: device model to add, where `D` is a [`PowerSystems.Device`](@extref) type
+
+Add a device model to a [`RATemplate`](@ref). If an existing model
 already applies to the given device type, then a warning
 is issued. However, newer models will take precedence.
 """
@@ -494,11 +573,12 @@ end
     $(TYPEDSIGNATURES)
 
 # Arguments
-- `template::RATemplate`: Template to add device model to
-- `::Type{D}`: Device type
-- `::Type{B}`: Formulation type
 
-Adds a device model to a RATemplate by passing the type
+  - `template::`[`RATemplate`](@ref): template to add device model to
+  - `::Type{D}`: [`PowerSystems.Device`](@extref) type
+  - `::Type{B}`: [`AbstractRAFormulation`](@ref) type
+
+Adds a device model to a [`RATemplate`](@ref) by passing the type
 to a constructor.
 """
 function set_device_model!(
@@ -538,7 +618,7 @@ end
 """
     $(SIGNATURES)
 
-Filter the dictionary from Sienna Devices to GeneratorPRAS formulation objects for Lumped vs. NonLumped
+Filter the dictionary from Sienna Devices to [`GeneratorPRAS`](@ref) formulation objects for Lumped vs. NonLumped
 """
 function filter_component_to_formulation(gens_to_formula::Dict{PSY.Device, GeneratorPRAS})
     lumped_gens_to_formula = filter(
@@ -552,8 +632,8 @@ function filter_component_to_formulation(gens_to_formula::Dict{PSY.Device, Gener
                             PSY.get_supplemental_attributes(
                                 PSY.GeometricDistributionForcedOutage,
                                 k,
-                            )
-                        )
+                            ),
+                        ),
                     ),
                 )
             ) || (

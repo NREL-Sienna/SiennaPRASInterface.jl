@@ -2,14 +2,14 @@
 
 [![Main - CI](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/actions/workflows/main-tests.yml/badge.svg)](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/actions/workflows/main-tests.yml)
 [![codecov](https://codecov.io/gh/Sienna-Platform/SiennaPRASInterface.jl/graph/badge.svg?token=AwsS9lNNSE)](https://codecov.io/gh/Sienna-Platform/SiennaPRASInterface.jl)
-[![Documentation Build](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/workflows/Documentation/badge.svg?)](https://sienna-platform.github.io/SiennaPRASInterface.jl/dev)
+[![Documentation Build](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/workflows/Documentation/badge.svg?)](https://sienna-platform.github.io/SiennaPRASInterface.jl/stable/)
 [<img src="https://img.shields.io/badge/slack-@Sienna/SiennaPRASInterface-sienna.svg?logo=slack">](https://join.slack.com/t/core-sienna/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)
 
 ## About this package
 
-SiennaPRASInterface.jl is a Julia package that provides an interface to (the unregistered package) [PRAS.jl](https://nrel.github.io/PRAS/) employing PowerSystem.jl's System data model. This package facilitates executing and analyzing the resource adequacy of a bulk power system using Monte Carlo methods with Julia.
+SiennaPRASInterface.jl is a Julia package that provides an interface to the unregistered [PRAS.jl](https://natlabrockies.github.io/PRAS/stable/) package from [NatLabRockies](https://github.com/NatLabRockies/PRAS), employing [`PowerSystems.jl`](https://github.com/Sienna-Platform/PowerSystems.jl)'s `System` data model. This package facilitates executing and analyzing the resource adequacy of a bulk power system using Monte Carlo methods with Julia.
 
-For information on using the package check the [documentation](https://sienna-platform.github.io/SiennaPRASInterface.jl/dev).
+For information on using the package, see the [stable documentation](https://sienna-platform.github.io/SiennaPRASInterface.jl/stable/). Use the [in-development documentation](https://sienna-platform.github.io/SiennaPRASInterface.jl/dev/) for the version of the documentation which contains the unreleased features.
 
 ## Development
 
@@ -17,4 +17,4 @@ Contributions to the development and enhancement of SiennaPRASInterface is welco
 
 ## License
 
-SiennaPRASInterface is released under a BSD [license](https://github.com/Sienna-Platform/SiennaPRASInterface/blob/main/LICENSE). SiennaPRASInterface has been developed as part of the transmission planning tools project at the U.S. Department of Energy's National Laboratory of the Rockies (formerly known as NREL)[NLR](https://www.nlr.gov/) .
+SiennaPRASInterface is released under a BSD [license](https://github.com/Sienna-Platform/SiennaPRASInterface.jl/blob/master/LICENSE). SiennaPRASInterface has been developed as part of the transmission planning tools project at the U.S. Department of Energy's National Laboratory of the Rockies [NLR](https://www.nlr.gov/) formerly known as NREL.

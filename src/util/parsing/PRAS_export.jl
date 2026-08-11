@@ -10,7 +10,7 @@ function export_pras_system(
         else
             PRASFiles.savemodel(
                 pras_sys,
-                export_location,
+                export_location;
                 string_length=100,
                 verbose=true,
                 compression_level=9,

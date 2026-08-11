@@ -17,7 +17,7 @@ end
                 x -> PSY.get_available(x) && PSY.get_rating(x) > 0,
                 Union{PSY.HydroDispatch, PSY.RenewableGen, PSY.ThermalGen},
                 rts_da_sys,
-            )
+            ),
         )
     storage_names = PSY.get_name.(PSY.get_components(PSY.Storage, rts_da_sys))
     generatorstorage_names =
@@ -26,7 +26,7 @@ end
                 x -> PSY.get_available(x) && PSY.get_rating(x) > 0,
                 Union{PSY.HydroUnit, PSY.HybridSystem},
                 rts_da_sys,
-            )
+            ),
         )
     line_names =
         PSY.get_name.(
@@ -34,7 +34,7 @@ end
                 PSY.get_available(c) &&
                     !(any(c isa T for T in SiennaPRASInterface.TransformerTypes))  # From definitions.jl
                 PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
-            end
+            end,
         )
 
     # Make a PRAS System from PSY-4.X System
@@ -49,7 +49,7 @@ end
 
     # Test that timestamps look right
     # get time series length
-    psy_ts = first(PSY.get_time_series_multiple(rts_da_sys, type=PSY.SingleTimeSeries))
+    psy_ts = first(PSY.get_time_series_multiple(rts_da_sys; type=PSY.SingleTimeSeries))
     @test all(
         TimeSeries.timestamp(psy_ts.data) .== collect(DateTime.(rts_pras_sys.timestamps)),
     )
@@ -64,7 +64,7 @@ end
                 PSY.SingleTimeSeries,
                 hydro_component,
                 "max_active_power",
-            )
+            ),
         )
     @test rts_pras_sys.generators.capacity[idx, 1] == max_power_ts[1]
     @test all(rts_pras_sys.generators.capacity[idx, :] .== max_power_ts)
@@ -116,7 +116,7 @@ end
                 x -> PSY.get_available(x) && PSY.get_rating(x) > 0,
                 Union{PSY.HydroDispatch, PSY.RenewableGen, PSY.ThermalGen},
                 rts_da_sys,
-            )
+            ),
         )
     storage_names = PSY.get_name.(PSY.get_components(PSY.Storage, rts_da_sys))
     generatorstorage_names =
@@ -125,7 +125,7 @@ end
                 x -> PSY.get_available(x) && PSY.get_rating(x) > 0,
                 Union{PSY.HydroUnit, PSY.HybridSystem},
                 rts_da_sys,
-            )
+            ),
         )
     line_names =
         PSY.get_name.(
@@ -133,7 +133,7 @@ end
                 PSY.get_available(c) &&
                     !(any(c isa T for T in SiennaPRASInterface.TransformerTypes))  # From definitions.jl
                 PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
-            end
+            end,
         )
     PSY.remove_time_series!(rts_da_sys, PSY.DeterministicSingleTimeSeries)
     for (type, names) in zip(
@@ -175,19 +175,19 @@ end
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.StaticLoad,
-                SiennaPRASInterface.StaticLoadPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.StaticLoadPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.ThermalGen,
-                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroDispatch,
-                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.RenewableGen,
-                SiennaPRASInterface.GeneratorPRAS(max_active_power="max_active_POWER"),
+                SiennaPRASInterface.GeneratorPRAS(; max_active_power="max_active_POWER"),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.EnergyReservoirStorage,
@@ -195,13 +195,13 @@ end
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroTurbine,
-                SiennaPRASInterface.HydroEnergyReservoirPRAS(
+                SiennaPRASInterface.HydroEnergyReservoirPRAS(;
                     max_active_power="max_active_POWER",
                 ),
             ),
             SiennaPRASInterface.DeviceRAModel(
                 PSY.HydroPumpTurbine,
-                SiennaPRASInterface.HydroEnergyReservoirPRAS(
+                SiennaPRASInterface.HydroEnergyReservoirPRAS(;
                     max_active_power="max_active_POWER",
                 ),
             ),
@@ -219,7 +219,7 @@ end
 
     # Test that timestamps look right
     # get time series length
-    psy_ts = first(PSY.get_time_series_multiple(rts_da_sys, type=PSY.SingleTimeSeries))
+    psy_ts = first(PSY.get_time_series_multiple(rts_da_sys; type=PSY.SingleTimeSeries))
     @test all(
         TimeSeries.timestamp(psy_ts.data) .== collect(DateTime.(rts_pras_sys.timestamps)),
     )
@@ -247,7 +247,7 @@ end
                 PSY.SingleTimeSeries,
                 hydro_component,
                 "max_active_POWER",
-            )
+            ),
         )
     @test rts_pras_sys.generators.capacity[idx, 1] == max_power_ts[1]
     @test all(rts_pras_sys.generators.capacity[idx, :] .== max_power_ts)
@@ -271,7 +271,7 @@ end
                 x -> PSY.get_available(x) && PSY.get_rating(x) > 0,
                 Union{PSY.HydroDispatch, PSY.RenewableGen, PSY.ThermalGen},
                 rts_da_sys,
-            )
+            ),
         )
     storage_names = PSY.get_name.(PSY.get_components(PSY.Storage, rts_da_sys))
 
@@ -316,15 +316,15 @@ end
             DeviceRAModel(PSY.StaticLoad, StaticLoadPRAS),
             DeviceRAModel(
                 PSY.ThermalGen,
-                GeneratorPRAS(add_default_transition_probabilities=true),
+                GeneratorPRAS(; add_default_transition_probabilities=true),
             ),
             DeviceRAModel(
                 PSY.EnergyReservoirStorage,
-                EnergyReservoirSoC(add_default_transition_probabilities=true),
+                EnergyReservoirSoC(; add_default_transition_probabilities=true),
             ),
             DeviceRAModel(
                 PSY.HydroTurbine,
-                HydroEnergyReservoirPRAS(add_default_transition_probabilities=true),
+                HydroEnergyReservoirPRAS(; add_default_transition_probabilities=true),
             ),
         ],
     )
@@ -354,7 +354,7 @@ end
 
     # Test that timestamps look right
     # get time series length
-    psy_ts = first(PSY.get_time_series_multiple(rts_rt_sys, type=PSY.SingleTimeSeries))
+    psy_ts = first(PSY.get_time_series_multiple(rts_rt_sys; type=PSY.SingleTimeSeries))
     @test all(
         TimeSeries.timestamp(psy_ts.data) .== collect(DateTime.(rts_pras_sys.timestamps)),
     )
@@ -410,7 +410,7 @@ end
             PSY.get_components(Union{PSY.MonitoredLine, PSY.Line}, pjm_sys) do c
                 PSY.get_available(c) &&
                     PSY.get_area(PSY.get_from_bus(c)) != PSY.get_area(PSY.get_to_bus(c))
-            end
+            end,
         )
     @test test_names_equal(pjm_pras_sys.lines.names, line_names)
 end

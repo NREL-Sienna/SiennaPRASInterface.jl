@@ -1,7 +1,9 @@
 whitespace_ops_in_indices=true
 remove_extra_newlines=true
+verbose=true
 always_for_in=true
 whitespace_typedefs=true
-whitespace_in_kwargs=false
-format_docstrings=true
-always_use_return=false
+conditional_to_if=true
+join_lines_based_on_source=true
+separate_kwargs_with_semicolon=true
+format_markdown=true

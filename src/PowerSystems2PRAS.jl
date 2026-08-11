@@ -5,7 +5,7 @@ function add_default_data!(sys::PSY.System, outage_info_file=OUTAGE_INFO_FILE)
     @warn "No forced outage data available in the Sienna/Data PowerSystems System. Using generic outage data ..."
     df_outage = DataFrames.DataFrame(
         CSV.File(
-            outage_info_file,
+            outage_info_file;
             types=Dict(:tech => String, :PrimeMovers => String, :ThermalFuels => String),
             missingstring="NA",
         ),
@@ -79,6 +79,12 @@ function add_default_data!(sys::PSY.System, outage_info_file=OUTAGE_INFO_FILE)
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Internal helper that adds a load device time series into one row of the
+region-level PRAS load matrix.
+"""
 function add_to_load_matrix!(
     formulation::StaticLoadPRAS,
     load::PSY.Device,
@@ -154,7 +160,7 @@ function get_generator_region_indices(
             collect(keys(nonlumped_gens_to_formula)),
         )
         # To ensure reproducability when testing
-        sort!(gs, by=g -> g.name)
+        sort!(gs; by=g -> g.name)
         push!(gens, gs)
         push!(reg_wind_gens, wind_gs)
         push!(reg_pv_gens, pv_gs)
@@ -172,11 +178,11 @@ function get_generator_region_indices(
         end
 
         if (length(reg_wind_gens[idx]) > 0 && length(reg_pv_gens[idx]) > 0)
-            region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]) + 2)
+            region_gen_idxs[idx] = range(start_id[idx]; length=length(gens[idx]) + 2)
         elseif (length(reg_wind_gens[idx]) > 0 || length(reg_pv_gens[idx]) > 0)
-            region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]) + 1)
+            region_gen_idxs[idx] = range(start_id[idx]; length=length(gens[idx]) + 1)
         else
-            region_gen_idxs[idx] = range(start_id[idx], length=length(gens[idx]))
+            region_gen_idxs[idx] = range(start_id[idx]; length=length(gens[idx]))
         end
     end
     lumped_mapping = Dict{String, Vector{PSY.Device}}()
@@ -225,15 +231,18 @@ function get_storage_region_indices(
         stor = filter(
             x ->
                 haskey(component_to_formulation, x) &&
-                    PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids,
+                PSY.IS.get_uuid(x) ∉ s2p_meta.hs_uuids,
             reg_stor_comps,
         )
         # To ensure reproducability when testing
-        sort!(stor, by=s -> s.name)
+        sort!(stor; by=s -> s.name)
         push!(stors, stor)
-        idx == 1 ? start_id[idx] = 1 :
-        start_id[idx] = start_id[idx - 1] + length(stors[idx - 1])
-        region_stor_idxs[idx] = range(start_id[idx], length=length(stors[idx]))
+        if idx == 1
+            start_id[idx] = 1
+        else
+            start_id[idx] = start_id[idx - 1] + length(stors[idx - 1])
+        end
+        region_stor_idxs[idx] = range(start_id[idx]; length=length(stors[idx]))
     end
     return reduce(vcat, stors), region_stor_idxs
 end
@@ -257,11 +266,14 @@ function get_gen_storage_region_indices(
             get_available_components_in_aggregation_topology(PSY.Generator, sys, region)
         gs = filter(x -> haskey(component_to_formulation, x), reg_gen_stor_comps)
         # To ensure reproducability when testing
-        sort!(gs, by=g -> g.name)
+        sort!(gs; by=g -> g.name)
         push!(gen_stors, gs)
-        idx == 1 ? start_id[idx] = 1 :
-        start_id[idx] = start_id[idx - 1] + length(gen_stors[idx - 1])
-        region_genstor_idxs[idx] = range(start_id[idx], length=length(gen_stors[idx]))
+        if idx == 1
+            start_id[idx] = 1
+        else
+            start_id[idx] = start_id[idx - 1] + length(gen_stors[idx - 1])
+        end
+        region_genstor_idxs[idx] = range(start_id[idx]; length=length(gen_stors[idx]))
     end
     return reduce(vcat, gen_stors), region_genstor_idxs
 end
@@ -278,7 +290,8 @@ end
 
 Apply GeneratorPRAS to process all generators objects
 into rows in PRAS matrices:
-- Capacity, λ, μ
+
+  - Capacity, λ, μ
 
 Negative max active power will translate into zeros for time series data.
 """
@@ -361,6 +374,12 @@ function process_generators(
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Apply the [`EnergyReservoirSoC`](@ref) formulation to fill in a row of the PRAS
+storage matrices. Views should be passed in for all arrays.
+"""
 function assign_to_stor_matrices!(
     ::EnergyReservoirSoC,
     s::PSY.Device,
@@ -756,9 +775,9 @@ function build_interfaces_from_lines(
     interface_backward_capacity_array = Matrix{Int64}(undef, num_interfaces, s2p_meta.N)
     for (i, line_indices) in enumerate(interface_line_idxs)
         interface_forward_capacity_array[i, :] =
-            sum(line_forward_cap[line_indices, :], dims=1)
+            sum(line_forward_cap[line_indices, :]; dims=1)
         interface_backward_capacity_array[i, :] =
-            sum(line_backward_cap[line_indices, :], dims=1)
+            sum(line_backward_cap[line_indices, :]; dims=1)
     end
 
     return PRASCore.Interfaces{s2p_meta.N, PRASCore.MW}(
@@ -830,17 +849,17 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Use a RATemplate to create a PRAS system from a Sienna system.
+Use a [`RATemplate`](@ref) to create a PRAS system from a Sienna system.
 
 # Arguments
 
-- `sys::PSY.System`: Sienna PowerSystems System
-- `template::RATemplate`: RATemplate
-- `export_location::Union{Nothing, String}`: Export location for PRAS SystemModel
+  - `sys`: [`PowerSystems.System`](@extref) to translate
+  - `template`: [`RATemplate`](@ref) defining aggregation topology and device mappings
+  - `export_location`: optional path ending in `.pras` to export the translated [`PRASCore.Systems.SystemModel`](@extref)
 
 # Returns
 
-- `PRASCore.SystemModel`: PRAS SystemModel
+  - [`PRASCore.Systems.SystemModel`](@extref): translated PRAS system
 
 # Examples
 
@@ -985,7 +1004,7 @@ function generate_pras_system(
     new_gen_stors = process_genstorage(
         gen_stors,
         s2p_meta,
-        gen_stors_to_formula,
+        gen_stors_to_formula;
         turbine_to_reservoir_mapping=turbine_to_reservoir_mapping,
     )
 
@@ -1008,7 +1027,7 @@ function generate_pras_system(
             ),
         )
         # To ensure reproducability when testing
-        sort!(lines, by=l -> l.name)
+        sort!(lines; by=l -> l.name)
         # Sorting here let's us better control the interface/line link
         sorted_lines, interface_reg_idxs, interface_line_idxs =
             get_sorted_lines(lines, PSY.get_name.(regions))
@@ -1057,7 +1076,7 @@ function generate_pras_system(
         return pras_system
 
     else
-        load_vector = vec(sum(region_load, dims=1))
+        load_vector = vec(sum(region_load; dims=1))
         pras_system = PRASCore.SystemModel(
             new_generators,
             new_storage,
@@ -1094,7 +1113,7 @@ const _LUMPED_RENEWABLE_DEVICE_MODELS = [
     DeviceRAModel(PSY.TwoTerminalGenericHVDCLine, LinePRAS),
     DeviceRAModel(PSY.StaticLoad, StaticLoadPRAS),
     DeviceRAModel(PSY.ThermalGen, GeneratorPRAS),
-    DeviceRAModel(PSY.RenewableGen, GeneratorPRAS, lump_renewable_generation=true),
+    DeviceRAModel(PSY.RenewableGen, GeneratorPRAS; lump_renewable_generation=true),
     DeviceRAModel(PSY.HydroDispatch, GeneratorPRAS),
     DeviceRAModel(PSY.EnergyReservoirStorage, EnergyReservoirSoC),
     DeviceRAModel(PSY.HybridSystem, HybridSystemPRAS),
@@ -1107,20 +1126,19 @@ const DEFAULT_TEMPLATE = RATemplate(PSY.Area, DEFAULT_DEVICE_MODELS)
 """
     $(TYPEDSIGNATURES)
 
-Sienna/Data PowerSystems.jl System is the input and an object of PRAS SystemModel is returned.
-...
+Translate a [`PowerSystems.System`](@extref) to a [`PRASCore.Systems.SystemModel`](@extref)
+using default device mappings.
 
 # Arguments
 
-  - `sys::PSY.System`: Sienna/Data PowerSystems.jl System
-  - `aggregation<:PSY.AggregationTopology`: "PSY.Area" (or) "PSY.LoadZone" {Optional}
-  - `lump_region_renewable_gens::Bool`: Whether to lumps PV and Wind generators in a region because usually these generators don't have FOR data {Optional}
-  - `export_location::String`: Export location of the .pras file
-    ...
+  - `sys`: [`PowerSystems.System`](@extref) to translate
+  - `aggregation`: [`PowerSystems.AggregationTopology`](@extref) type (for example [`PowerSystems.Area`](@extref) or [`PowerSystems.LoadZone`](@extref))
+  - `lump_region_renewable_gens`: whether to lump PV and wind generators within a region when outage data are absent
+  - `export_location`: optional path ending in `.pras` to export the translated model
 
 # Returns
 
-    - `PRASCore.SystemModel`: PRAS SystemModel object
+  - [`PRASCore.Systems.SystemModel`](@extref): translated PRAS system
 
 # Examples
 
@@ -1144,20 +1162,20 @@ function generate_pras_system(
 end
 
 """
-    generate_pras_system(sys_location::String, aggregation; kwargs...)
+    $(TYPEDSIGNATURES)
 
-Generate a PRAS SystemModel from a Sienna/Data PowerSystems System JSON file.
+Generate a [`PRASCore.Systems.SystemModel`](@extref) from a [`PowerSystems.System`](@extref) JSON file.
 
 # Arguments
 
-  - `sys_location::String`: Location of the Sienna/Data PowerSystems System JSON file
-  - `aggregation::Type{AT}`: Aggregation topology type
-  - `lump_region_renewable_gens::Bool`: Lumping of region renewable generators
-  - `export_location::Union{Nothing, String}`: Export location of the .pras file
+  - `sys_location`: path to the [`PowerSystems.System`](@extref) JSON file
+  - `aggregation`: [`PowerSystems.AggregationTopology`](@extref) type
+  - `lump_region_renewable_gens`: whether to lump region renewable generators
+  - `export_location`: optional path ending in `.pras` to export the translated model
 
 # Returns
 
-  - `PRASCore.SystemModel`: PRAS SystemModel
+  - [`PRASCore.Systems.SystemModel`](@extref): translated PRAS system
 """
 function generate_pras_system(
     sys_location::String,

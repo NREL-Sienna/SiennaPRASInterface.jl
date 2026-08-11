@@ -36,18 +36,27 @@ end
     SPIOutageResult(; shortfall_samples, gen_availability, stor_availability, gen_stor_availability)
 
 # Arguments
+
 $(TYPEDFIELDS)
 
 SPIOutageResult is used to parse Tuple{Vararg{PRAS.PRASCore.Results.Result}} and add structure to it.
 """
 struct SPIOutageResult
-    "Shortfall Sample Result"
+    """
+    Shortfall Sample Result
+    """
     shortfall_samples::PRASCore.Results.ShortfallSamplesResult
-    "Generator Availability Result"
+    """
+    Generator Availability Result
+    """
     gen_availability::PRASCore.Results.GeneratorAvailabilityResult
-    "Storage Availability Result"
+    """
+    Storage Availability Result
+    """
     stor_availability::PRASCore.Results.StorageAvailabilityResult
-    "GeneratorStorage Availability Result"
+    """
+    GeneratorStorage Availability Result
+    """
     gen_stor_availability::PRASCore.Results.GeneratorStorageAvailabilityResult
 end
 

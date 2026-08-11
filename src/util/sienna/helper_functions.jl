@@ -158,7 +158,7 @@ function get_outage_time_series_data(
 )
     return get_outage_time_series_data(
         gen,
-        s2p_meta,
+        s2p_meta;
         outage_probability_ts_name=get_outage_probability(formulation),
         recovery_probability_ts_name=get_recovery_probability(formulation),
     )
